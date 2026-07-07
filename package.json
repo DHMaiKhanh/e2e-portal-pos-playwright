@@ -1,0 +1,66 @@
+{
+  "name": "e2e-portal-pos-test",
+  "version": "1.0.0",
+  "description": "Enterprise-grade Playwright E2E automation framework for the Portal POS web app",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "scripts": {
+    "prepare": "husky install",
+    "setup": "npm install && npx playwright install chromium",
+    "postinstall": "playwright install --with-deps chromium",
+    "lint": "eslint . --ext .ts,.js",
+    "lint:fix": "eslint . --ext .ts,.js --fix",
+    "format": "prettier --write \"**/*.{ts,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md}\"",
+    "typecheck": "tsc --noEmit",
+    "pretest": "node scripts/check-server.mjs",
+    "test": "cross-env ENV=local playwright test",
+    "test:local": "cross-env ENV=local playwright test",
+    "test:stage": "cross-env ENV=stage playwright test",
+    "test:prod": "cross-env ENV=prod playwright test",
+    "test:smoke": "cross-env ENV=local playwright test --grep @smoke",
+    "test:regression": "cross-env ENV=local playwright test --grep @regression",
+    "test:e2e": "cross-env ENV=local playwright test tests/e2e",
+    "test:api": "cross-env ENV=local playwright test --project=api",
+    "test:headed": "cross-env ENV=local playwright test --headed",
+    "test:ui": "cross-env ENV=local playwright test --ui",
+    "test:debug": "cross-env ENV=local PWDEBUG=1 playwright test",
+    "test:trace": "playwright show-trace",
+    "report": "playwright show-report reports/html",
+    "report:allure": "allure generate reports/allure-results --clean -o reports/allure-report && allure open reports/allure-report",
+    "report:allure:serve": "allure serve reports/allure-results",
+    "codegen": "playwright codegen http://localhost:3000",
+    "clean": "rimraf reports test-results playwright-report"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "winston": "^3.15.0"
+  },
+  "devDependencies": {
+    "@faker-js/faker": "^9.0.3",
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^22.7.5",
+    "@typescript-eslint/eslint-plugin": "^8.8.1",
+    "@typescript-eslint/parser": "^8.8.1",
+    "allure-commandline": "^2.30.0",
+    "allure-playwright": "^3.0.5",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-playwright": "^2.1.0",
+    "eslint-plugin-prettier": "^5.2.1",
+    "husky": "^9.1.6",
+    "lint-staged": "^15.2.10",
+    "prettier": "^3.3.3",
+    "rimraf": "^6.0.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.3"
+  },
+  "lint-staged": {
+    "*.{ts,js}": ["eslint --fix", "prettier --write"],
+    "*.{json,md}": ["prettier --write"]
+  }
+}
