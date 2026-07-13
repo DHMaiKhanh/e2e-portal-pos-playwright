@@ -89,7 +89,7 @@ export class OrdersPage extends BasePage {
     // Order detail heading label is dynamic ("Order #OD260707-...").
     this.orderDetailHeading = page.locator('[data-slot="page-title"]');
     this.backToOrdersLink = page.getByRole('link', { name: /back to orders/i });
-    this.receiptButton = page.getByRole('button', { name: /receipt/i });
+    this.receiptButton = page.getByRole('button', { name: 'Receipt', exact: true });
     this.reOpenOrderButton = page.getByRole('button', { name: /re-open order/i });
     this.orderInformationSection = page.getByText(/order information/i);
     this.serviceDetailsSection = page.getByText(/service details\s*&\s*tip/i);

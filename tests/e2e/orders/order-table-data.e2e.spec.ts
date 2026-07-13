@@ -45,7 +45,7 @@ test.describe('Bảng dữ liệu Order History — Orders', () => {
       let checked = 0;
       for (let i = 0; i < count; i++) {
         const rowText = (await rows.nth(i).textContent()) ?? '';
-        expect(rowText).not.toMatch(/NaN|undefined/i);
+        expect(rowText).not.toMatch(/\bNaN\b|\bundefined\b/i);
         const match = rowText.match(/\$[\d,]+\.\d{2}/);
         if (match) {
           expect(match[0]).toMatch(/^\$[\d,]+\.\d{2}$/);

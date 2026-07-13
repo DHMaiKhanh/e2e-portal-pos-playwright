@@ -32,6 +32,10 @@
     "report": "playwright show-report reports/html",
     "report:allure": "allure generate reports/allure-results --clean -o reports/allure-report && allure open reports/allure-report",
     "report:allure:serve": "allure serve reports/allure-results",
+    "dashboard:install": "npm --prefix reports/dashboard-app install",
+    "dashboard:build": "npm --prefix reports/dashboard-app run build",
+    "dashboard:open": "npm --prefix reports/dashboard-app run preview",
+    "test:report": "node scripts/run-tests-and-report.mjs",
     "codegen": "playwright codegen http://localhost:3000",
     "auth": "cross-env ENV=local node scripts/capture-auth.mjs",
     "clean": "rimraf reports test-results playwright-report"

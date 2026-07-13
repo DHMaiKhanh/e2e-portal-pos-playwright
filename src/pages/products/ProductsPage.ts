@@ -14,7 +14,7 @@ export class ProductsPage extends BasePage {
   constructor(page: Page) {
     super(page);
     this.table = new DataTable(page, page.getByRole('table'));
-    this.searchInput = page.getByPlaceholder(/search products?/i);
+    this.searchInput = page.getByPlaceholder(/search by name/i);
     this.addButton = page.getByRole('button', { name: /add product|create/i });
   }
 
