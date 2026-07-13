@@ -33,6 +33,7 @@
     "report:allure": "allure generate reports/allure-results --clean -o reports/allure-report && allure open reports/allure-report",
     "report:allure:serve": "allure serve reports/allure-results",
     "codegen": "playwright codegen http://localhost:3000",
+    "auth": "cross-env ENV=local node scripts/capture-auth.mjs",
     "clean": "rimraf reports test-results playwright-report"
   },
   "dependencies": {
@@ -60,7 +61,12 @@
     "typescript": "^5.6.3"
   },
   "lint-staged": {
-    "*.{ts,js}": ["eslint --fix", "prettier --write"],
-    "*.{json,md}": ["prettier --write"]
+    "*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
   }
 }

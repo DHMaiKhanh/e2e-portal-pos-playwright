@@ -8,7 +8,12 @@ import { BaseComponent } from '@components/BaseComponent';
  */
 export class DataTable extends BaseComponent {
   get rows(): Locator {
-    return this.root.getByRole('row');
+    // Excludes the single placeholder row the app renders (`data-slot="empty"`)
+    // when there is no data — otherwise `rowCount()` can never report 0.
+    return this.root
+      .locator('tbody')
+      .getByRole('row')
+      .filter({ hasNot: this.page.locator('[data-slot="empty"]') });
   }
 
   async rowCount(): Promise<number> {

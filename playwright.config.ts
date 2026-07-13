@@ -17,13 +17,13 @@ export default defineConfig({
     toMatchSnapshot: { maxDiffPixelRatio: 0.02 },
   },
 
-  // Portal POS is a multi-user web app; tests are written to be independent so
-  // they can run in parallel. Drop to 1 worker only if shared backend state
-  // (e.g. a single admin account) starts causing races.
+  // Portal POS is a multi-user web app; tests are written to be independent.
+  // We pin to a single worker so only one browser runs at a time (sequential
+  // execution) — raise `workers` again if you want parallel runs.
   fullyParallel: true,
   forbidOnly: isCI,
   retries: isCI ? 2 : 0,
-  workers: isCI ? 2 : undefined,
+  workers: 1,
 
   reporter: [
     ['list'],

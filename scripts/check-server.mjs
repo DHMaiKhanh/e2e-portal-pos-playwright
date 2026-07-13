@@ -3,6 +3,19 @@
  * BASE_URL. Wired to the `pretest` npm hook so `npm test` fails fast with a
  * helpful message if the app hasn't been started yet.
  */
+import dotenv from 'dotenv';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+
+// Mirror loadEnv.ts precedence so BASE_URL comes from .env.<ENV> (the pretest
+// hook runs outside cross-env, so ENV defaults to 'local' here too).
+const ENV = process.env.ENV ?? 'local';
+const envDir = path.resolve('configs/env');
+for (const file of [`.env.${ENV}`, '.env.example']) {
+  const full = path.join(envDir, file);
+  if (fs.existsSync(full)) dotenv.config({ path: full, override: false });
+}
+
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 
 try {

@@ -7,12 +7,15 @@ test.describe(`Dashboard ${Tag.REGRESSION} ${Tag.UI}`, () => {
     await dashboardPage.goto();
   });
 
-  test('renders the dashboard for an authenticated user', async ({ dashboardPage }) => {
+  test('renders the overview for an authenticated user', async ({ dashboardPage, page }) => {
     await expect(dashboardPage.heading).toBeVisible();
+    await expect(page).toHaveURL(/\/pos\/\d+\/overview/);
   });
 
   test('navigates to Orders via the sidebar', async ({ dashboardPage, page }) => {
-    await dashboardPage.sidebar.navigateTo(/orders/i);
-    await expect(page).toHaveURL(/\/orders/);
+    // Labels repeat in the sidebar (store "Orders" vs admin "Orders"), so match
+    // the store-scoped destination by href.
+    await dashboardPage.sidebar.navigateToHref(/^\/pos\/\d+\/orders$/);
+    await expect(page).toHaveURL(/\/pos\/\d+\/orders/);
   });
 });
