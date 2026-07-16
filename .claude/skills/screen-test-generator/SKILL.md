@@ -48,16 +48,20 @@ It fans out one agent per generic dimension (page-load, navigation, core-actions
 
 > Non-workflow fallback (small screens): skip the workflow and generate the cases directly from the inventory using the same dimensions.
 
-### 4. Render the document
+### 4. Render the document — in Vietnamese
 
-Write `docs/test-cases/<screen>.md` with:
+Write `docs/test-cases/<screen>.md` **entirely in Vietnamese** (all prose: section headers, priority/type labels, preconditions, steps, expected results, summary notes). Keep only what must stay in the original language for accuracy: route paths, query params, exact on-screen UI labels/button text (quote them as-is, e.g. `"Clear filters"`), field/column names, and IDs.
 
-1. **Header** — screen name, route, scan date, source (`_scan/<screen>.json`).
-2. **Feature inventory** — a bulleted map of what the screen contains.
-3. **Test cases** — grouped by dimension; assign stable IDs `TC-<ABBR>-001`, `TC-<ABBR>-002`, … (e.g. `TC-OVW-*` for Overview, `TC-ORD-*` for Orders). Render each as a compact block: **ID · Title** with Priority/Type, Preconditions, numbered Steps, Expected.
-4. **Coverage summary** — counts by type and priority, and a note on any deferred/uncertain areas.
+Structure:
 
-Keep the `docs/test-cases/_scan/` raw artifacts out of the human-facing doc (they're inputs). They may be gitignored if noisy.
+1. **Header** — tên màn hình, route, ngày quét, nguồn (`_scan/<screen>.json`).
+2. **Kiểm kê tính năng (Feature inventory)** — liệt kê những gì màn hình chứa, dạng bullet.
+3. **Test case** — nhóm theo dimension; gán ID cố định `TC-<ABBR>-001`, `TC-<ABBR>-002`, … (vd: `TC-OVW-*` cho Overview, `TC-ORD-*` cho Orders). Mỗi test case là một khối gọn: **ID · Tiêu đề** kèm Mức độ ưu tiên/Loại, Điều kiện tiên quyết, Các bước (đánh số), Kết quả mong đợi.
+   - Priority dịch: High → Cao, Medium → Trung bình, Low → Thấp.
+   - Type dịch tự nhiên sang tiếng Việt (Functional → Chức năng, Negative → Tiêu cực, Edge → Biên, Security → Bảo mật, Accessibility → Khả năng tiếp cận, Responsive → Responsive/Đáp ứng, Performance → Hiệu năng, Data → Dữ liệu, UI → Giao diện, Navigation → Điều hướng).
+4. **Tổng kết độ phủ (Coverage summary)** — số lượng theo loại và mức ưu tiên, ghi chú các phần còn chưa chắc chắn/cần xác minh trực tiếp.
+
+Keep the `docs/test-cases/_scan/` raw artifacts out of the human-facing doc (they're inputs, can stay in English). They may be gitignored if noisy.
 
 ## Reusing for other screens
 

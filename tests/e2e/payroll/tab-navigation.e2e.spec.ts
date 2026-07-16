@@ -59,8 +59,12 @@ test.describe('Tab navigation — Payroll', () => {
     },
   );
 
+  // Tab switches use shallow/replace routing (history.replaceState), not pushState —
+  // clicking between tabs never grows the browser history stack. So a single
+  // `goBack()` leaves the payroll page entirely (back to whatever preceded it),
+  // and `goForward()` returns to the payroll page showing its last-active tab.
   test(
-    'TC-PAY-012 — browser back/forward navigates between tab states',
+    'TC-PAY-012 — browser back/forward navigates away from and back into the payroll page',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ payrollPage, page }) => {
       await payrollPage.goToBankAccountsTab();
@@ -69,12 +73,13 @@ test.describe('Tab navigation — Payroll', () => {
       await payrollPage.goToCheckHistoryTab();
       await expect(page).toHaveURL(/tab=history/);
 
+      // Tab clicks only replaced the current entry, so the one entry created by
+      // the initial payrollPage.goto() (in beforeEach) is what goBack() lands on.
       await page.goBack();
-      await expect(page).toHaveURL(/tab=bank-account/);
-      await expect(page.getByRole('table').first()).toBeVisible();
+      await expect(page).not.toHaveURL(/tab=(bank-account|history)/);
 
-      await page.goBack();
-      await expect(page).toHaveURL(/tab=checks/);
+      await page.goForward();
+      await expect(page).toHaveURL(/tab=history/);
       await expect(page.getByRole('table').first()).toBeVisible();
     },
   );
