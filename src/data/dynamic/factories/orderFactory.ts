@@ -29,9 +29,7 @@ export const buildOrderInput = (
  * Generate a full `Order` entity with computed subtotal/tax/total. Pass a
  * `products` pool so line-item names/prices match real catalog data.
  */
-export const buildOrder = (
-  overrides: Partial<Order> & { products?: Product[] } = {},
-): Order => {
+export const buildOrder = (overrides: Partial<Order> & { products?: Product[] } = {}): Order => {
   const { products, items: itemsOverride, ...rest } = overrides;
 
   const items: OrderLineItem[] =

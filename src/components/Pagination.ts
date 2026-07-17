@@ -3,7 +3,10 @@ import { BaseComponent } from '@components/BaseComponent';
 
 /** Table pagination control. Scope to the pagination container. */
 export class Pagination extends BaseComponent {
-  constructor(page: Page, root: string | Locator = page.getByRole('navigation', { name: /pagination/i })) {
+  constructor(
+    page: Page,
+    root: string | Locator = page.getByRole('navigation', { name: /pagination/i }),
+  ) {
     super(page, root);
   }
 
