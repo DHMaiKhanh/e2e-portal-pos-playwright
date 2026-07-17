@@ -11,10 +11,16 @@ test.describe(`Orders — list & filter ${Tag.REGRESSION} ${Tag.UI}`, () => {
     expect(await ordersPage.rowCount()).toBeGreaterThan(0);
   });
 
-  test('filters orders by status', async ({ ordersPage }) => {
-    await ordersPage.filterByStatus('Paid');
-    // Replace with a concrete assertion once the status column selector is known.
-    await expect(ordersPage.table.rows.first()).toBeVisible();
+  test('filters orders by status', async ({ ordersPage, page }) => {
+    await ordersPage.filterByStatus('Successful - Settled');
+    await expect(page).toHaveURL(/[?&]status=/i);
+
+    const rowCount = await ordersPage.rowCount();
+    if (rowCount > 0) {
+      await expect(ordersPage.table.rows.first()).toBeVisible();
+    } else {
+      await expect(ordersPage.emptyStateMessage).toBeVisible();
+    }
   });
 
   test('searches for an order', async ({ ordersPage }) => {

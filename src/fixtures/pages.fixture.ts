@@ -6,6 +6,7 @@ import { ProductsPage } from '@pages/products/ProductsPage';
 import { CustomersPage } from '@pages/customers/CustomersPage';
 import { ReportsPage } from '@pages/reports/ReportsPage';
 import { SettingsPage } from '@pages/settings/SettingsPage';
+import { PayrollPage } from '@pages/payroll/PayrollPage';
 import { Toast } from '@components/Toast';
 import { ConfirmModal } from '@components/modal/ConfirmModal';
 
@@ -17,6 +18,7 @@ export interface PagesFixture {
   customersPage: CustomersPage;
   reportsPage: ReportsPage;
   settingsPage: SettingsPage;
+  payrollPage: PayrollPage;
   toast: Toast;
   confirmModal: ConfirmModal;
 }
@@ -42,6 +44,9 @@ export const pagesFixture = base.extend<PagesFixture>({
   },
   settingsPage: async ({ page }, use) => {
     await use(new SettingsPage(page));
+  },
+  payrollPage: async ({ page }, use) => {
+    await use(new PayrollPage(page));
   },
   toast: async ({ page }, use) => {
     await use(new Toast(page));

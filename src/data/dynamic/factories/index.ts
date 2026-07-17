@@ -14,3 +14,5 @@ export * from './faker';
 export * from './customerFactory';
 export * from './productFactory';
 export * from './orderFactory';
+export * from './mockOrder';
+export * from './mockStaff';

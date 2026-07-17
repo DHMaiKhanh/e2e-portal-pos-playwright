@@ -12,7 +12,10 @@ test.describe(`Auth — login ${Tag.SMOKE} ${Tag.AUTH}`, () => {
     await loginPage.goto();
   });
 
-  test('logs in with valid admin credentials', async ({ loginPage, dashboardPage }) => {
+  // Skipped: the Portal only supports Google OAuth sign-in (captured manually via
+  // `npm run auth`, see scripts/capture-auth.mjs). There is no username/password
+  // form for LoginPage to drive, so this scenario doesn't apply.
+  test.skip('logs in with valid admin credentials', async ({ loginPage, dashboardPage }) => {
     await test.step('Submit credentials', async () => {
       await loginPage.loginAndWait(USERS.ADMIN.username, USERS.ADMIN.password);
     });
@@ -23,7 +26,9 @@ test.describe(`Auth — login ${Tag.SMOKE} ${Tag.AUTH}`, () => {
     });
   });
 
-  test('shows an error for invalid credentials', async ({ loginPage }) => {
+  // Skipped: same reason — no username/password form exists to submit invalid
+  // credentials against (Google OAuth only).
+  test.skip('shows an error for invalid credentials', async ({ loginPage }) => {
     await loginPage.login('wrong.user', 'wrong-password');
     await expect(loginPage.errorMessage).toContainText(ErrorMessages.INVALID_CREDENTIALS);
   });
