@@ -5,7 +5,10 @@ import { BaseComponent } from '@components/BaseComponent';
 export class Pagination extends BaseComponent {
   constructor(
     page: Page,
-    root: string | Locator = page.getByRole('navigation', { name: /pagination/i }),
+    root: string | Locator = page
+      .locator('div')
+      .filter({ has: page.getByRole('button', { name: /^previous$/i }) })
+      .last(),
   ) {
     super(page, root);
   }

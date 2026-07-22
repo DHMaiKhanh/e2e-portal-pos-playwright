@@ -21,4 +21,5 @@ export const Urls = {
   SETTINGS: `/pos/${store}/setting`,
   PAYROLL: `/pos/${store}/payroll`,
   BATCH_HISTORY: `/pos/${store}/batch`,
+  STAFFS: `/pos/${store}/staffs`,
 } as const;

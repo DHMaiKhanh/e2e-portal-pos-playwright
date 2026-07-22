@@ -8,6 +8,7 @@ import { ReportsPage } from '@pages/reports/ReportsPage';
 import { SettingsPage } from '@pages/settings/SettingsPage';
 import { PayrollPage } from '@pages/payroll/PayrollPage';
 import { BatchHistoryPage } from '@pages/batch/BatchHistoryPage';
+import { StaffsPage } from '@pages/staffs/StaffsPage';
 import { Toast } from '@components/Toast';
 import { ConfirmModal } from '@components/modal/ConfirmModal';
 
@@ -21,6 +22,7 @@ export interface PagesFixture {
   settingsPage: SettingsPage;
   payrollPage: PayrollPage;
   batchHistoryPage: BatchHistoryPage;
+  staffsPage: StaffsPage;
   toast: Toast;
   confirmModal: ConfirmModal;
 }
@@ -52,6 +54,9 @@ export const pagesFixture = base.extend<PagesFixture>({
   },
   batchHistoryPage: async ({ page }, use) => {
     await use(new BatchHistoryPage(page));
+  },
+  staffsPage: async ({ page }, use) => {
+    await use(new StaffsPage(page));
   },
   toast: async ({ page }, use) => {
     await use(new Toast(page));
