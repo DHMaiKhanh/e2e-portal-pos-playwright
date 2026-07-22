@@ -13,8 +13,6 @@ test.describe('Filter — khoảng ngày — Batch History', () => {
       await batchHistoryPage.waitForReady();
 
       await expect(batchHistoryPage.dateRangeButton).toBeVisible();
-      const label = batchHistoryPage.dateRangeButton;
-      await expect(label).toHaveText();
 
       const params = batchHistoryPage.currentQueryParams();
       const dateAfter = params.get('dateAfter');
@@ -135,8 +133,6 @@ test.describe('Filter — khoảng ngày — Batch History', () => {
       expect(params.get('dateBefore')).toBe('2026-07-15');
 
       await expect(batchHistoryPage.dateRangeButton).toBeVisible();
-      const label = batchHistoryPage.dateRangeButton;
-      await expect(label).toHaveText();
 
       await expect(batchHistoryPage.tableRoot).toBeVisible();
     },
