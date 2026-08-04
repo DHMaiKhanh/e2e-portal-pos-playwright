@@ -33,7 +33,13 @@
 
 ## 2. Test case
 
+**Chạy toàn bộ test của màn hình**: `npx playwright test tests/e2e/staffs --reporter=list`
+**Chạy từng nhóm test case (TC1-TC8)**: xem lệnh riêng ở đầu mỗi mục A-H bên dưới.
+
 ### A. Tải trang & bố cục (Page load / Layout)
+
+- File test: `tests/e2e/staffs/TC1-page-load-layout.e2e.spec.ts`
+- Chạy: `npx playwright test tests/e2e/staffs/TC1-page-load-layout.e2e.spec.ts --reporter=list`
 
 **TC-STF-001 · Tải trang Staffs qua điều hướng trực tiếp** — Mức độ ưu tiên: Cao · Loại: Điều hướng
 
@@ -61,6 +67,9 @@
 - Kết quả mong đợi: Thanh công cụ, bảng và phân trang không bị chồng lấp/cắt; không xuất hiện thanh cuộn ngang ngoài ý muốn ở các độ rộng phổ biến.
 
 ### B. Bảng danh sách nhân viên (Table)
+
+- File test: `tests/e2e/staffs/TC2-employee-list-table.e2e.spec.ts`
+- Chạy: `npx playwright test tests/e2e/staffs/TC2-employee-list-table.e2e.spec.ts --reporter=list`
 
 **TC-STF-010 · Header cột đúng thứ tự và nhãn** — Mức độ ưu tiên: Cao · Loại: Giao diện
 
@@ -94,6 +103,9 @@
 - Kết quả mong đợi: URL chuyển sang `/pos/<STORE_ID>/staffs/<uuid>?tab=profile`, tab "Profile" hiển thị thông tin đúng của nhân viên vừa click (tên, các field trùng khớp).
 
 ### C. Tìm kiếm & lọc (Search / Filter)
+
+- File test: `tests/e2e/staffs/TC3-search-filter.e2e.spec.ts`
+- Chạy: `npx playwright test tests/e2e/staffs/TC3-search-filter.e2e.spec.ts --reporter=list`
 
 **TC-STF-020 · Tìm kiếm theo nick name trả về đúng kết quả** — Mức độ ưu tiên: Cao · Loại: Chức năng
 
@@ -142,6 +154,9 @@
 - Kết quả mong đợi: Trang khôi phục đúng trạng thái lọc/tìm kiếm/sắp xếp theo query param, không có trạng thái lai tạp.
 
 ### D. Tạo nhân viên mới (Create)
+
+- File test: `tests/e2e/staffs/TC4-create-employee.e2e.spec.ts`
+- Chạy: `npx playwright test tests/e2e/staffs/TC4-create-employee.e2e.spec.ts --reporter=list`
 
 **TC-STF-030 · Mở dialog "Create New Staff"** — Mức độ ưu tiên: Cao · Loại: Chức năng
 
@@ -201,6 +216,9 @@
 
 ### E. Xuất dữ liệu (Export)
 
+- File test: `tests/e2e/staffs/TC5-export-data.e2e.spec.ts`
+- Chạy: `npx playwright test tests/e2e/staffs/TC5-export-data.e2e.spec.ts --reporter=list`
+
 **TC-STF-050 · Mở dialog "Export Employee"** — Mức độ ưu tiên: Cao · Loại: Chức năng
 
 - Các bước: Click nút "Export".
@@ -238,6 +256,9 @@
 - Kết quả mong đợi: Hệ thống hiển thị thông báo rõ ràng không có dữ liệu để xuất, hoặc export file rỗng có cấu trúc hợp lệ (không lỗi, không file hỏng).
 
 ### F. Trang chi tiết nhân viên (Detail — tab Profile)
+
+- File test: `tests/e2e/staffs/TC6-employee-detail-profile-tab.e2e.spec.ts`
+- Chạy: `npx playwright test tests/e2e/staffs/TC6-employee-detail-profile-tab.e2e.spec.ts --reporter=list`
 
 **TC-STF-060 · Tab mặc định khi mở trang chi tiết là Profile** — Mức độ ưu tiên: Cao · Loại: Điều hướng
 
@@ -296,6 +317,9 @@
 
 ### G. Bảo mật & phân quyền (Security)
 
+- File test: `tests/e2e/staffs/TC7-permission-security.e2e.spec.ts`
+- Chạy: `npx playwright test tests/e2e/staffs/TC7-permission-security.e2e.spec.ts --reporter=list`
+
 **TC-STF-080 · Truy cập trực tiếp URL Staffs khi chưa đăng nhập** — Mức độ ưu tiên: Cao · Loại: Bảo mật
 
 - Các bước: 1) Xoá session/cookie. 2) Điều hướng trực tiếp tới `/pos/<STORE_ID>/staffs`.
@@ -314,6 +338,9 @@
 - Kết quả mong đợi: Backend trả về lỗi 403/404, không hiển thị dữ liệu nhân viên của store khác.
 
 ### H. Định dạng dữ liệu & trạng thái biên (Data / Edge)
+
+- File test: `tests/e2e/staffs/TC8-data-format-edge-case.e2e.spec.ts`
+- Chạy: `npx playwright test tests/e2e/staffs/TC8-data-format-edge-case.e2e.spec.ts --reporter=list`
 
 **TC-STF-090 · Định dạng ngày JOINED AT nhất quán** — Mức độ ưu tiên: Trung bình · Loại: Dữ liệu
 

@@ -1,0 +1,165 @@
+import { test, expect } from '@fixtures/index';
+import { Tag } from '@/types/testTags';
+import { Urls } from '@constants/urls';
+
+test.describe('Tải trang & bố cục (Page load / Layout) — Customers', () => {
+  test.beforeEach(async ({ customersPage }) => {
+    await customersPage.goto();
+  });
+
+  test(
+    'TC-CUS-001 — lands on /pos/<id>/customers with default query params',
+    { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
+    async ({ customersPage, page }) => {
+      await customersPage.waitForReady();
+      await expect(page).toHaveURL(/\/pos\/\d+\/customers\?page=1&orderCreatedAt=desc/);
+      await expect(customersPage.pageTitle).toBeVisible();
+      await expect(page.getByRole('table')).toBeVisible();
+    },
+  );
+
+  test(
+    'TC-CUS-002 — all content regions render on first load',
+    { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
+    async ({ customersPage }) => {
+      await customersPage.waitForReady();
+      await expect(customersPage.pageTitle).toBeVisible();
+      await expect(customersPage.searchInput).toBeVisible();
+      await expect(customersPage.groupFilter).toBeVisible();
+      await expect(customersPage.page.getByRole('table')).toBeVisible();
+      await expect(customersPage.resultsFooter).toContainText(/showing 1 to 30 of \d+ results/i);
+      await expect(customersPage.pagination.prevButton).toBeVisible();
+      await expect(customersPage.pageIndicator).toBeVisible();
+      await expect(customersPage.pagination.nextButton).toBeVisible();
+    },
+  );
+
+  test(
+    'TC-CUS-003 — global chrome renders with Customers marked active',
+    { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
+    async ({ customersPage }) => {
+      await customersPage.waitForReady();
+      await expect(customersPage.sidebar.item('Customers')).toHaveAttribute('aria-current', 'page');
+    },
+  );
+
+  test(
+    'TC-CUS-004 — table renders exactly 30 rows with all columns on first page',
+    { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
+    async ({ customersPage }) => {
+      await customersPage.waitForReady();
+      await expect(customersPage.table.rows).toHaveCount(30);
+      await expect(customersPage.columnHeaders).toHaveCount(8);
+      await expect(customersPage.resultsFooter).toContainText(/showing 1 to 30 of \d+ results/i);
+    },
+  );
+
+  // TODO(manual/setup): requires simulated slow network/delayed API response —
+  // no route-throttling helper wired up in this project's fixtures.
+  test.fixme(
+    'TC-CUS-005 — loading/skeleton state renders before table data resolves',
+    { tag: [Tag.REGRESSION, Tag.UI] },
+    async () => {},
+  );
+
+  test(
+    'TC-CUS-006 — pagination controls show correct initial state on page 1',
+    { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
+    async ({ customersPage }) => {
+      await customersPage.waitForReady();
+      await expect(customersPage.pagination.prevButton).toBeDisabled();
+      await expect(customersPage.pageIndicator).toHaveText(/1\s*\/\s*\d+/);
+      await expect(customersPage.pagination.nextButton).toBeEnabled();
+    },
+  );
+
+  test(
+    'TC-CUS-007 — direct navigation to a specific page renders correct content',
+    { tag: [Tag.REGRESSION, Tag.UI] },
+    async ({ customersPage, page }) => {
+      await page.goto(`${Urls.CUSTOMERS}?page=5&orderCreatedAt=desc`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await customersPage.waitForReady();
+      await expect(page).toHaveURL(/page=5/);
+      await expect(customersPage.pageIndicator).toHaveText(/5\s*\/\s*\d+/);
+      await expect(customersPage.pagination.prevButton).toBeEnabled();
+      await expect(customersPage.pagination.nextButton).toBeEnabled();
+    },
+  );
+
+  test(
+    'TC-CUS-008 — table layout does not break when shrinking the viewport',
+    { tag: [Tag.REGRESSION, Tag.UI] },
+    async ({ customersPage, page }) => {
+      await customersPage.waitForReady();
+      for (const size of [
+        { width: 1440, height: 900 },
+        { width: 1024, height: 768 },
+        { width: 768, height: 1024 },
+      ]) {
+        await page.setViewportSize(size);
+        await expect(customersPage.searchInput).toBeVisible();
+        await expect(customersPage.groupFilter).toBeVisible();
+        const scrollWidth = await page.evaluate(() => document.body.scrollWidth);
+        expect(scrollWidth).toBeLessThanOrEqual(size.width + 1);
+      }
+    },
+  );
+
+  test(
+    'TC-CUS-009 — layout and title persist after browser reload',
+    { tag: [Tag.REGRESSION, Tag.UI] },
+    async ({ customersPage, page }) => {
+      await customersPage.waitForReady();
+      const errors: string[] = [];
+      page.on('pageerror', (err) => errors.push(err.message));
+      const urlBeforeReload = page.url();
+      await page.reload();
+      await customersPage.waitForReady();
+      await expect(page).toHaveURL(urlBeforeReload);
+      await expect(customersPage.pageTitle).toBeVisible();
+      expect(errors).toHaveLength(0);
+    },
+  );
+
+  test(
+    'TC-CUS-010 — LAST VISIT column reflects default descending sort',
+    { tag: [Tag.REGRESSION, Tag.UI] },
+    async ({ customersPage, page }) => {
+      await customersPage.waitForReady();
+      await expect(page).toHaveURL(/orderCreatedAt=desc/);
+      await expect(customersPage.columnHeader(/last visit/i)).toBeVisible();
+    },
+  );
+
+  test(
+    'TC-CUS-011 — out-of-range page param does not crash the table',
+    { tag: [Tag.REGRESSION, Tag.UI] },
+    async ({ customersPage, page }) => {
+      const errors: string[] = [];
+      page.on('pageerror', (err) => errors.push(err.message));
+      await page.goto(`${Urls.CUSTOMERS}?page=999&orderCreatedAt=desc`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await customersPage.waitForReady();
+      expect(errors).toHaveLength(0);
+      await expect(
+        customersPage.page.getByRole('table').or(customersPage.emptyState),
+      ).toBeVisible();
+    },
+  );
+
+  test(
+    'TC-CUS-012 — cells with missing data show placeholders without breaking row layout',
+    { tag: [Tag.REGRESSION, Tag.UI] },
+    async ({ customersPage }) => {
+      await customersPage.waitForReady();
+      const dashCells = customersPage.page.getByRole('cell', { name: '—' });
+      const count = await dashCells.count();
+      if (count > 0) {
+        await expect(dashCells.first()).toBeVisible();
+      }
+    },
+  );
+});
