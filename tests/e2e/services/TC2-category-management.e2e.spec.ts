@@ -74,8 +74,7 @@ test.describe('Danh sách Category (Reorder / Edit / Add Category) — Services'
       await productsPage.switchToActiveTab();
 
       const firstCategoryName = productsPage.categoryButton(/.+/).first();
-      await expect(firstCategoryName).toHaveText();
-      const name = (firstCategoryName ?? '').trim();
+      const name = ((await firstCategoryName.textContent()) ?? '').trim();
 
       const moveToFirst = productsPage.categoryMoveToFirstButton(name);
       const moveUp = productsPage.categoryMoveUpButton(name);
