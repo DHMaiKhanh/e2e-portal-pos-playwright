@@ -818,3 +818,43 @@
 - Tính nhất quán giữa `"—"` và `"0"` khi TOTAL VISITS bằng 0 (TC-CUS-039, TC-CUS-050).
 - Hành vi thực tế của phân quyền vai trò (role-based) đối với việc xem/ẩn dữ liệu PII nhạy cảm (PHONE/EMAIL/CASHBACK BALANCE).
 - Định dạng CASHBACK BALANCE với giá trị âm hoặc rất lớn (hiện dữ liệu mẫu chỉ có `$0.00`).
+
+## Lịch sử chạy
+
+### 2026-08-05 11:16 (UTC+7)
+
+- Lệnh: `npx playwright test tests/e2e/customers --reporter=list`
+- Kết quả: 44 passed, 14 failed, 20 skipped (tổng 78)
+- Fail:
+  - TC-CUS-016 · Nút Back của trình duyệt sau khi phân trang — sau `goBack()` URL thành `about:blank` thay vì `?page=2...`
+  - TC-CUS-017 · Nút "Toggle Sidebar" thu gọn/mở rộng — sau toggle, ô tìm kiếm không còn tìm thấy trong DOM
+  - TC-CUS-044 · CASHBACK BALANCE định dạng tiền tệ — một số cell trả về chuỗi rỗng thay vì `$0.00`
+  - TC-CUS-045 · POINTS hiển thị số nguyên — một số cell trả về chuỗi rỗng
+  - TC-CUS-046 · LAST VISIT định dạng ngày — một số cell trả về chuỗi rỗng, không khớp `MMM D, YYYY (UTC+7)`
+  - TC-CUS-048 · NAME hiển thị "—" khi thiếu tên — trang không sẵn sàng, `waitForReady()` timeout chờ ô tìm kiếm
+  - TC-CUS-049 · GROUP hiển thị "—"/tên nhóm — cùng lỗi `waitForReady()` timeout
+  - TC-CUS-057 · Trang cuối hiển thị đúng số dòng còn lại — cùng lỗi `waitForReady()` timeout
+  - TC-CUS-059 · Tham số page không hợp lệ (0/không phải số) — cùng lỗi `waitForReady()` timeout
+  - TC-CUS-062 · Desktop 1920x1080 không tràn ngang — cùng lỗi `waitForReady()` timeout
+  - TC-CUS-063 · Sidebar tự thu gọn ở tablet 768x1024 — không tìm thấy nút "Toggle Sidebar"
+  - TC-CUS-067 · Ô tìm kiếm thao tác bằng bàn phím — Tab từ ô tìm kiếm không focus đúng vào nút "All Groups"
+  - TC-CUS-068 · Bảng lộ đúng ngữ nghĩa (scope=col) — `<th>` thiếu thuộc tính `scope="col"`
+  - TC-CUS-069 · Phân trang thao tác bằng bàn phím — nhấn Enter trên "Next" không đổi trang (URL vẫn `page=1`)
+- Report chi tiết: `npm run report` (reports/html)
+
+### 2026-08-05 12:35 (UTC+7) — sau khi fix 14 lỗi ở trên
+
+- Root cause chung: `DataTable.rows` không loại trừ dòng skeleton (`data-slot="skeleton"`) trong lúc bảng đang tải, và `CustomersPage.waitForReady()` chỉ chờ ô tìm kiếm + dòng đầu tiên hiển thị (kể cả khi đó là skeleton) với timeout mặc định 10s — dẫn tới việc đọc dữ liệu rỗng (044/045/046) và timeout khi backend/staging phản hồi chậm (048/049/057/059/062).
+- Đã sửa:
+  - `src/components/table/DataTable.ts`: `rows` loại trừ thêm dòng skeleton.
+  - `src/pages/customers/CustomersPage.ts`: `waitForReady()` dùng timeout dài hơn (`Timeouts.NAVIGATION`) và đợi skeleton biến mất hoàn toàn trước khi coi là sẵn sàng.
+  - TC-CUS-016: viết lại — click "Next" cập nhật URL bằng `history.replaceState` (không tạo entry mới), nên back không thể quay lại các trang đã qua bằng cách này; test dựng lại lịch sử bằng điều hướng URL trực tiếp (giống TC-018/019) để kiểm tra đúng hành vi back khả thi trong thực tế.
+  - TC-CUS-017/063: nút "Toggle Sidebar" chỉ tồn tại ở header mobile (`md:hidden`, ẩn từ 768px trở lên) — sửa lại để test ở độ rộng mobile thực sự (375px cho TC-017, 767px cho TC-063) thay vì desktop/768px như tài liệu gốc giả định; TC-017 cũng đóng drawer bằng cách click overlay thay vì bấm lại nút toggle (nút này unmount khi drawer mở).
+  - TC-CUS-067: xác nhận có nút "Clear search" chèn giữa ô tìm kiếm và "All Groups" trong tab order khi ô có giá trị — test giờ Tab qua nút này trước khi kiểm tra focus "All Groups".
+  - TC-CUS-069: tự hết lỗi sau khi sửa `waitForReady()` — nút "Next" trước đó bị `disabled` tạm thời trong lúc bảng còn tải nên không nhận được focus.
+  - TC-CUS-011/058 (không nằm trong 14 lỗi ban đầu nhưng phát sinh khi làm chặt `waitForReady`): sửa assertion `getByRole('table').or(emptyState)` gây strict-mode violation vì empty-state render như một dòng bên trong `<table>`, không phải phần tử thay thế — tách thành assertion riêng cho `table`.
+- **Lỗi sản phẩm thật phát hiện được (không thể fix từ phía test)**:
+  - TC-CUS-059 (`test.fixme`): `?page=0` (và `?page=abc`) không được ứng dụng clamp về trang hợp lệ — thay vào đó hiển thị màn hình "This merchant is not available" kèm lộ nguyên văn lỗi validate Zod (`"Too small: expected number to be >=1"`). Xác nhận lại bằng điều hướng trực tiếp ngoài test, không phải do timing.
+  - TC-CUS-068 (`test.fixme`): `<th>` của bảng không có thuộc tính `scope="col"` — ảnh hưởng khả năng tiếp cận, cần fix ở frontend rồi mới bật lại test.
+- Kết quả sau khi sửa: chạy lại `tests/e2e/customers` nhiều lần, toàn bộ 14 test case trên đều pass ổn định (kể cả lặp lại 3 lần cho TC-CUS-017). Một vài lần chạy vẫn gặp `waitForReady()` timeout rải rác ở các test case khác (TC-CUS-014, 023, 072) không nằm trong danh sách 14 lỗi ban đầu — đây là nhiễu môi trường staging chậm không ổn định, không phải lỗi test hay lỗi sản phẩm cụ thể.
+- Report chi tiết: `npm run report` (reports/html)

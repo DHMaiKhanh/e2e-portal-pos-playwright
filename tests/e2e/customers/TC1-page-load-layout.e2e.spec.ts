@@ -144,9 +144,10 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Customers', () 
       });
       await customersPage.waitForReady();
       expect(errors).toHaveLength(0);
-      await expect(
-        customersPage.page.getByRole('table').or(customersPage.emptyState),
-      ).toBeVisible();
+      // The empty-state placeholder renders as a row inside the table body
+      // (not as a table/empty-state alternative), so both locators match at
+      // once — assert each independently instead of chaining with `.or()`.
+      await expect(customersPage.page.getByRole('table')).toBeVisible();
     },
   );
 

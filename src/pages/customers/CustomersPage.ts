@@ -4,6 +4,7 @@ import { DataTable } from '@components/table/DataTable';
 import { Pagination } from '@components/Pagination';
 import { Sidebar } from '@components/sidebar/Sidebar';
 import { Urls } from '@constants/urls';
+import { Timeouts } from '@configs/constants/timeouts';
 
 /** Customers (Khách hàng) list screen. */
 export class CustomersPage extends BasePage {
@@ -27,9 +28,17 @@ export class CustomersPage extends BasePage {
   }
 
   async waitForReady(): Promise<void> {
-    await expect(this.searchInput).toBeVisible();
+    // The real backend can be slow to respond (cold start / staging load), so
+    // give these a longer margin than the default expect timeout.
+    await expect(this.searchInput).toBeVisible({ timeout: Timeouts.NAVIGATION });
     const firstRowOrEmpty = this.table.rows.first().or(this.emptyState);
-    await expect(firstRowOrEmpty).toBeVisible();
+    await expect(firstRowOrEmpty).toBeVisible({ timeout: Timeouts.NAVIGATION });
+    // The table renders a skeleton (same row/cell roles, empty text) while the
+    // real page of data is still loading — wait for it to fully clear so
+    // callers never read placeholder cells or a transiently-disabled pager.
+    await expect(this.page.locator('[data-slot="skeleton"]')).toHaveCount(0, {
+      timeout: Timeouts.NAVIGATION,
+    });
   }
 
   async search(term: string): Promise<void> {
