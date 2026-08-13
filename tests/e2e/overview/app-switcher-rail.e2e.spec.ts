@@ -22,7 +22,9 @@ test.describe('App Switcher Rail — Overview', () => {
       await expect(rail).toBeVisible();
       await expect(rail.getByRole('link', { name: /fastboypay home/i })).toBeVisible();
 
-      for (const name of ['POS', 'Portal', 'Business', 'Gift Card'] as const) {
+      // Rail labels read off the live aria-labels on 2026-08-12. The second app
+      // is now "Payment" — it used to be labelled "Portal".
+      for (const name of ['POS', 'Payment', 'Business', 'Gift Card'] as const) {
         const btn = rail.getByRole('button', { name, exact: true });
         // Exactly one of each — no missing or duplicated app button.
         await expect(btn).toHaveCount(1);
@@ -44,9 +46,10 @@ test.describe('App Switcher Rail — Overview', () => {
 
       await dashboardPage.logoHomeLink.click();
 
-      // Authenticated '/' redirects back to the store overview.
-      await expect(page).toHaveURL(/\/pos\/\d+\/overview/);
-      await expect(dashboardPage.heading).toBeVisible();
+      // The logo is href="/" and `/` no longer redirects into the store — it now
+      // lands on the Fastboy Portal app chooser. See the note on TC-OVW-002.
+      await expect(page).not.toHaveURL(/\/pos\/\d+\//);
+      await expect(page.getByText(/choose where you'?d like to start/i)).toBeVisible();
     },
   );
 });

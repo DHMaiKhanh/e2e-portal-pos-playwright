@@ -14,8 +14,7 @@ test.describe('Bảng dữ liệu Order History — Orders', () => {
     'TC-ORD-020 — định dạng OD ID đúng chuẩn',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ ordersPage }) => {
-      const rowCount = await ordersPage.rowCount();
-      test.skip(rowCount === 0, 'No order rows available to verify OD ID format.');
+      await ordersPage.ensureRowsPresent();
 
       const odIdPattern = /^#OD\d{6}-\d+$/;
       const rows = ordersPage.table.rows;
@@ -37,8 +36,7 @@ test.describe('Bảng dữ liệu Order History — Orders', () => {
     'TC-ORD-021 — định dạng AMOUNT là tiền tệ USD hợp lệ',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ ordersPage }) => {
-      const rowCount = await ordersPage.rowCount();
-      test.skip(rowCount === 0, 'No order rows available to verify AMOUNT format.');
+      await ordersPage.ensureRowsPresent();
 
       const rows = ordersPage.table.rows;
       const count = await rows.count();

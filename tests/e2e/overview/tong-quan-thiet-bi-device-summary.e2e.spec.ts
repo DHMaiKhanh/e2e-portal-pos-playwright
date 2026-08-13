@@ -13,6 +13,13 @@ test.describe('Tổng quan thiết bị (Device Summary) — Overview', () => {
       await expect(dashboardPage.deviceSummarySection).toBeVisible();
       await expect(dashboardPage.totalDevicesCount).toBeVisible();
 
+      // The Device Summary block paints its header first and fills in the total
+      // and the cards when the data lands. Neither `textContent()` nor `count()`
+      // auto-waits, so reading either one straight after the header is a race:
+      // the total reads "0 Total Devices" and the card count reads 0. Wait for
+      // the first card — the last thing to arrive — then sample both.
+      await expect(dashboardPage.deviceCards.first()).toBeVisible();
+
       const totalText = (await dashboardPage.totalDevicesCount.textContent()) ?? '';
       const match = totalText.match(/(\d+)\s*Total Devices/i);
       expect(match).not.toBeNull();
@@ -33,6 +40,9 @@ test.describe('Tổng quan thiết bị (Device Summary) — Overview', () => {
     async ({ dashboardPage }) => {
       await expect(dashboardPage.deviceSummarySection).toBeVisible();
       await expect(dashboardPage.offlineBadge).toBeVisible();
+
+      // Same race as TC-OVW-095 — settle the list before sampling any value.
+      await expect(dashboardPage.deviceCards.first()).toBeVisible();
 
       const badgeText = (await dashboardPage.offlineBadge.textContent()) ?? '';
       const match = badgeText.match(/(\d+)\s*offline/i);

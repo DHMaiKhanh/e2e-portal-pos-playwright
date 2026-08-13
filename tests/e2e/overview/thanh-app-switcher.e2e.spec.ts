@@ -36,8 +36,10 @@ test.describe('Thanh App Switcher — Overview', () => {
 
       await dashboardPage.logoHomeLink.click();
 
-      await expect(page).toHaveURL(/\/pos\/\d+\/overview/);
-      await expect(dashboardPage.heading).toBeVisible();
+      // Logo is href="/", và `/` giờ là trang chọn ứng dụng chứ không redirect
+      // vào store nữa. Xem ghi chú ở TC-OVW-002.
+      await expect(page).not.toHaveURL(/\/pos\/\d+\//);
+      await expect(page.getByText(/choose where you'?d like to start/i)).toBeVisible();
     },
   );
 });

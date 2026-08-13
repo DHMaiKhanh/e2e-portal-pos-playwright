@@ -10,7 +10,10 @@ test.describe('Điều hướng (Navigation) — Customers', () => {
       await dashboardPage.goto();
       await dashboardPage.sidebar.navigateTo('Customers');
       await customersPage.waitForReady();
-      await expect(page).toHaveURL(/\/pos\/\d+\/customers\?page=1&orderCreatedAt=desc/);
+      // Landing URL now leads with `tab=customers` (the screen gained tabs).
+      await expect(page).toHaveURL(
+        /\/pos\/\d+\/customers\?tab=customers&page=1&orderCreatedAt=desc/,
+      );
       await expect(customersPage.sidebar.item('Customers')).toHaveAttribute('aria-current', 'page');
     },
   );
@@ -37,11 +40,16 @@ test.describe('Điều hướng (Navigation) — Customers', () => {
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ customersPage, page }) => {
       await customersPage.goto();
-      await customersPage.sidebar.navigateTo('Customer Groups');
-      await expect(page).toHaveURL(/\/pos\/\d+\/customer-groups/);
-      await expect(page.getByRole('link', { name: 'Customer Groups' })).toHaveAttribute(
-        'aria-current',
-        'page',
+
+      // Customer Groups is no longer its own sidebar route — it became a tab on
+      // this screen. The old /pos/<id>/customer-groups URL still resolves, but as
+      // a redirect to /pos/<id>/customers?tab=groups, so neither the sidebar link
+      // nor the old URL pattern exists to assert on any more.
+      await page.getByRole('tab', { name: /customer groups/i }).click();
+      await expect(page).toHaveURL(/\/pos\/\d+\/customers\?tab=groups/);
+      await expect(page.getByRole('tab', { name: /customer groups/i })).toHaveAttribute(
+        'data-state',
+        'active',
       );
 
       await customersPage.sidebar.navigateTo('Services');

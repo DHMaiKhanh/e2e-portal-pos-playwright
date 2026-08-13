@@ -36,13 +36,69 @@ test.describe('Filter — khoảng ngày — Batch History', () => {
    * Expected: Bảng nạp lại tất cả batch trong khoảng đã chọn; query param `dateAfter`/`dateBefore`
    * cập nhật đúng; số lượng kết quả ở footer cập nhật theo.
    */
-  // TODO(manual/setup): requires interacting with calendar day cells inside the date range
-  // picker which are not exposed as stable Page Object locators; needs live verification.
-  test.fixme(
+  /**
+   * Day cells now have stable locators (BatchHistoryPage.dayCell), keyed off the
+   * calendar's accessible names rather than the bare day number — matching on
+   * the number alone would also hit the adjacent month's greyed-out days that
+   * share the grid.
+   */
+  test(
     'TC-BH-011 — selecting new date range filters table and updates URL',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ batchHistoryPage }) => {
+      // Anchor on the all-time total rather than on the default 7-day window,
+      // which is routinely empty on this store — "0 results before, 0 after"
+      // would let a broken filter pass.
+      await batchHistoryPage.gotoAllTime();
+      const allTimeTotal = Number(
+        (await batchHistoryPage.paginationSummaryText()).match(/of (\d+) results/i)?.[1],
+      );
+      expect(allTimeTotal).toBeGreaterThan(0);
+
+      // Back to the default view before opening the picker: the calendar opens
+      // on the currently selected range's month, so opening it from the
+      // all-time view starts the user in January 2020 and "4 months back" lands
+      // in 2019 instead of in the recent months that hold data.
+      await batchHistoryPage.goto();
       await batchHistoryPage.openDateRangePicker();
+
+      // Both clicks must land in the same month view: navigating months between
+      // them restarts the range instead of closing it.
+      await batchHistoryPage.goBackMonths(4);
+      const caption = (await batchHistoryPage.calendarCaption.innerText()).trim();
+      const [monthName, yearText] = caption.split(' ');
+      const month = new Date(`${monthName} 1, ${yearText}`).getMonth();
+      const year = Number(yearText);
+      const iso = (day: number) =>
+        `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+      await batchHistoryPage.dayCell(new Date(year, month, 1)).click();
+      await batchHistoryPage.dayCell(new Date(year, month, 28)).click();
+      await batchHistoryPage.waitForReady();
+
+      await test.step('URL carries the chosen range', async () => {
+        const params = batchHistoryPage.currentQueryParams();
+        expect(params.get('dateAfter')).toBe(iso(1));
+        expect(params.get('dateBefore')).toBe(iso(28));
+      });
+
+      await test.step('The table reloads narrowed to that range', async () => {
+        // The summary is repainted by the response, not by the click, so poll
+        // rather than reading it the instant the URL changes.
+        await expect
+          .poll(async () => {
+            const summary = await batchHistoryPage.paginationSummaryText();
+            return Number(summary.match(/of (\d+) results/i)?.[1] ?? NaN);
+          })
+          .toBeLessThan(allTimeTotal);
+
+        await expect(batchHistoryPage.paginationSummary).toHaveText(
+          /showing \d+ to \d+ of \d+ results/i,
+        );
+        await expect(
+          batchHistoryPage.table.rows.first().or(batchHistoryPage.emptyState),
+        ).toBeVisible();
+      });
     },
   );
 
@@ -79,13 +135,50 @@ test.describe('Filter — khoảng ngày — Batch History', () => {
    * Expected: Picker ngăn lựa chọn không hợp lệ (disable các ngày trước đó) hoặc tự động hoán đổi
    * khoảng; không bị crash, không có trạng thái `dateAfter > dateBefore` được gửi lên URL/API.
    */
-  // TODO(manual/setup): requires interacting with individual calendar day cells to attempt an
-  // invalid end-before-start selection; no stable locator exposed by the Page Object for this.
-  test.fixme(
+  /**
+   * The case allows either resolution — the picker refuses the earlier date, or
+   * it swaps the range. Both are asserted through the same invariant, so this
+   * does not have to guess which one the component implements: whatever reaches
+   * the URL must never have dateAfter later than dateBefore.
+   */
+  test(
     'TC-BH-013 — selecting end date before start date is blocked or auto-corrected',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ batchHistoryPage }) => {
+    async ({ batchHistoryPage, page }) => {
+      const pageErrors: string[] = [];
+      page.on('pageerror', (error) => pageErrors.push(error.message));
+
+      await batchHistoryPage.waitForReady();
       await batchHistoryPage.openDateRangePicker();
+      await batchHistoryPage.goBackMonths(1);
+
+      const caption = (await batchHistoryPage.calendarCaption.innerText()).trim();
+      const [monthName, yearText] = caption.split(' ');
+      const month = new Date(`${monthName} 1, ${yearText}`).getMonth();
+      const year = Number(yearText);
+
+      // Pick the 20th first, then try to close the range on the 5th.
+      await batchHistoryPage.dayCell(new Date(year, month, 20)).click();
+      await batchHistoryPage.dayCell(new Date(year, month, 5)).click();
+      await page.waitForTimeout(1500);
+      await batchHistoryPage.waitForReady();
+
+      const params = batchHistoryPage.currentQueryParams();
+      const after = params.get('dateAfter');
+      const before = params.get('dateBefore');
+
+      if (after && before) {
+        expect(
+          new Date(after).getTime(),
+          `inverted range reached the URL: dateAfter=${after} dateBefore=${before}`,
+        ).toBeLessThanOrEqual(new Date(before).getTime());
+      }
+
+      // Whichever branch the picker took, the screen must still be usable.
+      await expect(
+        batchHistoryPage.table.rows.first().or(batchHistoryPage.emptyState),
+      ).toBeVisible();
+      expect(pageErrors, `page errors: ${pageErrors.join(' | ')}`).toHaveLength(0);
     },
   );
 

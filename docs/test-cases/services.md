@@ -304,3 +304,34 @@
 - Việc lưu trạng thái tìm kiếm/tab qua URL query param khi reload.
 - Phân quyền theo vai trò (Staff/Manager/Owner) đối với các hành động quản lý dịch vụ/category.
 - Cặp tên trùng nhau trong dữ liệu mẫu (`"Tropical Deluxe"`, `"Diamond Pedicure"` xuất hiện 2 lần) — xác nhận là dịch vụ khác nhau hay dữ liệu test bị trùng.
+
+## Lịch sử chạy
+
+### 2026-08-12
+
+- Lệnh: `WORKERS=8 npx playwright test tests/e2e` (full suite, headless)
+- Kết quả màn này: 6 fail → 1 fail
+- Fail còn lại — **nghi bug sản phẩm, KHÔNG sửa test**: TC-SVC-010 · handle kéo-thả của category "Other" có `aria-disabled="false"`, tức đang cho phép kéo, trong khi quy tắc là "Other luôn nằm cuối". Cần product xác nhận đây là gỡ ràng buộc có chủ đích hay regression.
+- Nguyên nhân gốc đã sửa: `ProductsPage.waitForReady()` chỉ chờ ô search chứ **không chờ bảng**, nên mọi test đọc footer đều đọc trúng "Showing 0 to 0 of 0 results" lúc còn đang tải (làm hỏng TC-SVC-021/022/023/045). Đã bổ sung chờ skeleton tan + footer hiện.
+- `search()` trước đây gõ xong bấm Enter rồi trả về ngay; nay chờ đúng vòng fetch `GET /services?...&name[]=<term>` (bounded 5s, best-effort vì query trùng có thể trả từ cache).
+- TC-SVC-017 bấm nhầm nút ngoài dialog: nút submit trong dialog tên là **"Create"**, không phải "Save"/"Add"; và dialog có cả "Cancel" lẫn "Close" nên regex `/cancel|close/i` khớp 2 phần tử.
+- Report chi tiết: `npm run report` (reports/html)
+
+### 2026-08-13 — bỏ test bị skip
+
+- Lệnh: `npx playwright test tests/e2e/services` (headless, 4 workers)
+- Kết quả: **42 pass / 1 skip** (trước đó 15 `test.fixme` + 2 fail).
+- **Đính chính TC-SVC-010** (lần chạy 2026-08-12 kết luận là bug sản phẩm): không phải bug. Locator `categoryReorderHandle('Other')` dùng regex **không neo** nên khớp nhầm sang category tên `"Other test"`. Category `"Other"` thật ra **không có drag handle** — chỉ có nhãn "Other is always last". Đã neo `^…$` cho toàn bộ locator hành động của category; TC-SVC-010 pass.
+- **Đính chính TC-SVC-022**: case hardcode `of 259 results`, vỡ ngay khi có test khác thêm dịch vụ. Nay đọc tổng tại thời điểm chạy.
+- Nhóm mutation (TC-SVC-011/012/015/016/018) đã chạy thật, gom vào `test.describe('mutating category state')` chạy **serial** và mỗi case tự khôi phục trong `finally`:
+  - `moveCategoryToIndex()` hội tụ về đúng vị trí ban đầu từ bất kỳ trạng thái nào, thay vì giả định "một click ngược lại là đủ" (sai khi case fail giữa chừng).
+  - Thứ tự category ghi qua `PUT /display_orders/<id>`; UI cập nhật lạc quan **trước** khi request xong, nên phải chờ response — nếu reload ngay sẽ huỷ request đang bay và trông như "không lưu được".
+  - TC-SVC-015 (kéo-thả) dùng bàn phím của dnd-kit (Space → Arrow → Space) thay vì giả lập chuột: cùng code path, cùng request, nhưng ổn định.
+- **Bẫy chung của Portal**: khi access token hết hạn, lần bấm submit **đầu tiên** bị nuốt trong lúc `POST /refresh_token` chạy — không request, không lỗi, dialog đứng yên. Lần bấm thứ hai mới đi. Các helper submit đều retry.
+- TC-SVC-003 / 031: đã xác minh — state lưu qua URL (`?name=<term>&page=1&categoryStatus=inactive`), reload và chuyển tab đều giữ nguyên từ khoá.
+- TC-SVC-063: `?page=0` và `?page=abc` **được clamp** về trang 1 (khác Customers, nơi cùng tham số lại ra màn hình Error); `?page=99` ra empty state có kiểm soát.
+- TC-SVC-090: đo bằng `performance.memory` + thời gian mỗi trang khi đi hết 9 trang, assert theo ngưỡng "không treo" (case không đặt SLA) và đính kèm số đo vào report.
+
+**Còn skip (1)**: TC-SVC-072 · role hạn chế — cần capture thêm storageState của tài khoản không có quyền quản lý dịch vụ.
+
+**Lưu ý dữ liệu**: Portal **không có nút xoá category/service**. TC-SVC-016 tạo category thật (prefix `E2E-CAT-`) và chỉ có thể dọn bằng cách set Inactive; mỗi lần chạy sẽ để lại 1 dòng inactive. Muốn sạch hẳn cần API delete.

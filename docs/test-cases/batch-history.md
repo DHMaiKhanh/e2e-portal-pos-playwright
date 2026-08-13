@@ -381,3 +381,35 @@
 - **Theo mức ưu tiên:** Cao 24 · Trung bình 25 · Thấp 6.
 - **Theo loại:** Chức năng 14, Giao diện 5, Dữ liệu 6, Tiêu cực 8, Biên 8, Bảo mật 4, Khả năng tiếp cận 4, Responsive 4, Hiệu năng 2.
 - **Các phần còn hoãn / cần xác minh trực tiếp:** danh sách option chính xác của dropdown status và hành vi widget/preset của date-picker (mới suy ra từ dữ liệu, chưa được liệt kê đầy đủ qua static scan); TOTAL PAYMENT là số lượng hay tổng phụ (TC-BH-033 chỉ xác nhận định dạng quan sát hiện tại); quy tắc phân quyền theo role (TC-BH-053/054 cần tài khoản role bị giới hạn thật để thực thi); hành vi phân trang ở quy mô dữ liệu lớn hơn ~88 dòng đã quan sát tại thời điểm quét.
+
+## Lịch sử chạy
+
+### 2026-08-12
+
+- Lệnh: `WORKERS=8 npx playwright test tests/e2e` (full suite, headless)
+- Kết quả màn này: 25 passed, 4 failed
+- Fail — **cả 4 đều là bug ứng dụng, cố ý để đỏ, KHÔNG sửa test**:
+  - TC-BH-037 · empty state với `status=Open` + khoảng ngày rỗng — màn hình render trắng: không bảng, không empty state, không cả heading. Đối chứng: cùng khoảng ngày đó với `status=all` thì hiển thị đúng "No batches found." + "Showing 0 to 0 of 0 results". Vậy lỗi nằm ở tổ hợp status≠all + kết quả rỗng.
+  - TC-BH-038 · `dateAfter=not-a-date` — app âm thầm bỏ hẳn param sai rồi kẹt ở trạng thái tải: 50 skeleton vẫn hiển thị sau 15s, footer báo "Showing 0 to 0 of 0 results".
+  - TC-BH-039 · `status=bogus` — render trắng thay vì fallback về "All statuses".
+  - TC-BH-008 · Back/Forward — dính chính bug TC-BH-037 (test chọn status Open trên khoảng ngày rỗng).
+- Đã sửa trong vòng này: nhãn option `All status` → `All statuses`; so sánh `status` trên URL không phân biệt hoa thường (app ghi chữ thường); `waitForReady()` nới timeout skeleton lên `Timeouts.MEDIUM`; `.or()` trong TC-BH-044 bọc `.first()` cho cả chuỗi; TC-BH-048 xử lý trường hợp nút Next bị disabled.
+- Sửa một lỗi test đáng lưu ý: TC-BH-006/007 kiểm tra trạng thái active bằng `/active|selected|current/i.test(className)`. Class Tailwind của MỌI sidebar link đều chứa `active:text-sidebar-accent-foreground`, nên phép thử luôn đúng — TC-BH-006 không thể pass, còn TC-BH-007 pass một cách vô nghĩa. Đã đổi sang đọc `aria-current` + `data-active`.
+- Report chi tiết: `npm run report` (reports/html)
+
+### 2026-08-13 — bỏ test bị skip
+
+- Lệnh: `npx playwright test tests/e2e/batch-history` (headless, 5 workers)
+- Kết quả: **49 pass / 2 skip** (trước đó 16 `test.fixme`) — 14/16 case đã chạy thật.
+- Phát hiện lớn nhất: **màn hình này CÓ detail view**. Click vào _bất kỳ ô nào_ của một dòng mở dialog "Batch Close Review" liệt kê các order thuộc batch đó, kèm Previous / Next / Close. Ghi chú cũ trong page object ("no row/detail view") là sai. TC-BH-030 vì thế được viết lại từ "các ô không tương tác được" thành "mọi ô đều mở dialog review".
+- TC-BH-024 (giá trị dòng khớp dữ liệu nguồn): không cần seed backend — bắt luôn response `/batches` mà chính màn hình fetch rồi đối chiếu từng dòng, gồm cả các phép biến đổi: `batchNumber 103 → "B-00103"`, `totalAmount 79365 → "$793.65"`, `batchDate …T17:00Z → "Jun 12, 2026 (UTC+7)"`.
+- TC-BH-025 / 027 / 028 / 029 (phân trang): dùng `gotoAllTime()` (2020 → hôm nay = 88 kết quả / 3 trang) và mock collection khi cần một tổng số xác định. Không còn "không thể giả định dataset".
+- TC-BH-036 (giá trị 0): store không có batch nào bằng 0 → phục vụ một collection mock có `totalAmount: 0, totalCount: 0` và assert render ra `0` / `$0.00` chứ không để trống.
+- TC-BH-011 / 013 (date picker): thêm `dayCell()` khớp theo accessible name ("Sunday, July 26th, 2026"). Hai lưu ý học được khi chạy thật: (1) sau khi chọn ngày đầu, react-day-picker **nối thêm hậu tố** vào aria-label nên không được match `exact`; (2) hai lần click phải nằm trong **cùng một tháng** — bấm chuyển tháng ở giữa sẽ khởi tạo lại range.
+- TC-BH-009: **không có nút thu gọn sidebar ở desktop**. Đo ở 1920/1280/1024/900/768/375: từ 768px trở lên sidebar là cột cố định 218px và nút trigger tuy có trong DOM nhưng ẩn; chỉ ở 375px nút mới hiện và mở sidebar dạng drawer. Case tách thành 2 (desktop + mobile). Escape **không** đóng drawer — chỉ bấm lại trigger mới đóng.
+- TC-BH-051: không cần công cụ mô phỏng mù màu — tiêu chí WCAG 1.4.1 là "màu không phải kênh thông tin duy nhất", kiểm tra được qua DOM: badge có text "Open"/"Closed" + `aria-label` tương ứng, và vẫn phân biệt được khi bật `forcedColors`.
+
+**Còn skip (2)** — đều là chặn thật, không phải lỗi test:
+
+- TC-BH-041 · request treo không phản hồi: giữ response mở 60s thì skeleton vẫn quay ở mốc 3s/10s/20s/35s, không có error, không có Retry, không có client-side timeout. Cần frontend thêm timeout rồi mới bật lại.
+- TC-BH-053 · role không có quyền Batch History: dự án chỉ có duy nhất 1 storageState (admin). Cần capture thêm 1 tài khoản role hạn chế.

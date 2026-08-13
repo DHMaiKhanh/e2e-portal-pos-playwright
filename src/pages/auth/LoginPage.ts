@@ -1,6 +1,7 @@
 import { type Locator, type Page, expect } from '@playwright/test';
 import { BasePage } from '@pages/BasePage';
 import { Urls } from '@constants/urls';
+import { Timeouts } from '@configs/constants/timeouts';
 
 /** Portal login screen. */
 export class LoginPage extends BasePage {
@@ -11,17 +12,32 @@ export class LoginPage extends BasePage {
   readonly submitButton: Locator;
   readonly errorMessage: Locator;
 
+  /**
+   * The Portal authenticates through federated identity only — there is no
+   * credential form to drive. The screen offers two providers: GCI Business (a
+   * button, handled in-app) and Google (a plain link out to the SSO host).
+   * `npm run auth` captures a real session manually; the suite reuses it.
+   */
+  readonly gciSignInButton: Locator;
+  readonly googleSignInLink: Locator;
+  readonly signInHeading: Locator;
+
   constructor(page: Page) {
     super(page);
-    // Adapt these selectors to the real Portal POS DOM.
+    // Kept for API compatibility, but the Portal renders neither of these — the
+    // "no credential form" test asserts exactly that.
     this.usernameInput = page.getByLabel(/username|email/i);
     this.passwordInput = page.getByLabel(/password/i);
     this.submitButton = page.getByRole('button', { name: /sign in|log ?in/i });
     this.errorMessage = page.getByRole('alert');
+
+    this.gciSignInButton = page.getByRole('button', { name: /continue with gci business/i });
+    this.googleSignInLink = page.getByRole('link', { name: /continue with google/i });
+    this.signInHeading = page.getByText(/^sign in$/i).first();
   }
 
   async waitForReady(): Promise<void> {
-    await expect(this.usernameInput).toBeVisible();
+    await expect(this.gciSignInButton).toBeVisible({ timeout: Timeouts.NAVIGATION });
   }
 
   /** Fill credentials and submit. Does NOT assert success — caller decides. */

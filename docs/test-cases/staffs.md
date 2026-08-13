@@ -445,3 +445,49 @@
   - TC-STF-028 (Reload search "trine" + Status=Inactive): sau khi sửa locator, lỗi đổi từ strict-mode-violation sang timeout thật — `table.rows.first()` resolve ra 4 `<tr>` nhưng nội dung vẫn rỗng ("") sau 15s. Xác nhận lại nghi vấn race condition: sau hard reload với search+filter kết hợp, hàng bảng bị kẹt ở trạng thái skeleton quá lâu.
   - TC-STF-069 (ID không tồn tại): vẫn hiển thị trắng hoàn toàn ở vùng nội dung chính, không có thông báo lỗi/404 nào.
 - Report chi tiết: `npm run report` (reports/html); trace từng test tại `test-results/`.
+
+### 2026-08-12
+
+- Lệnh: `WORKERS=8 npx playwright test tests/e2e` (full suite, headless)
+- Kết quả màn này: 2 failed — **đúng hai bug ứng dụng đã ghi nhận ở vòng trước** (TC-STF-028 hàng bảng kẹt skeleton sau reload kèm search+filter; TC-STF-069 trang trắng với ID không tồn tại). Không phát sinh lỗi test mới.
+- Đã sửa: TC-STF-001 · tham số sort mặc định trên URL đổi từ `orderCreatedAt=desc` sang `sort=pos_order`.
+- Report chi tiết: `npm run report` (reports/html)
+
+### 2026-08-13 — bỏ test bị skip (một phần)
+
+- Đã bỏ skip: TC-STF-004, 011, 014, 032, 033, 034, 035, 037, 053, 054, 056, 092, 093.
+- TC-STF-011: đối chiếu từng ô với chính response `/staffs` mà màn hình fetch (không cần fixture tĩnh), gồm cả quy tắc STAFF hiển thị nickname nếu có, phone format `(XXX) XXX-XXXX`, và JOINED AT theo giờ +7.
+- TC-STF-034 / 035 (upload avatar): không cần file fixture trên đĩa — `setInputFiles` nhận buffer, nên ảnh PNG 1x1 và file 6MB đều tạo trong test. Lưu ý luồng thật: nút "Upload" **không** mở file chooser mà mở dialog lồng "Change Profile Photo", `input[type=file]` nằm trong dialog đó.
+- TC-STF-053 / 054 / 056 (export): ghi chú cũ nói "không kiểm tra được nội dung file" — kiểm tra được: `download.path()` cho phép đọc CSV và assert từng dòng khớp bộ lọc đã chọn trong dialog.
+- TC-STF-032 / 033: form không hiện message validate và cũng không set `aria-invalid`; nó chỉ đơn giản không submit. Nên case assert bằng _đường truyền_: không có `POST /staffs` nào được gửi (bấm 3 lần để loại trừ trường hợp bị nuốt bởi refresh token).
+- TC-STF-037: dropdown Country là command-palette 250 `role="option"`, không phải select thường; và `countrySelect` cũ là union `.or()` nên `.first()` có thể trỏ vào _text_ placeholder chứ không phải button → thêm `countryCombobox` / `stateCombobox` theo id.
+
+**Còn skip — chặn thật:**
+
+- TC-STF-031 (tạo staff) và TC-STF-040 (trùng Staff Code): luồng tạo chạy được (bấm "Create Staff" 2 lần → `201 Created`), nhưng **không có cách nào hoàn tác**: Portal không có nút xoá staff, và switch "Toggle staff status" ở trang chi tiết **không phản hồi khi click** (`aria-checked` giữ nguyên `true`, "Save Changes" vẫn disabled). Mỗi lần chạy sẽ thêm vĩnh viễn 1 staff Active vào store dùng chung → giữ skip cho tới khi có đường xoá/deactivate hoặc store dùng-một-lần.
+  - **Cần dọn thủ công ở backend**: bản ghi `E2Eprobe3` (staff code `1585`, tạo 2026-08-12 khi xác minh luồng này) đang nằm trên store 14.
+- TC-STF-081 · role hạn chế: cần thêm storageState của tài khoản không có quyền Staffs.
+- TC-STF-062–067, 070 (tab Profile ở trang chi tiết): chưa làm trong đợt này.
+
+### 2026-08-13 (bổ sung) — các case còn lại
+
+- Đã bỏ skip thêm: TC-STF-070 (`?tab=` không hợp lệ).
+- TC-STF-070: app **không** fallback về tab Profile như mô tả case, mà hiện màn hình **Error** kèm nút Retry và **in nguyên payload validate của Zod** ra cho người dùng (`Invalid option: expected one of "profile"|"permissions"|…`). Đây là cùng một lỗi với TC-CUS-059 (`?page=0` ở Customers). Test assert theo hợp đồng "xử lý an toàn" chấp nhận cả hai nhánh (fallback **hoặc** từ chối rõ ràng + còn đường thoát), nên vẫn đúng nếu sau này frontend fallback.
+
+### 2026-08-13 (bổ sung 2) — tab Profile ở trang chi tiết
+
+- Đã bỏ skip thêm: **TC-STF-063** (sửa nhưng không lưu rồi điều hướng đi — xác nhận không lưu ngầm).
+
+**🔴 Bug sản phẩm chặn TC-STF-062 / 064 / 065 / 067 — nút "Save Changes" ở tab Profile không lưu:**
+
+Đo trực tiếp ngày 2026-08-13 trên staff đầu danh sách: sửa `#nickname` (cả `fill()` lẫn gõ phím thật — cả hai đều làm form dirty và **enable** nút Save Changes), rồi bấm Save Changes **3 lần**:
+
+- **không có request nào** được gửi (không `PUT`/`PATCH`/`POST /staffs/<id>`),
+- không có toast, không có message lỗi, nút vẫn enabled,
+- reload lại thì giá trị cũ quay về.
+
+Đây cùng một kiểu "từ chối im lặng" với dialog Create New Staff (bỏ trống 1 trường bắt buộc thì bấm Create Staff không gửi gì và cũng không nói thiếu trường nào). Staff trên store này đang trống address/city/state, nhiều khả năng form Profile cũng đang bị chặn vì lý do tương tự — nhưng **nó không hề báo**, và đó mới là bug.
+
+Ngoài ra switch **"Toggle staff status"** ở cùng trang **không phản hồi khi click** (`aria-checked` giữ nguyên `true`, Save Changes vẫn disabled) — đây chính là lý do TC-STF-031 không thể tự dọn dẹp.
+
+Chừng nào form chưa lưu được (hoặc chưa báo lý do từ chối), 4 case trên không thể assert điều gì có nghĩa.

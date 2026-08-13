@@ -25,10 +25,11 @@ test.describe('Ô tìm kiếm (Search input) — Customers', () => {
     'TC-CUS-028 — search by phone number returns matching row',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ customersPage, page }) => {
+      // Every row on page 1 carries a formatted phone, so an unusable value is a
+      // data-rendering failure worth failing on rather than skipping past.
       const firstPhoneCell = customersPage.table.rows.first().getByRole('cell').nth(1);
-      const phoneText = (await firstPhoneCell.textContent())?.trim() ?? '';
-      const rawPhone = phoneText.replace(/\D/g, '');
-      test.skip(rawPhone.length < 7, 'No usable phone number found on page 1 to search by');
+      await expect(firstPhoneCell).toHaveText(/^\(\d{3}\) \d{3}-\d{4}$/);
+      const rawPhone = ((await firstPhoneCell.textContent()) ?? '').replace(/\D/g, '');
 
       await customersPage.search(rawPhone);
       await expect(page).toHaveURL(/search=/);
@@ -42,9 +43,9 @@ test.describe('Ô tìm kiếm (Search input) — Customers', () => {
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ customersPage, page }) => {
       const firstPhoneCell = customersPage.table.rows.first().getByRole('cell').nth(1);
-      const phoneText = (await firstPhoneCell.textContent())?.trim() ?? '';
-      const raw = phoneText.replace(/\D/g, '');
-      test.skip(raw.length < 10, 'No usable 10-digit phone number found on page 1');
+      await expect(firstPhoneCell).toHaveText(/^\(\d{3}\) \d{3}-\d{4}$/);
+      const raw = ((await firstPhoneCell.textContent()) ?? '').replace(/\D/g, '');
+      expect(raw).toHaveLength(10);
 
       const dashed = `${raw.slice(0, 3)}-${raw.slice(3, 6)}-${raw.slice(6)}`;
       const formatted = `(${raw.slice(0, 3)}) ${raw.slice(3, 6)}-${raw.slice(6)}`;
@@ -134,8 +135,7 @@ test.describe('Ô tìm kiếm (Search input) — Customers', () => {
     async ({ customersPage, page }) => {
       await customersPage.openGroupFilter();
       const options = page.getByRole('option').filter({ hasNotText: /all groups/i });
-      const optionCount = await options.count();
-      test.skip(optionCount === 0, 'No customer groups available to combine with search');
+      await expect(options.first()).toBeVisible();
 
       const groupName = (await options.first().textContent())?.trim() ?? '';
       await options.first().click();

@@ -53,7 +53,7 @@ test.describe('Filter — trạng thái (status) — Batch History', () => {
       await batchHistoryPage.selectStatus('Open');
       await expect(batchHistoryPage.statusCombobox).toHaveText(/Open/);
 
-      await batchHistoryPage.selectStatus('All status');
+      await batchHistoryPage.selectStatus('All statuses');
       await expect(batchHistoryPage.statusCombobox).toHaveText(/All status/);
 
       await expect(batchHistoryPage.tableRoot).toBeVisible();

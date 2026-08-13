@@ -16,14 +16,16 @@ test.describe('Điều hướng sang Order Detail — Orders', () => {
     'TC-ORD-028 — click row navigates full-page to order detail (not modal)',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ ordersPage, page }) => {
-      const rowCount = await ordersPage.rowCount();
-      test.skip(rowCount === 0, 'No order rows available to click.');
+      await ordersPage.ensureRowsPresent();
 
       await ordersPage.table.rows.first().click();
 
       await expect(page).toHaveURL(/\/pos\/\d+\/orders\/[0-9a-fA-F-]{36}$/);
       await expect(ordersPage.orderDetailHeading).toBeVisible();
-      await expect(ordersPage.orderDetailHeading).toHaveText(/Order #/);
+      // The heading is "#<order code>" with the status badge rendered inside the
+      // same element, e.g. "#OD260812-11892794Successful - Unsettled". It used to
+      // read "Order #<code>", hence the anchored "starts with #" match.
+      await expect(ordersPage.orderDetailHeading).toHaveText(/^#\S+/);
     },
   );
 
@@ -34,9 +36,14 @@ test.describe('Điều hướng sang Order Detail — Orders', () => {
    * Quay lại `/pos/<storeId>/orders`. (Cần xác minh trực tiếp: liệu bộ lọc/trang trước đó có được
    * khôi phục hay bị reset về mặc định — hành vi chưa được xác nhận trong lần khám phá này.)
    */
-  // Confirmed by exploration: the "Back to orders" link is a static href to the list
-  // route, so the app re-applies the default query — the previously applied filter is
-  // reset (not preserved) on return.
+  // BEHAVIOUR CHANGE (re-verified 2026-08-12): "Back to orders" now returns to the
+  // list with the previously applied filter STILL APPLIED — the URL comes back as
+  // `status=canceled`, not `status=all`. The earlier exploration recorded the
+  // opposite (a static href that reset the query to defaults), so this is a real
+  // change in the app, not a flaky read. Worth confirming it was intended; the
+  // preserved filter is the friendlier behaviour, so this test now locks it in.
+  // NOTE: the case title still says "bộ lọc reset về mặc định" — docs/test-cases
+  // needs the same correction.
   test(
     'TC-ORD-029 — "Back to orders" đưa về danh sách (bộ lọc reset về mặc định)',
     { tag: [Tag.REGRESSION, Tag.UI] },
@@ -65,7 +72,9 @@ test.describe('Điều hướng sang Order Detail — Orders', () => {
 
       await ordersPage.goto();
       await ordersPage.selectStatus('Canceled');
-      await expect(page).toHaveURL(/status=canceled/);
+      // The app writes the status verbatim ("status=Canceled"), so this match has
+      // to be case-insensitive like the equivalent assertions in the sibling specs.
+      await expect(page).toHaveURL(/status=canceled/i);
 
       await ordersPage.openOrder(order.orderCode);
       await expect(ordersPage.backToOrdersLink).toBeVisible();
@@ -73,7 +82,7 @@ test.describe('Điều hướng sang Order Detail — Orders', () => {
       await ordersPage.backToOrdersLink.click();
 
       await expect(page).toHaveURL(/\/pos\/\d+\/orders\?/);
-      await expect(page).toHaveURL(/status=all/);
+      await expect(page).toHaveURL(/status=canceled/i);
     },
   );
 });

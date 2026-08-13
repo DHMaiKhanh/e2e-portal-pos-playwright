@@ -11,7 +11,9 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Staffs', () => 
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ staffsPage, page }) => {
       await staffsPage.waitForReady();
-      await expect(page).toHaveURL(/\/pos\/\d+\/staffs\?page=1&status=active&orderCreatedAt=desc/);
+      // Default sort param changed: the screen lands on `sort=pos_order`, it used
+      // to be `orderCreatedAt=desc`.
+      await expect(page).toHaveURL(/\/pos\/\d+\/staffs\?page=1&status=active&sort=pos_order/);
       await expect(staffsPage.pageTitle).toBeVisible();
       await expect(page.getByRole('table')).toBeVisible();
     },
@@ -49,10 +51,57 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Staffs', () => 
    * Expected:
    * Thanh công cụ, bảng và phân trang không bị chồng lấp/cắt; không xuất hiện thanh cuộn ngang ngoài ý muốn ở các độ rộng phổ biến.
    */
-  // TODO(manual/setup): responsive viewport widths (1366px, 1024px) are not configured as playwright.config projects; needs manual/live verification across breakpoints.
-  test.fixme(
+  /**
+   * A viewport does not need its own Playwright project — `page.setViewportSize`
+   * resizes within the test, which is closer to what the case describes anyway
+   * ("view at 1920, then shrink to 1366 and 1024").
+   */
+  test(
     'TC-STF-004 — layout has no overlap/clipping at wide and narrow viewport widths',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SLOW] },
-    async () => {},
+    async ({ staffsPage, page }) => {
+      await staffsPage.waitForReady();
+
+      for (const width of [1920, 1366, 1024]) {
+        await test.step(`${width}px`, async () => {
+          await page.setViewportSize({ width, height: 900 });
+          await staffsPage.waitForReady();
+
+          // No unintended horizontal scrollbar on the document.
+          const overflowed = await page.evaluate(
+            () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+          );
+          expect(overflowed, `page scrolls horizontally at ${width}px`).toBe(false);
+
+          // The toolbar, table and pager are all on screen and none of them is
+          // collapsed to nothing or pushed outside the viewport.
+          for (const [label, locator] of [
+            ['search', staffsPage.searchInput],
+            ['export', staffsPage.exportButton],
+            ['table', page.getByRole('table')],
+            ['pager', staffsPage.pagination.nextButton],
+          ] as const) {
+            await expect(locator.first(), `${label} missing at ${width}px`).toBeVisible();
+            const box = await locator.first().boundingBox();
+            expect(box, `${label} has no box at ${width}px`).not.toBeNull();
+            if (box) {
+              expect(box.width, `${label} collapsed at ${width}px`).toBeGreaterThan(0);
+              expect(box.height, `${label} collapsed at ${width}px`).toBeGreaterThan(0);
+              expect(box.x, `${label} pushed off-screen at ${width}px`).toBeGreaterThanOrEqual(0);
+            }
+          }
+
+          // The toolbar must not sit on top of the table.
+          const searchBox = await staffsPage.searchInput.boundingBox();
+          const tableBox = await page.getByRole('table').first().boundingBox();
+          if (searchBox && tableBox) {
+            expect(
+              searchBox.y + searchBox.height,
+              `search overlaps the table at ${width}px`,
+            ).toBeLessThanOrEqual(tableBox.y + 1);
+          }
+        });
+      }
+    },
   );
 });

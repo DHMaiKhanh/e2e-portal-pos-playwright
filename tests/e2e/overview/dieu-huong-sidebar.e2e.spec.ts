@@ -20,7 +20,9 @@ test.describe('Điều hướng Sidebar — Overview', () => {
         /\/pos\/\d+\/staffs$/,
         /\/pos\/\d+\/services$/,
         /\/pos\/\d+\/customers$/,
-        /\/pos\/\d+\/customer-groups$/,
+        // customer-groups không còn là link sidebar — nó thành tab trên màn
+        // Customers (/customers?tab=groups). URL cũ vẫn resolve nhưng chỉ dưới
+        // dạng redirect sang tab đó.
         /\/pos\/\d+\/income$/,
         /\/pos\/\d+\/setting$/,
         // Admin
@@ -84,10 +86,6 @@ test.describe('Điều hướng Sidebar — Overview', () => {
       await dashboardPage.goto();
       await dashboardPage.sidebar.navigateToHref(/\/pos\/\d+\/customers$/);
       await expect(page).toHaveURL(/\/pos\/\d+\/customers(\?.*)?$/);
-
-      await dashboardPage.goto();
-      await dashboardPage.sidebar.navigateToHref(/\/pos\/\d+\/customer-groups$/);
-      await expect(page).toHaveURL(/\/pos\/\d+\/customer-groups(\?.*)?$/);
 
       await dashboardPage.goto();
       await dashboardPage.sidebar.navigateToHref(/\/pos\/\d+\/income$/);

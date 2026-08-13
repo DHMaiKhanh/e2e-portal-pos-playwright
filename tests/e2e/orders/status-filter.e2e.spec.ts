@@ -12,12 +12,16 @@ test.describe('Bộ lọc Status — Orders', () => {
     async ({ ordersPage }) => {
       await ordersPage.statusFilter.click();
 
+      // Read off the live Select on 2026-08-12. The reset option is "All
+      // statuses" (the app used to label it "All status") and "Pending" was
+      // added between "Partial Refunded" and "Refund Issue".
       const expectedOptions = [
-        'All status',
+        'All statuses',
         'Cancel Issue',
         'Canceled',
         'Canceling',
         'Partial Refunded',
+        'Pending',
         'Refund Issue',
         'Refunded',
         'Refunding',

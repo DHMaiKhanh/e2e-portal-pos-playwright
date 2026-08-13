@@ -4,6 +4,7 @@ import { DashboardPage } from '@pages/dashboard/DashboardPage';
 import { OrdersPage } from '@pages/orders/OrdersPage';
 import { ProductsPage } from '@pages/products/ProductsPage';
 import { CustomersPage } from '@pages/customers/CustomersPage';
+import { CustomerDetailPage } from '@pages/customers/CustomerDetailPage';
 import { ReportsPage } from '@pages/reports/ReportsPage';
 import { SettingsPage } from '@pages/settings/SettingsPage';
 import { PayrollPage } from '@pages/payroll/PayrollPage';
@@ -18,6 +19,7 @@ export interface PagesFixture {
   ordersPage: OrdersPage;
   productsPage: ProductsPage;
   customersPage: CustomersPage;
+  customerDetailPage: CustomerDetailPage;
   reportsPage: ReportsPage;
   settingsPage: SettingsPage;
   payrollPage: PayrollPage;
@@ -42,6 +44,9 @@ export const pagesFixture = base.extend<PagesFixture>({
   },
   customersPage: async ({ page }, use) => {
     await use(new CustomersPage(page));
+  },
+  customerDetailPage: async ({ page }, use) => {
+    await use(new CustomerDetailPage(page));
   },
   reportsPage: async ({ page }, use) => {
     await use(new ReportsPage(page));

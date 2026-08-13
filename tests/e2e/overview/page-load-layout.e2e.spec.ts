@@ -25,15 +25,18 @@ test.describe('Page Load & Layout — Overview', () => {
     },
   );
 
+  // BEHAVIOUR CHANGE (2026-08-12): authenticated `/` no longer redirects to the
+  // store Overview. It now renders a Fastboy Portal app chooser ("Welcome back,
+  // <name> — Choose where you'd like to start") listing POS / Payment / etc. The
+  // invariant still worth guarding is that an authenticated user is not bounced
+  // to /login; the destination assertion is updated to the chooser.
   test(
     'TC-OVW-002 — redirects authenticated root / to the store Overview',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
-    async ({ dashboardPage, page }) => {
+    async ({ page }) => {
       await page.goto('/', { waitUntil: 'domcontentloaded' });
-      // Redirected to the store Overview — not left on / and not sent to /login.
-      await expect(page).toHaveURL(/\/pos\/\d+\/overview/);
       await expect(page).not.toHaveURL(/\/login/);
-      await expect(dashboardPage.heading).toBeVisible();
+      await expect(page.getByText(/choose where you'?d like to start/i)).toBeVisible();
     },
   );
 

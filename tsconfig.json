@@ -44,6 +44,7 @@
     "tests/**/*.ts",
     "configs/**/*.ts",
     "scripts/**/*.ts",
+    "tools/**/*.ts",
     "playwright.config.ts"
   ],
   "exclude": ["node_modules", "dist", "reports", "test-results", "playwright-report"]

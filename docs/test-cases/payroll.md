@@ -552,3 +552,34 @@ Steps:
 - **By type**: Functional 20 · Data 4 · Navigation 5 · UI 3 · Validation 3 · Negative 4 · Edge 4 · Security 3 · Responsive 1 · Accessibility 2
 - **By dimension**: Page load & layout (5), Tab navigation (3), Checks tab (12), Quick Book (8), Staff Payroll (7), Bank Accounts (8), Check History (7), Data formatting (3), Responsive/A11y (3), Security (2)
 - **Deferred / needs live verification**: exact modal/dialog behavior for `Pick a date range`, `Add Staff`, `Edit Signature`, `Create New` (bank account), `Edit`/`Delete` (bank account), and the Staff Payroll / Check History detail panels — these weren't captured by the static DOM scan (0 dialogs detected) since they likely render on click. Full-volume pagination behavior (Check History has 46 rows / 2 pages) was inferred from the scan sample and should be re-verified live for page 2 content and boundary behavior.
+
+## Lịch sử chạy
+
+### 2026-08-13 — bỏ test bị skip
+
+- Lệnh: `npx playwright test tests/e2e/payroll` (headless, 2 workers)
+- Kết quả: **54 pass / 6 skip** (trước đó 25 skip: 23 `test.fixme` + 2 `test.skip` runtime).
+- Hai lỗi hạ tầng khiến nhiều case trước đây "pass" mà thực ra kiểm sai chỗ:
+  - **Mọi tab panel đều mount sẵn**, nên `page.getByRole('table').first()` luôn trả về bảng của tab **Checks**. Tức là `checkHistoryTable` / `staffPayrollTable` / `bankAccountsTable` chưa bao giờ trỏ đúng bảng. Đổi `table:visible` cũng chưa đủ (panel chi tiết bên phải cũng có bảng riêng). Nay mỗi bảng được khoá theo một cột header riêng: `CHECK AMOUNT` / `TOTAL INCOME` / `ROUTING NUMBER` / `MEMO`.
+  - Các custom select **không có accessible name** — text hiển thị chính là giá trị đang chọn. Locator cũ `getByRole('combobox', { name: /created/i })` không khớp gì cả; và khi một test khác đã đổi sort sang "Printed" thì cách khớp theo text cũng hỏng nốt. Nay `checksSortSelect` / `checksDatePresetSelect` khoá theo **vị trí** trong thanh filter.
+- Bank Accounts là màn hình duy nhất trong Portal có nút **Delete** thật, nên TC-PAY-083/084 chạy trọn vòng create → edit → delete và tự dọn trong `finally`. Form Add Bank Account bắt buộc **12** trường (account name/number/confirm, bank name, routing 9 số, bank link http(s), nick name, city, state, zip, phone, email) — thiếu bất kỳ trường nào thì bấm Save không gửi request nào và cũng không báo lỗi ở nút.
+- TC-PAY-028: nút Print **không** mở hộp thoại in của trình duyệt mà mở confirm "Print Check — Are you sure…". Test dừng ở bước xác nhận (bấm Cancel) — xác nhận thật sẽ in ra phôi séc.
+- TC-PAY-011: đã xác minh mỗi tab giữ `page` riêng trong URL (Checks sang trang 2 không kéo theo Check History). Tuy nhiên **quay lại tab cũ bị reset về trang 1**, khác với kỳ vọng "giữ nguyên trang" trong mô tả case — ghi nhận, không assert.
+
+**🔴 Phát hiện bảo mật — TC-PAY-140 (giữ `fixme` có chủ đích, viết sẵn code để bật lại sau khi fix):**
+
+Che số tài khoản chỉ là **hiển thị**. Response `GET /bank_accounts` trả về đầy đủ số tài khoản và routing cho trình duyệt:
+
+```
+accountNumber: 15198183456, 13289193855, 15131045931, 14139222256, 18437017491, 15341628249
+routingNumber: 021000021
+```
+
+Bảng hiển thị `****1111`, nhưng giá trị đầy đủ đọc được từ devtools / HAR / bất kỳ script nào trên trang. Form Edit còn điền sẵn nguyên số vào input. Màn hình không hề cần số đầy đủ ở client. **Cần backend chỉ trả 4 số cuối.**
+
+**Còn skip (6)** — chặn thật:
+
+- TC-PAY-044 / 045 (Quick Book tạo séc) và TC-PAY-063 (tạo pay period): ghi dữ liệu thật mà Portal **không có đường xoá séc / xoá pay period**, nên mỗi lần chạy sẽ để lại bản ghi vĩnh viễn trên store dùng chung.
+- TC-PAY-085 (xoá bank account đang được dùng): không có cách nào biết séc nào tham chiếu tài khoản nào (bảng Checks không có cột bank), và tạo ràng buộc đó đồng nghĩa với việc tạo séc thật. Thử bừa trên tài khoản bất kỳ còn nguy hiểm hơn: nếu app **không** chặn thì test sẽ xoá mất một tài khoản thật.
+- TC-PAY-062 (store không có pay period nào): cần store/tenant rỗng.
+- TC-PAY-140: xem phát hiện bảo mật ở trên.

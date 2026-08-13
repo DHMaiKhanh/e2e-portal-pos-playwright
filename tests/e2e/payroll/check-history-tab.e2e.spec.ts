@@ -84,14 +84,52 @@ test.describe('Check History tab — Payroll', () => {
    * Expected:
    *   Only that staff's checks remain visible.
    */
-  // TODO(manual/setup): PayrollPage does not expose a dedicated search input locator for the
-  // Check History tab (only staffNameSearchInput on the Checks tab is defined). Do not invent
-  // a selector; needs POM update / live DOM verification before automating.
-  test.fixme(
+  /**
+   * The locator was never missing: `staffNameSearchInput` is scoped to
+   * `:visible`, and every tab renders its own "Search by staff name..." box, so
+   * on the Check History tab it resolves to that tab's input. Verified live —
+   * exactly one is visible here.
+   */
+  test(
     'TC-PAY-104 — Search by staff name filters check history',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {
-      // Intentionally left as a scaffold pending a Check History search locator on PayrollPage.
+    async ({ payrollPage }) => {
+      // Re-enter the tab by URL rather than trusting the state this test
+      // inherited: the search box keeps its value across cases, and starting
+      // from someone else's filter makes an empty list look like "this store
+      // has no check history". Filling the box with "" does not reset it — the
+      // app ignores an empty submit — so the query params are the reset.
+      await payrollPage.gotoTab('history');
+
+      const rows = payrollPage.checkHistoryTable.rows;
+      // Poll rather than sampling once: under load the list occasionally paints
+      // empty for a moment before the history request lands.
+      await expect.poll(async () => rows.count(), { timeout: 30_000 }).toBeGreaterThan(0);
+
+      // Take the search term from live data. The STAFF NAME cell renders as
+      // "\nJ\nJohnna\n" — an avatar initial above the name, with surrounding
+      // blank lines — so the name is the last *non-empty* line, not simply the
+      // last one.
+      const nameOf = (cellText: string): string =>
+        cellText
+          .split('\n')
+          .map((line) => line.trim())
+          .filter((line) => line.length > 0)
+          .pop() ?? '';
+
+      const staffName = nameOf((await rows.first().innerText()).split('\t')[1] ?? '');
+      expect(staffName.length).toBeGreaterThan(0);
+
+      await payrollPage.searchStaffName(staffName);
+
+      // Debounced + refetched, so poll until the rendered set reflects the term
+      // rather than reading the stale page underneath it.
+      await expect
+        .poll(async () => {
+          const names = (await rows.allInnerTexts()).map((row) => nameOf(row.split('\t')[1] ?? ''));
+          return names.length > 0 && names.every((name) => name === staffName);
+        })
+        .toBe(true);
     },
   );
 
@@ -119,14 +157,29 @@ test.describe('Check History tab — Payroll', () => {
    * Expected:
    *   Table shows an appropriate empty/no-results state; pagination shows `0 of 0`.
    */
-  // TODO(manual/setup): No dedicated empty-state locator is exposed for the Check History tab
-  // (only checksEmptyState exists for the Checks tab) and there is no search input to force a
-  // guaranteed no-match filter combination; needs live verification / POM update.
-  test.fixme(
+  /**
+   * Both halves of the blocker turned out to be false: the tab does have a
+   * search box (see TC-PAY-104), and the empty state does not need a dedicated
+   * locator — "no rows, and a footer that says zero" is the assertion, and it
+   * does not depend on the exact copy the screen chooses.
+   */
+  test(
     'TC-PAY-106 — No results after filtering shows an empty state',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {
-      // Intentionally left as a scaffold pending a Check History empty-state locator on PayrollPage.
+    async ({ payrollPage }) => {
+      await expect(payrollPage.checkHistoryTable.rows.first()).toBeVisible();
+
+      await payrollPage.searchStaffName('zzz-no-such-staff-zzz');
+
+      await expect.poll(async () => payrollPage.checkHistoryTable.rows.count()).toBe(0);
+
+      // Not a bare header: the screen says something, and the pager reads zero
+      // rather than showing a stale range.
+      await expect(payrollPage.paginationSummary.first()).toHaveText(
+        /showing 0 to 0 of 0 results/i,
+      );
+      await expect(payrollPage.previousPageButton.first()).toBeDisabled();
+      await expect(payrollPage.nextPageButton.first()).toBeDisabled();
     },
   );
 });

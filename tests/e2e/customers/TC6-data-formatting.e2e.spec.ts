@@ -1,5 +1,6 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
+import { CustomersPage } from '@pages/customers/CustomersPage';
 
 test.describe('Định dạng dữ liệu (Data display & formatting) — Customers', () => {
   test.beforeEach(async ({ customersPage }) => {
@@ -51,18 +52,17 @@ test.describe('Định dạng dữ liệu (Data display & formatting) — Custom
     'TC-CUS-046 — LAST VISIT renders as "MMM D, YYYY (UTC+7)" when a visit exists',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ customersPage }) => {
-      const rows = customersPage.table.rows;
-      const count = await rows.count();
-      let found = false;
-      for (let i = 0; i < count; i++) {
-        const lastVisit = (await rows.nth(i).getByRole('cell').nth(7).textContent())?.trim() ?? '';
-        if (lastVisit !== '-') {
-          expect(lastVisit).toMatch(/^[A-Za-z]{3} \d{1,2}, \d{4} \(UTC[+-]\d+\)$/);
-          found = true;
-          break;
-        }
+      const cells = await customersPage.rowCells();
+      const visited = cells.filter((row) => row[CustomersPage.Column.LAST_VISIT] !== '-');
+
+      // Most of the store has visited, so requiring at least one is safe — and
+      // the old version's skip would have hidden a page of blank dates.
+      expect(visited.length).toBeGreaterThan(0);
+      for (const row of visited) {
+        expect(row[CustomersPage.Column.LAST_VISIT]).toMatch(
+          /^[A-Za-z]{3} \d{1,2}, \d{4} \(UTC[+-]\d+\)$/,
+        );
       }
-      test.skip(!found, 'No customer with a recorded LAST VISIT on page 1');
     },
   );
 
@@ -70,18 +70,15 @@ test.describe('Định dạng dữ liệu (Data display & formatting) — Custom
     'TC-CUS-047 — LAST VISIT renders "-" for customers who never visited',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ customersPage }) => {
-      const rows = customersPage.table.rows;
-      const count = await rows.count();
-      let found = false;
-      for (let i = 0; i < count; i++) {
-        const lastVisit = (await rows.nth(i).getByRole('cell').nth(7).textContent())?.trim() ?? '';
-        if (lastVisit === '-') {
-          found = true;
-          break;
-        }
-      }
-      test.skip(!found, 'No customer without a recorded visit on page 1');
-      expect(found).toBe(true);
+      // 12 such customers exist in the store but they are not guaranteed to sit
+      // on page 1, which is what the old skip was really reacting to. Scanning
+      // makes the case deterministic instead of dataset-dependent.
+      const row = await customersPage.findRowAcrossPages(
+        (cells) => cells[CustomersPage.Column.LAST_VISIT] === '-',
+      );
+
+      expect(row, 'no never-visited customer found in the store').not.toBeNull();
+      expect((row as string[])[CustomersPage.Column.LAST_VISIT]).toBe('-');
     },
   );
 
@@ -89,18 +86,14 @@ test.describe('Định dạng dữ liệu (Data display & formatting) — Custom
     'TC-CUS-048 — NAME renders "—" for phone-only customers',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ customersPage }) => {
-      const rows = customersPage.table.rows;
-      const count = await rows.count();
-      let found = false;
-      for (let i = 0; i < count; i++) {
-        const name = (await rows.nth(i).getByRole('cell').nth(0).textContent())?.trim() ?? '';
-        if (name === '—') {
-          found = true;
-          break;
-        }
-      }
-      test.skip(!found, 'No nameless customer found on page 1');
-      expect(found).toBe(true);
+      const row = await customersPage.findRowAcrossPages(
+        (cells) => cells[CustomersPage.Column.NAME] === '—',
+      );
+
+      expect(row, 'no phone-only (nameless) customer found in the store').not.toBeNull();
+      // A nameless customer must still be reachable by phone, or the row is
+      // useless to the operator — that is the point of the placeholder.
+      expect((row as string[])[CustomersPage.Column.PHONE]).toMatch(/^\(\d{3}\) \d{3}-\d{4}$/);
     },
   );
 
@@ -147,11 +140,21 @@ test.describe('Định dạng dữ liệu (Data display & formatting) — Custom
     'TC-CUS-051 — customer name with special characters renders correctly, without breaking layout',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ customersPage }) => {
+      // "Test@@@!`*&^" exists in the store; searching for the punctuation run is
+      // the deterministic way to reach it from any page.
       await customersPage.search('@@@!');
       const rows = customersPage.table.rows;
-      const count = await rows.count();
-      test.skip(count === 0, 'Special-character customer not present in this dataset');
+
+      await expect(rows.first()).toBeVisible();
       await expect(rows.first()).toContainText('@@@!');
+
+      // Layout integrity: the name must not spill the row box.
+      const overflow = await rows.first().evaluate((row) => {
+        const cell = row.querySelector('td');
+        if (!cell) return null;
+        return cell.scrollWidth - cell.clientWidth;
+      });
+      expect(overflow ?? 0).toBeLessThanOrEqual(1);
     },
   );
 });

@@ -1,6 +1,13 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
 import { Urls } from '@constants/urls';
+import {
+  clientSideNavigate,
+  delayDataResponses,
+  landOnShell,
+  restoreNetwork,
+  skeletons,
+} from '@helpers/network';
 
 test.describe('Tải trang & bố cục (Page load / Layout) — Customers', () => {
   test.beforeEach(async ({ customersPage }) => {
@@ -12,7 +19,12 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Customers', () 
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ customersPage, page }) => {
       await customersPage.waitForReady();
-      await expect(page).toHaveURL(/\/pos\/\d+\/customers\?page=1&orderCreatedAt=desc/);
+      // The screen gained a tab system, so the landing URL now leads with
+      // `tab=customers` before the paging params:
+      //   /pos/14/customers?tab=customers&page=1&orderCreatedAt=desc
+      await expect(page).toHaveURL(
+        /\/pos\/\d+\/customers\?tab=customers&page=1&orderCreatedAt=desc/,
+      );
       await expect(customersPage.pageTitle).toBeVisible();
       await expect(page.getByRole('table')).toBeVisible();
     },
@@ -54,12 +66,36 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Customers', () 
     },
   );
 
-  // TODO(manual/setup): requires simulated slow network/delayed API response —
-  // no route-throttling helper wired up in this project's fixtures.
-  test.fixme(
+  test(
     'TC-CUS-005 — loading/skeleton state renders before table data resolves',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
+    async ({ page, customersPage }) => {
+      await test.step('Reach Customers over a deliberately slow API', async () => {
+        // Arrive by clicking, not goto: a goto is server-rendered and the data
+        // fetch never passes through page.route.
+        await landOnShell(page, Urls.DASHBOARD);
+        await delayDataResponses(page, 6000);
+        await clientSideNavigate(page, /^Customers$/i);
+      });
+
+      await test.step('Skeleton placeholders stand in for the table', async () => {
+        await expect(skeletons(page).first()).toBeVisible({ timeout: 15_000 });
+        // Column headers are part of the shell and paint immediately; the rows
+        // are what is still pending.
+        await expect(customersPage.columnHeaders.first()).toBeVisible();
+      });
+
+      await test.step('Skeletons give way to real rows once data resolves', async () => {
+        // Lift the delay first. The screen fetches its groups and its rows
+        // separately and refetches on settle, and the handler delays every one
+        // of them, so with it installed something is always pending and the
+        // skeleton count never reaches zero.
+        await restoreNetwork(page);
+
+        await expect(customersPage.table.rows.first()).toBeVisible({ timeout: 30_000 });
+        await expect(skeletons(page)).toHaveCount(0, { timeout: 30_000 });
+      });
+    },
   );
 
   test(

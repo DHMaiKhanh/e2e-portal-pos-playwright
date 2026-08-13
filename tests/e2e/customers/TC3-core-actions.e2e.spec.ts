@@ -12,8 +12,10 @@ test.describe('Hành động chính (Core actions) — Customers', () => {
     async ({ customersPage, page }) => {
       await customersPage.openGroupFilter();
       const options = page.getByRole('option');
-      const optionCount = await options.count();
-      test.skip(optionCount === 0, 'No customer groups available to filter by in this dataset');
+      // The store defines customer groups, so an empty list is a failure of the
+      // filter rather than a reason to skip — which is what this used to do.
+      await expect(options.first()).toBeVisible();
+      expect(await options.count()).toBeGreaterThan(1);
 
       const firstOption = options.first();
       const groupName = (await firstOption.textContent())?.trim() ?? '';
@@ -30,8 +32,8 @@ test.describe('Hành động chính (Core actions) — Customers', () => {
     async ({ customersPage, page }) => {
       await customersPage.openGroupFilter();
       const options = page.getByRole('option');
-      const optionCount = await options.count();
-      test.skip(optionCount === 0, 'No customer groups available to filter by in this dataset');
+      await expect(options.first()).toBeVisible();
+      expect(await options.count()).toBeGreaterThan(1);
 
       const firstOption = options.first();
       const groupName = (await firstOption.textContent())?.trim() ?? '';
@@ -85,19 +87,48 @@ test.describe('Hành động chính (Core actions) — Customers', () => {
     },
   );
 
-  // TODO(manual/setup): detail navigation on row click is not confirmed by the static
-  // scan — needs live verification before asserting concrete detail-page behavior.
-  test.fixme(
+  test(
     'TC-CUS-025 — clicking a customer row navigates to (or does not error on) detail',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
+    async ({ customersPage, customerDetailPage, page }) => {
+      await customersPage.waitForReady();
+      const firstRow = customersPage.table.rows.first();
+      const name = (await firstRow.getByRole('cell').nth(0).innerText()).trim();
+
+      await firstRow.click();
+
+      // Live behaviour: the row is a link to a detail *page*, not a modal.
+      await expect(page).toHaveURL(
+        /\/customers\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\?tab=profile/,
+      );
+      await customerDetailPage.waitForReady();
+      await expect(customerDetailPage.nameInput).toHaveValue(name);
+    },
   );
 
-  // TODO(manual/setup): click-to-sort on the LAST VISIT column header is not confirmed
-  // by the static scan — needs live verification of whether it's interactive.
-  test.fixme(
-    'TC-CUS-026 — clicking LAST VISIT header toggles sort direction',
+  test(
+    'TC-CUS-026 — LAST VISIT header is not click-to-sort',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
+    async ({ customersPage, page }) => {
+      await customersPage.waitForReady();
+      const header = customersPage.columnHeader(/last visit/i);
+
+      // Verified against the live DOM: the header renders a plain <div>, with no
+      // button, no aria-sort and no sort affordance. This case is therefore a
+      // negative one — it pins "the column is inert" so that adding sorting
+      // later is a deliberate change rather than a silent one.
+      await expect(header.getByRole('button')).toHaveCount(0);
+      await expect(header).not.toHaveAttribute('aria-sort', /.*/);
+
+      const urlBefore = page.url();
+      const orderBefore = (await customersPage.rowCells()).map((cells) => cells[0]);
+
+      await header.click();
+      await page.waitForTimeout(1000);
+
+      expect(page.url()).toBe(urlBefore);
+      const orderAfter = (await customersPage.rowCells()).map((cells) => cells[0]);
+      expect(orderAfter).toEqual(orderBefore);
+    },
   );
 });

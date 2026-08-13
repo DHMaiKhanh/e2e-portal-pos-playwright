@@ -41,6 +41,11 @@ test.describe('Bộ lọc Quick Filter — Orders', () => {
       });
       await ordersPage.goto();
 
+      // "Last 7 Days" is now the preset the page lands on, so selecting it from a
+      // fresh load is a no-op and the date button would never change. Move off it
+      // first so the assertion below still tests what it was written to test:
+      // that picking "Last 7 Days" updates both the URL range and the button.
+      await ordersPage.selectQuickFilter('Today');
       const dateRangeButtonTextBefore = await ordersPage.dateRangeButton.textContent();
 
       await ordersPage.selectQuickFilter('Last 7 Days');

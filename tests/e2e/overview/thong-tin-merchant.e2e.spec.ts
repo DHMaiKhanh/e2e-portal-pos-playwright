@@ -44,7 +44,10 @@ test.describe('Thông tin Merchant — Overview', () => {
       await expect(page.getByText(/#\d+$/).first()).toBeVisible();
       await expect(dashboardPage.merchantPhone).toHaveText(/\(\d{3}\)\s*\d{3}-\d{4}/);
       await expect(dashboardPage.merchantEmail).toHaveText(/\S+@\S+\.\S+/);
-      await expect(dashboardPage.merchantAddress).toHaveText(/,\s*[A-Z]{2},?\s*\d{5}/);
+      // Structure, not a US mailing format: the seeded merchant address is
+      // "56A Le Khoi, Phu Thanh War, HCM, B, 70111, AR" — comma-separated with a
+      // postal code, but no two-letter state before a 5-digit ZIP.
+      await expect(dashboardPage.merchantAddress).toHaveText(/,.*\d{4,6}/);
     },
   );
 

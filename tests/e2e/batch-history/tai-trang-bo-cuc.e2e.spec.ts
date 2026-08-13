@@ -1,5 +1,13 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
+import { Urls } from '@constants/urls';
+import {
+  clientSideNavigate,
+  delayDataResponses,
+  failDataResponses,
+  landOnShell,
+  skeletons,
+} from '@helpers/network';
 
 test.describe('Tải trang & bố cục — Batch History', () => {
   test.beforeEach(async ({ batchHistoryPage }) => {
@@ -59,8 +67,28 @@ test.describe('Tải trang & bố cục — Batch History', () => {
    *  3. Quan sát ngay sau khi điều hướng.
    * Expected: Hiển thị loading indicator/skeleton thay cho bảng; không có khoảng trắng/flash không style.
    */
-  // TODO(manual/setup): requires network throttling/route interception with delayed API response to reliably observe the loading state.
-  test.fixme('TC-BH-003 — shows loading state before data returns', async () => {});
+  test(
+    'TC-BH-003 — shows loading state before data returns',
+    { tag: [Tag.REGRESSION, Tag.UI] },
+    async ({ page, batchHistoryPage }) => {
+      // Arrive by clicking, not goto: a goto is server-rendered, so the batch
+      // list never crosses the browser where page.route could delay it.
+      await landOnShell(page, Urls.DASHBOARD);
+      await delayDataResponses(page, 6000);
+      await clientSideNavigate(page, /^Batch History$/i);
+
+      await test.step('Skeletons stand in for the ledger, layout intact', async () => {
+        await expect(skeletons(page).first()).toBeVisible({ timeout: 15_000 });
+        await expect(batchHistoryPage.heading).toBeVisible();
+        await expect(batchHistoryPage.batchNumberHeader).toBeVisible();
+      });
+
+      await test.step('Ledger replaces the skeletons when data lands', async () => {
+        await expect(skeletons(page)).toHaveCount(0, { timeout: 30_000 });
+        await expect(batchHistoryPage.tableRoot).toBeVisible();
+      });
+    },
+  );
 
   test(
     'TC-BH-004 — browser refresh re-renders same state',
@@ -90,6 +118,24 @@ test.describe('Tải trang & bố cục — Batch History', () => {
    *  2. Điều hướng tới màn hình.
    * Expected: Sidebar/header vẫn render bình thường; khu vực bảng hiển thị thông báo lỗi rõ ràng thay vì skeleton chạy vô hạn hoặc trang trắng.
    */
-  // TODO(manual/setup): requires route interception to force the batch list API to fail (500/abort) and verify graceful error UI.
-  test.fixme('TC-BH-005 — initial API load error shows error state, layout not broken', async () => {});
+  test(
+    'TC-BH-005 — initial API load error shows error state, layout not broken',
+    { tag: [Tag.REGRESSION, Tag.UI] },
+    async ({ page, batchHistoryPage }) => {
+      await landOnShell(page, Urls.DASHBOARD);
+      await failDataResponses(page, 500);
+      await clientSideNavigate(page, /^Batch History$/i);
+
+      await test.step('A clear error replaces the table area', async () => {
+        await expect(page.getByText(/error loading batches/i)).toBeVisible({ timeout: 30_000 });
+        // Not an endless skeleton, and not a blank page.
+        await expect(skeletons(page)).toHaveCount(0);
+      });
+
+      await test.step('Chrome survives the failure', async () => {
+        await expect(batchHistoryPage.heading).toBeVisible();
+        await expect(batchHistoryPage.sidebar.item('Customers').first()).toBeVisible();
+      });
+    },
+  );
 });

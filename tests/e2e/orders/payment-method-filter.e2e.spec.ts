@@ -13,7 +13,9 @@ test.describe('Bộ lọc Payment Method — Orders', () => {
       await expect(ordersPage.paymentMethodCombobox).toBeVisible();
       await ordersPage.paymentMethodCombobox.click();
 
-      const expectedOptions = ['All method', 'Card', 'Cash', 'Gift Card', 'Other'];
+      // Read off the live Select on 2026-08-12 — the reset option is "All
+      // methods"; the app used to label it "All method".
+      const expectedOptions = ['All methods', 'Card', 'Cash', 'Gift Card', 'Other'];
       for (const optionName of expectedOptions) {
         await expect(
           ordersPage.page.getByRole('option', { name: optionName, exact: true }),

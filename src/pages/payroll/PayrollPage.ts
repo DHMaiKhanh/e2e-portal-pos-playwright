@@ -2,6 +2,7 @@ import { type Locator, type Page, expect } from '@playwright/test';
 import { BasePage } from '@pages/BasePage';
 import { DataTable } from '@components/table/DataTable';
 import { Urls } from '@constants/urls';
+import { Timeouts } from '@configs/constants/timeouts';
 
 /**
  * Payroll screen — 5 tabs (Checks, Quick Book, Staff Payroll, Bank Accounts,
@@ -95,14 +96,48 @@ export class PayrollPage extends BasePage {
       .getByRole('tab', { name: /^check history$/i })
       .or(page.getByRole('link', { name: /^check history$/i }));
 
-    this.checksTable = new DataTable(page, page.getByRole('table').first());
+    /**
+     * Each tab's table, identified by a column header unique to it.
+     *
+     * Two earlier approaches both misfired. `getByRole('table').first()` always
+     * resolved to the *Checks* table because every tab panel stays mounted, so
+     * the Check History / Staff Payroll / Bank Accounts tables were never
+     * actually being read — their tests were passing against the wrong table.
+     * Switching to `table:visible` first was closer but still wrong: the
+     * right-hand detail panel contributes its own visible table, and `.first()`
+     * sometimes picked that one, reporting zero rows.
+     *
+     * Keying on a header the tab owns is unambiguous.
+     */
+    const tableWithHeader = (header: RegExp): Locator =>
+      page
+        .locator('table')
+        .filter({ has: page.getByRole('columnheader', { name: header }) })
+        .filter({ visible: true })
+        .first();
+
+    this.checksTable = new DataTable(page, tableWithHeader(/check amount/i));
     // All tab panels stay mounted (hidden) at once, so multiple matches exist; only one is visible.
     this.staffNameSearchInput = page.locator(
       'input[placeholder="Search by staff name..."]:visible',
     );
-    // Custom select trigger; label is dynamic (shows the currently chosen option).
-    this.checksSortSelect = page.getByRole('combobox', { name: /created/i }).first();
-    this.checksDatePresetSelect = page.getByRole('combobox', { name: /all dates/i }).first();
+    /**
+     * Custom select triggers, addressed by position in the filter bar.
+     *
+     * They expose no accessible name, and their *text* is whatever value is
+     * currently selected — so matching on text only works while the filter is
+     * untouched. It is not: the sort persists across tests, and a run that had
+     * already switched it to "Printed" left `hasText: /created/i` matching
+     * nothing. Position within the visible filter bar is stable regardless of
+     * the current value.
+     *
+     * Checks toolbar, in order: sort ("Created"), date preset ("All dates").
+     */
+    const visibleCombobox = (index: number): Locator =>
+      page.getByRole('combobox').filter({ visible: true }).nth(index);
+
+    this.checksSortSelect = visibleCombobox(0);
+    this.checksDatePresetSelect = visibleCombobox(1);
     this.pickDateRangeButton = page.getByRole('button', { name: /pick a date range/i });
     this.addStaffButton = page.getByRole('button', { name: /add staff/i });
     this.editSignatureButton = page.getByRole('button', { name: /edit signature/i });
@@ -114,8 +149,8 @@ export class PayrollPage extends BasePage {
     // All tab panels stay mounted (hidden) at once, so multiple matches exist; only one is visible.
     this.paginationSummary = page
       .getByText(/showing \d+ to \d+ of \d+ results/i)
-      .and(page.locator(':visible'));
-    this.pageIndicator = page.getByText(/^\s*\d+\s*\/\s*\d+\s*$/).and(page.locator(':visible'));
+      .filter({ visible: true });
+    this.pageIndicator = page.getByText(/^\s*\d+\s*\/\s*\d+\s*$/).filter({ visible: true });
 
     // Combobox has no accessible name; "Select bank account" is its displayed value, so filter on text.
     this.selectBankAccountCombobox = page
@@ -128,30 +163,35 @@ export class PayrollPage extends BasePage {
     this.memoTextarea = page.getByPlaceholder(/enter memo/i);
     this.createCheckButton = page.getByRole('button', { name: /^create$/i });
 
-    this.staffPayrollTable = new DataTable(page, page.getByRole('table').first());
-    // Dynamic label showing the selected period's date range, e.g. "Jun 30, 2026 - Jun 30, 2026".
-    this.payPeriodCombobox = page.getByRole('combobox', { name: /\d{4}/ });
+    this.staffPayrollTable = new DataTable(page, tableWithHeader(/total income/i));
+    // Dynamic label showing the selected period's date range, e.g. "Jun 30,
+    // 2026 - Jun 30, 2026" — again the text, not an accessible name.
+    this.payPeriodCombobox = page
+      .getByRole('combobox')
+      .filter({ hasText: /\d{4}/ })
+      .filter({ visible: true })
+      .first();
     this.createPayPeriodButton = page.getByRole('button', { name: /^create( new)?$/i });
     this.noPayrollPeriodsMessage = page.getByText(/no payroll periods available/i);
     this.noStaffSelectedMessage = page.getByText(/no staff selected/i);
 
-    this.bankAccountsTable = new DataTable(page, page.getByRole('table').first());
+    this.bankAccountsTable = new DataTable(page, tableWithHeader(/routing number/i));
     this.bankSearchInput = page.getByPlaceholder(/search by bank or account name/i);
     this.createNewBankAccountButton = page.getByRole('button', { name: /create new/i });
     // Also matches a "No bank accounts" combobox placeholder elsewhere on the page; be specific.
     this.noBankAccountsMessage = page.getByText(/no bank accounts found\.?/i);
 
-    this.checkHistoryTable = new DataTable(page, page.getByRole('table').first());
+    this.checkHistoryTable = new DataTable(page, tableWithHeader(/^memo$/i));
     // These comboboxes have no accessible name; "All statuses"/"All dates" is their displayed value.
     // All tab panels stay mounted (hidden) at once, so multiple matches can exist; only one is visible.
     this.historyStatusSelect = page
       .getByRole('combobox')
       .filter({ hasText: /all statuses/i })
-      .and(page.locator(':visible'));
+      .filter({ visible: true });
     this.historyDatePresetSelect = page
       .getByRole('combobox')
       .filter({ hasText: /all dates/i })
-      .and(page.locator(':visible'));
+      .filter({ visible: true });
     this.noCheckSelectedMessage = page.getByText(/no check selected/i);
   }
 
@@ -178,6 +218,33 @@ export class PayrollPage extends BasePage {
     await this.staffPayrollTab.click();
     await this.page.waitForURL(/tab=staff-payroll/);
     await this.waitForReady();
+
+    // waitForReady clears the shared shell, but the staff table populates after
+    // it: measured on the DEV store, rows are 0 immediately and 30 six seconds
+    // later. Tests that counted rows right after this call read the empty table
+    // and skipped themselves as "no staff rows available" on a store that has
+    // 209. Settle on the rows here so no caller has to know that.
+    const rowsOrEmpty = this.staffPayrollTable.rows
+      .first()
+      .or(this.page.getByText(/no (staff|results|data)|not found/i).first());
+    await expect(rowsOrEmpty).toBeVisible({ timeout: Timeouts.NAVIGATION });
+  }
+
+  /**
+   * Wait until the Staff Payroll table actually has rows.
+   *
+   * `goToStaffPayrollTab` is satisfied by rows *or* an empty state, which is
+   * right for cases that assert emptiness. Cases that need data have to wait
+   * further: under load the period lookup occasionally comes back empty for a
+   * few seconds and the screen shows "No payroll periods available" before
+   * settling, which read as "this store has no payroll" if sampled once.
+   */
+  async waitForStaffPayrollRows(): Promise<void> {
+    await expect
+      .poll(async () => this.staffPayrollTable.rows.count(), {
+        timeout: Timeouts.NAVIGATION,
+      })
+      .toBeGreaterThan(0);
   }
 
   async goToBankAccountsTab(): Promise<void> {
@@ -298,6 +365,101 @@ export class PayrollPage extends BasePage {
   /** BANK LINK cell for a row, rendered as a clickable URL. */
   bankLinkFor(bankName: string): Locator {
     return this.bankAccountRow(bankName).getByRole('link');
+  }
+
+  // --- Bank account create/edit dialog ---
+  //
+  // "Create New" and a row's "Edit" open the same form ("Add Bank Account" /
+  // "Edit Bank Account"): accountName, accountNumber + confirmAccountNumber,
+  // bankName, routingNumber, bankLink, address block, contact block, an
+  // "isDefault" switch, and Cancel / Save Account / Close.
+
+  get bankAccountDialog(): Locator {
+    return this.page.getByRole('dialog').filter({ hasText: /bank account/i });
+  }
+
+  bankAccountField(name: string): Locator {
+    return this.bankAccountDialog.locator(`#${name}`);
+  }
+
+  /**
+   * The dialog's submit button.
+   *
+   * "Add Bank Account" labels it "Save Account"; the edit variant uses a
+   * different wording, so match the family rather than one string.
+   */
+  get saveBankAccountButton(): Locator {
+    return this.bankAccountDialog
+      .getByRole('button', { name: /save|update/i })
+      .filter({ hasNotText: /cancel|close/i })
+      .first();
+  }
+
+  get cancelBankAccountButton(): Locator {
+    return this.bankAccountDialog.getByRole('button', { name: /^cancel$/i });
+  }
+
+  /**
+   * The delete confirmation.
+   *
+   * Rendered as an alertdialog, so it does not match a plain
+   * `getByRole('dialog')` — matching both keeps this working either way.
+   */
+  get confirmDialog(): Locator {
+    return this.page.getByRole('alertdialog').or(this.page.getByRole('dialog')).first();
+  }
+
+  get confirmDeleteButton(): Locator {
+    return this.confirmDialog.getByRole('button', { name: /^(delete|confirm|yes|ok)$/i }).first();
+  }
+
+  /**
+   * Submit a bank-account form, retrying through the Portal's lazy token
+   * refresh — with an expired access token the first press is swallowed while
+   * `POST /refresh_token` round-trips, showing no error at all.
+   */
+  async saveBankAccount(): Promise<void> {
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await this.saveBankAccountButton.click();
+      try {
+        await expect(this.bankAccountDialog).toBeHidden({ timeout: Timeouts.SHORT });
+        return;
+      } catch {
+        await this.page.waitForTimeout(1_000);
+      }
+    }
+    await expect(this.bankAccountDialog).toBeHidden({ timeout: Timeouts.MEDIUM });
+  }
+
+  /**
+   * Values in the ACCOUNT NAME column.
+   *
+   * Column order is BANK NAME, ACCOUNT NAME, ACCOUNT NUMBER, ROUTING NUMBER,
+   * BANK LINK — so account name is the *second* cell, not the first.
+   */
+  async bankAccountNames(): Promise<string[]> {
+    // Scoped to the visible table: every tab panel stays mounted, so
+    // `getByRole('table').first()` can resolve to another tab's table and
+    // report an empty list while the bank rows are on screen.
+    const rows = await this.page.locator('table:visible tbody tr').allInnerTexts();
+    return rows
+      .map((row) => (row.split('\t')[1] ?? '').replace(/\s+/g, ' ').trim())
+      .filter((name) => name.length > 0);
+  }
+
+  /**
+   * Delete a bank account if it is still there — the cleanup half of the
+   * create/edit/delete cases, safe to call when the account is already gone.
+   */
+  async removeBankAccountIfPresent(bankName: string): Promise<void> {
+    await this.gotoTab('bank-account');
+    if ((await this.bankAccountRow(bankName).count()) === 0) return;
+
+    await this.deleteBankAccount(bankName);
+    await this.confirmDeleteButton.click().catch(() => undefined);
+    await expect
+      .poll(async () => this.bankAccountNames(), { timeout: Timeouts.MEDIUM })
+      .not.toContain(bankName);
   }
 
   // --- Check History actions ---

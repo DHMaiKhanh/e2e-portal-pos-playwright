@@ -10,11 +10,12 @@ test.describe('Tìm kiếm (Search) — Orders', () => {
     'TC-ORD-004 — search by Order ID returns matching rows',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ ordersPage }) => {
-      const rowsBefore = await ordersPage.rowCount();
-      test.skip(rowsBefore === 0, 'No orders available to derive a search term from.');
+      await ordersPage.ensureRowsPresent();
 
-      const firstOdId = (await ordersPage.odIdCell(0).textContent())?.trim() ?? '';
-      test.skip(!firstOdId, 'Could not read an OD ID from the first row.');
+      // Every order carries an id; a blank first cell is a rendering failure, so
+      // assert the shape rather than skipping when it cannot be read.
+      await expect(ordersPage.odIdCell(0)).toHaveText(/#OD\d{6}-\d+/);
+      const firstOdId = ((await ordersPage.odIdCell(0).textContent()) ?? '').trim();
 
       // The backend matches the search term against the full OD ID, not a substring.
       const term = firstOdId.replace(/^#/, '');
@@ -36,24 +37,15 @@ test.describe('Tìm kiếm (Search) — Orders', () => {
     'TC-ORD-005 — search by customer name or phone filters CUSTOMER column',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ ordersPage, page }) => {
-      const rowsBefore = await ordersPage.rowCount();
-      test.skip(rowsBefore === 0, 'No orders available to derive a customer search term from.');
+      await ordersPage.ensureRowsPresent();
 
-      // Find a row whose CUSTOMER cell is not the "—" placeholder to use as search term.
-      const customerCells = page.locator('table tbody tr td:nth-child(4)');
-      const count = await customerCells.count();
-      let term = '';
-      for (let i = 0; i < count; i++) {
-        const text = (await customerCells.nth(i).innerText())?.trim() ?? '';
-        if (text && text !== '—') {
-          // Cell stacks "name" and "phone" on separate lines; search by name only.
-          term = text.split('\n')[0]?.trim() ?? '';
-          break;
-        }
-      }
-      test.skip(!term, 'No row with a named customer was found to search by.');
+      // Most orders in this store are walk-ins with no customer attached, so the
+      // named row this case needs is often not on page 1 — which is what the old
+      // skip was really reacting to. Walk pages until one turns up.
+      const term = await ordersPage.findCustomerNameToSearch();
+      expect(term, 'no order with a named customer found in the first 5 pages').not.toBeNull();
 
-      await ordersPage.search(term);
+      await ordersPage.search(term as string);
 
       const rowsAfter = await ordersPage.rowCount();
       expect(rowsAfter).toBeGreaterThan(0);

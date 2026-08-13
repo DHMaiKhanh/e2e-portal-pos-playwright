@@ -19,8 +19,12 @@ const STORE_LINKS: RegExp[] = [
   /^\/pos\/\d+\/staffs$/,
   /^\/pos\/\d+\/services$/,
   /^\/pos\/\d+\/customers$/,
-  /^\/pos\/\d+\/customer-groups$/,
+  // `/pos/<id>/customer-groups` is gone from the sidebar: Customer Groups became
+  // a tab on the Customers screen (/customers?tab=groups). The old URL still
+  // resolves, but only as a redirect onto that tab, so there is no nav link with
+  // this href to assert on any more.
   /^\/pos\/\d+\/income$/,
+  /^\/pos\/\d+\/report-config$/,
   /^\/pos\/\d+\/setting$/,
 ];
 
@@ -88,7 +92,7 @@ test.describe('Sidebar Navigation — Overview', () => {
         [/^\/pos\/\d+\/staffs$/, /\/pos\/\d+\/staffs/],
         [/^\/pos\/\d+\/services$/, /\/pos\/\d+\/services/],
         [/^\/pos\/\d+\/customers$/, /\/pos\/\d+\/customers/],
-        [/^\/pos\/\d+\/customer-groups$/, /\/pos\/\d+\/customer-groups/],
+        // customer-groups dropped — now a tab on /customers, no sidebar link.
         [/^\/pos\/\d+\/income$/, /\/pos\/\d+\/income/],
         [/^\/pos\/\d+\/setting$/, /\/pos\/\d+\/setting/],
       ];

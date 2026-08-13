@@ -516,3 +516,28 @@
 - Các case liên quan tới: nội dung chính xác của trạng thái rỗng khi search không khớp (TC-ORD-006), hành vi giữ/reset bộ lọc khi back từ Order Detail (TC-ORD-029), hành vi nút "Receipt" (TC-ORD-033), và điều kiện enable của "Re-Open Order" (TC-ORD-031) — cần xác minh thêm trực tiếp, đã ghi chú rõ trong từng case thay vì suy đoán.
 - Chưa seed được dữ liệu số lượng lớn (10k+ order) hoặc giả lập lỗi API/offline trong phiên khám phá này — các case dạng "performance dưới tải lớn" và "network failure" bị lược khỏi bộ lean core, có thể bổ sung khi có môi trường mock phù hợp.
 - Không phát hiện chức năng tạo mới order, chỉnh sửa order, hay bulk action nào trên màn hình này — do đó không có case Create/Edit/Bulk (khác với các bảng dữ liệu khác trong hệ thống).
+
+## Lịch sử chạy
+
+### 2026-08-12
+
+- Lệnh: `WORKERS=8 npx playwright test tests/e2e` (full suite, headless)
+- Kết quả màn này: 17 fail → 2 fail (chạy riêng thư mục: 38 passed, 0 failed)
+- Nguyên nhân gốc lớn nhất của cả suite nằm ở đây: app đã bỏ các `data-slot` riêng (`order-filters-status`, `-payment-method`, `-date-preset`) và gom cả ba về chung `data-slot="filter-select-trigger"`. Chỉ date và staff giữ slot riêng. Riêng selector `order-filters-status` đốt 114.9s trên 8 test.
+- Vì filter bar của Orders không có `aria-label` (khác Staffs/Services), page object neo theo thứ tự trong bar: [0] date preset · [1] payment method · [2] status — cố ý không neo theo text vì nhãn đổi thành giá trị đã chọn.
+- Nhãn option cập nhật theo DOM thật: `All status` → `All statuses`, `All method` → `All methods`, danh sách status có thêm `Pending`.
+- Thay đổi hành vi cần xác nhận với team sản phẩm:
+  - Bộ lọc ngày mặc định là **Last 7 Days** (trước là Today) — TC-ORD-002.
+  - "Back to orders" nay **giữ nguyên** bộ lọc (`status=canceled`) thay vì reset về `status=all` — TC-ORD-029. Tiêu đề case vẫn ghi "bộ lọc reset về mặc định", cần sửa lại tài liệu.
+  - Tiêu đề trang chi tiết đổi từ `Order #<code>` thành `#<code>` (badge trạng thái nằm trong cùng element); khối "Service Details & Tip" tách thành "Service Details" + "Tip Breakdown"; cột "OD ID" đổi tên thành "ORDER ID".
+- TC-ORD-031 đã chuyển sang `test.fixme`: nút "Re-Open Order" không có trong DOM, và không thể xác minh trên dữ liệu thật vì store hiện không còn đơn Canceled/Refunded nào. Cần product xác nhận nút này bị gỡ hay do mock lệch shape.
+- Report chi tiết: `npm run report` (reports/html)
+
+### 2026-08-13 — bỏ test bị skip
+
+- Lệnh: `npx playwright test tests/e2e/orders` (headless, 6 workers)
+- Kết quả: **38 pass / 1 skip** (trước đó 7 `test.skip` runtime + 1 `test.fixme`).
+- Toàn bộ `test.skip(rowCount === 0, ...)` thay bằng `OrdersPage.ensureRowsPresent()`: màn hình mặc định lọc "Last 7 Days" nên một tuần vắng khách sẽ làm test tự skip — kể cả khi danh sách thật sự hỏng. Helper nới sang "Last 30 Days" nếu 7 ngày trống rồi mới assert có dòng; 30 ngày mà vẫn trống thì đó là lỗi đáng fail.
+- TC-ORD-005 (tìm theo tên khách): phần lớn order trong store là khách vãng lai (`—`), nên dòng có tên khách thường không nằm ở trang 1 — đúng thứ mà `test.skip` cũ đang phản ứng. Thay bằng `findCustomerNameToSearch()` duyệt tối đa 5 trang.
+
+**Còn skip (1)**: TC-ORD-031 · nút "Re-Open Order" — nút không có trong DOM kể cả với order mock đã canceled + đủ credit note. Chưa xác định được là product gỡ nút hay mock lệch shape; cần product xác nhận (giữ nguyên ghi chú cũ).

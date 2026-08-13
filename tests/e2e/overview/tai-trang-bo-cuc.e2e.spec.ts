@@ -15,15 +15,17 @@ test.describe('Tải trang & Bố cục — Overview', () => {
     },
   );
 
+  // BEHAVIOUR CHANGE (2026-08-12): root `/` không còn redirect sang Overview của
+  // store. Nó render trang chọn ứng dụng Fastboy Portal ("Choose where you'd
+  // like to start" — POS / Payment / ...). Điều còn cần bảo vệ là user đã đăng
+  // nhập không bị đá về /login.
   test(
     'TC-OVW-002 — chuyển hướng user đã đăng nhập từ root / sang Overview theo store',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
-    async ({ dashboardPage, page }) => {
+    async ({ page }) => {
       await page.goto('/');
-      await page.waitForURL(/\/pos\/\d+\/overview/);
-      await expect(page).toHaveURL(/\/pos\/\d+\/overview/);
       await expect(page).not.toHaveURL(/\/login/);
-      await expect(dashboardPage.heading).toBeVisible();
+      await expect(page.getByText(/choose where you'?d like to start/i)).toBeVisible();
     },
   );
 

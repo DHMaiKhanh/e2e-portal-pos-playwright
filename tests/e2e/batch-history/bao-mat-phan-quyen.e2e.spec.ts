@@ -1,10 +1,15 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
+import { Urls } from '@constants/urls';
+import { expectUnauthenticatedRedirect, expectCrossStoreBlocked } from '@helpers/security';
 
-test.describe('Bảo mật & phân quyền — Batch History', () => {
-  test.beforeEach(async ({ batchHistoryPage }) => {
-    await batchHistoryPage.goto();
-  });
+/**
+ * Signed-out half of the suite. `test.use` here opts this describe out of the
+ * shared authenticated context (the fixture builds a throwaway one instead), so
+ * it must live outside the describe below, whose beforeEach signs in.
+ */
+test.describe('Bảo mật & phân quyền — Batch History (chưa đăng nhập)', () => {
+  test.use({ storageState: { cookies: [], origins: [] } });
 
   /**
    * Steps:
@@ -13,14 +18,22 @@ test.describe('Bảo mật & phân quyền — Batch History', () => {
    * Expected:
    * Redirect về `/login`; không có dữ liệu batch nào bị lộ trước khi redirect.
    */
-  // TODO(manual/setup): requires clearing auth/storageState and re-navigating unauthenticated — cannot run with reused logged-in storageState
-  test.fixme(
+  test(
     'TC-BH-052 — direct access when unauthenticated redirects to login',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ page }) => {
-      await expect(page).toHaveURL(/\/login/);
+      await expectUnauthenticatedRedirect(page, Urls.BATCH_HISTORY, [
+        page.getByRole('table'),
+        page.getByRole('columnheader', { name: /batch number/i }),
+      ]);
     },
   );
+});
+
+test.describe('Bảo mật & phân quyền — Batch History', () => {
+  test.beforeEach(async ({ batchHistoryPage }) => {
+    await batchHistoryPage.goto();
+  });
 
   /**
    * Steps:
@@ -46,12 +59,13 @@ test.describe('Bảo mật & phân quyền — Batch History', () => {
    * Expected:
    * Truy cập bị từ chối/redirect; không có dữ liệu batch của store khác bị lộ.
    */
-  // TODO(manual/setup): requires navigating to a different store id the logged-in user has no access to, and verifying no data leaks — needs a known unauthorized storeId fixture
-  test.fixme(
+  test(
     'TC-BH-054 — cross-store access is blocked',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ page }) => {
-      await expect(page).not.toHaveURL(/\/pos\/\d+\/batch/);
+      await expectCrossStoreBlocked(page, (storeId) => `/pos/${storeId}/batch`);
+      // No ledger column headers either — the screen is not merely empty, it is absent.
+      await expect(page.getByRole('columnheader', { name: /batch number/i })).toHaveCount(0);
     },
   );
 

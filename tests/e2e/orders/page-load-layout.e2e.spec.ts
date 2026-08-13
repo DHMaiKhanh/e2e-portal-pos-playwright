@@ -29,7 +29,11 @@ test.describe('Tải trang & Bố cục — Orders', () => {
       await expect(ordersPage.pageHeading).toHaveText(/Order History/i);
       await expect(ordersPage.searchInput).toBeVisible();
       await expect(ordersPage.quickFilterCombobox).toBeVisible();
-      await expect(ordersPage.quickFilterCombobox).toContainText(/Today/i);
+      // BEHAVIOUR CHANGE (2026-08-12): the default date preset is now "Last 7
+      // Days" — the landing URL carries a 7-day dateAfter/dateBefore range. This
+      // assertion used to expect "Today". Confirm with the product team that the
+      // wider default is intended and not a regression.
+      await expect(ordersPage.quickFilterCombobox).toContainText(/Last 7 Days/i);
       await expect(ordersPage.dateRangeButton).toBeVisible();
       await expect(ordersPage.staffFilterButton).toBeVisible();
       await expect(ordersPage.staffFilterButton).toContainText(/All staff/i);
@@ -39,7 +43,8 @@ test.describe('Tải trang & Bố cục — Orders', () => {
       await expect(ordersPage.statusFilter).toContainText(/All status/i);
 
       await expect(page.getByRole('table')).toBeVisible();
-      await expect(page.getByText(/od id/i)).toBeVisible();
+      // Column header reads "ORDER ID" (was "OD ID").
+      await expect(page.getByText(/order id/i)).toBeVisible();
       await expect(page.getByText(/payment method/i)).toBeVisible();
       await expect(page.getByText(/staff/i).first()).toBeVisible();
       await expect(page.getByText(/customer/i).first()).toBeVisible();

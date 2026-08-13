@@ -1,5 +1,6 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
+import { Timeouts } from '@configs/constants/timeouts';
 
 test.describe('Staff Payroll tab — Payroll', () => {
   test.beforeEach(async ({ payrollPage }) => {
@@ -28,11 +29,50 @@ test.describe('Staff Payroll tab — Payroll', () => {
    * Steps: Open the pay-period combobox (e.g. "Jun 30, 2026 - Jun 30, 2026") and select a different period.
    * Expected: `periodId` in the URL updates; table data (Orders/Subtotal/Tip/Total Income) refreshes to reflect the newly selected period.
    */
-  // TODO(manual/setup): requires multiple pre-seeded pay periods and backend state to verify data refresh per period
-  test.fixme(
+  /**
+   * The periods are already seeded — the store has nine, from "Jul 20, 2026 -
+   * Jul 24, 2026" back to "May 4, 2026 - May 5, 2026". So the case only has to
+   * pick a different one and prove the screen followed.
+   */
+  test(
     'TC-PAY-061 — selecting a pay period reloads the staff summary',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
+    async ({ payrollPage, page }) => {
+      await payrollPage.waitForReady();
+      await payrollPage.waitForStaffPayrollRows();
+      const rowsOf = async (): Promise<string[]> =>
+        payrollPage.staffPayrollTable.rows.allInnerTexts();
+
+      const periodBefore = (await payrollPage.payPeriodCombobox.innerText()).trim();
+      const periodIdBefore = new URL(page.url()).searchParams.get('periodId');
+      const before = await rowsOf();
+      expect(before.length).toBeGreaterThan(0);
+
+      await payrollPage.payPeriodCombobox.click();
+      const options = page.getByRole('option');
+      await expect(options.first()).toBeVisible();
+      const labels = (await options.allInnerTexts()).map((label) => label.trim());
+      const other = labels.find((label) => label !== periodBefore);
+      expect(other, `only one pay period offered: ${labels.join(' | ')}`).toBeTruthy();
+
+      await page.getByRole('option', { name: other as string, exact: true }).click();
+      await payrollPage.waitForReady();
+
+      await test.step('The selection is reflected in the control and the URL', async () => {
+        await expect(payrollPage.payPeriodCombobox).toHaveText(other as string);
+        await expect
+          .poll(() => new URL(page.url()).searchParams.get('periodId'))
+          .not.toBe(periodIdBefore);
+      });
+
+      await test.step('The table reloads for the newly selected period', async () => {
+        // Different periods have different income, so the rendered summary must
+        // change — a table that stayed identical would mean the period was
+        // applied to the URL but never to the data.
+        await expect.poll(rowsOf).not.toEqual(before);
+        expect((await rowsOf()).length).toBeGreaterThan(0);
+      });
+    },
   );
 
   /**
@@ -63,8 +103,9 @@ test.describe('Staff Payroll tab — Payroll', () => {
     async ({ payrollPage }) => {
       await payrollPage.waitForReady();
       const rows = payrollPage.staffPayrollTable.rows;
-      const rowCount = await rows.count();
-      test.skip(rowCount === 0, 'No staff rows available to select');
+      // goToStaffPayrollTab settles on the rows, so this is a real assertion
+      // rather than the runtime skip it used to be.
+      await expect(rows.first()).toBeVisible();
       await expect(payrollPage.noStaffSelectedMessage).toBeVisible();
       const firstRowText = (await rows.first().innerText()).split('\n')[0]?.trim() ?? '';
       await payrollPage.selectStaffPayrollRow(firstRowText);
@@ -78,18 +119,42 @@ test.describe('Staff Payroll tab — Payroll', () => {
     async ({ payrollPage }) => {
       await payrollPage.waitForReady();
       const rows = payrollPage.staffPayrollTable.rows;
-      const rowCount = await rows.count();
-      test.skip(rowCount === 0, 'No staff rows available to search');
-      const firstRowFullName = (await rows.first().innerText()).split('\n')[0]?.trim() ?? '';
-      const partial = firstRowFullName.slice(0, Math.max(1, Math.min(3, firstRowFullName.length)));
+      await expect(rows.first()).toBeVisible();
+
+      // The NAME cell renders an avatar initial above the name, so its text is
+      // e.g. "E\nElise Terry". Take the last line — the earlier version read the
+      // first one and searched for "E El", which matches nobody.
+      const nameOf = (cellText: string): string =>
+        cellText.split('\n').pop()?.replace(/\s+/g, ' ').trim() ?? '';
+
+      const fullName = nameOf(await rows.first().getByRole('cell').first().innerText());
+      const partial = fullName.slice(0, Math.min(4, fullName.length));
+      expect(partial.length).toBeGreaterThan(0);
+
       await payrollPage.searchStaffName(partial);
-      const filteredRows = payrollPage.staffPayrollTable.rows;
-      const filteredCount = await filteredRows.count();
-      expect(filteredCount).toBeGreaterThan(0);
-      for (let i = 0; i < filteredCount; i++) {
-        const text = await filteredRows.nth(i).innerText();
-        expect(text.toLowerCase()).toContain(partial.toLowerCase());
-      }
+
+      // The search is debounced and refetches, so the unfiltered rows stay up
+      // briefly; poll until the rendered set actually reflects the term.
+      await expect
+        .poll(
+          async () => {
+            const names = (
+              await payrollPage.staffPayrollTable.rows.locator('td:first-child').allInnerTexts()
+            ).map(nameOf);
+            const matching = names.filter((n) =>
+              n.toLowerCase().includes(partial.toLowerCase()),
+            ).length;
+            return names.length > 0 && matching === names.length;
+          },
+          { timeout: Timeouts.MEDIUM },
+        )
+        .toBe(true);
+
+      const names = (
+        await payrollPage.staffPayrollTable.rows.locator('td:first-child').allInnerTexts()
+      ).map(nameOf);
+      expect(names.length).toBeGreaterThan(0);
+      expect(names).toContain(fullName);
     },
   );
 
@@ -97,10 +162,35 @@ test.describe('Staff Payroll tab — Payroll', () => {
    * Steps: Locate such a staff row (e.g. "Wendy" in sample data).
    * Expected: Row renders `0` for Orders and `$0.00` for all currency columns without errors or blank cells.
    */
-  // TODO(manual/setup): requires a seeded staff member with zero orders/income in the active pay period; not guaranteed in live DEV data
-  test.fixme(
+  /**
+   * Zero-income staff are not rare here — 19 of the 30 rows on page 1 have no
+   * orders in the active period — so the row is found rather than seeded.
+   */
+  test(
     'TC-PAY-066 — staff with zero orders/income still displays correctly',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
+    async ({ payrollPage }) => {
+      await payrollPage.waitForReady();
+      await payrollPage.waitForStaffPayrollRows();
+      const rows = await payrollPage.staffPayrollTable.rows.allInnerTexts();
+      expect(rows.length).toBeGreaterThan(0);
+
+      // Columns: NAME, ORDERS, SUBTOTAL, SUPPLY FEE, TIP, TOTAL INCOME.
+      const zeroRow = rows
+        .map((row) => row.split('\t').map((cell) => cell.trim()))
+        .find((cells) => cells[1] === '0');
+
+      expect(zeroRow, 'no staff with zero orders in the active period').toBeTruthy();
+      const cells = zeroRow as string[];
+
+      // The name is still there (the cell stacks an avatar initial above it).
+      expect(cells[0].split('\n').pop()?.trim().length ?? 0).toBeGreaterThan(0);
+      expect(cells[1]).toBe('0');
+
+      // And every money column reads $0.00 — not blank, not "-", not NaN.
+      for (const index of [2, 3, 4, 5]) {
+        expect(cells[index], `column ${index} of a zero-income row`).toBe('$0.00');
+      }
+    },
   );
 });

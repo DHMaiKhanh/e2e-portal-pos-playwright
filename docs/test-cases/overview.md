@@ -538,3 +538,16 @@
 **Kết quả mong đợi:** App ngay lập tức chuyển hướng tới /login và không render nội dung Overview nào — mục sidebar 'Overview', các thẻ POS ('Open POS #1 details'), số liệu 'Total Payment', encryption key, và control 'Generate Token' không bao giờ được hiển thị. Không có dữ liệu store nào được fetch hoặc lóe lên trước khi chuyển hướng.
 
 ---
+
+## Lịch sử chạy
+
+### 2026-08-12
+
+- Lệnh: `WORKERS=8 npx playwright test tests/e2e` (full suite, headless)
+- Kết quả màn này: 14 fail → **0 fail** (61 passed)
+- Thay đổi hành vi cần xác nhận với team sản phẩm:
+  - Root `/` **không còn redirect** về Overview của store. Nó render trang chọn ứng dụng Fastboy Portal ("Welcome back, … — Choose where you'd like to start" với POS / Payment / …). Kéo theo TC-OVW-002 và TC-OVW-034 (logo trên app rail có `href="/"` nên cũng về trang chọn app). Test đã cập nhật, vẫn giữ bất biến quan trọng: user đã đăng nhập không bị đá về `/login`.
+  - Nút thứ hai trên app rail đổi nhãn `Portal` → **`Payment`**.
+  - `customer-groups` biến mất khỏi sidebar (thành tab của màn Customers). Đã bỏ khỏi danh sách href mong đợi và bổ sung `report-config` vốn thiếu.
+- Sửa lỗi test: `merchantAddress` mã hoá định dạng địa chỉ Mỹ (`/,\s*[A-Z]{2},?\s*\d{5}/`) nên hỏng khi merchant đổi sang địa chỉ VN ("56A Le Khoi, Phu Thanh War, HCM, B, 70111, AR") — đổi sang khớp theo cấu trúc. TC-OVW-095/096 đọc số liệu bằng `textContent()`/`count()` vốn **không tự chờ**, nên đọc trúng lúc đang tải ("0 Total Devices", 0 card) — đã chờ card đầu tiên trước khi lấy mẫu.
+- Report chi tiết: `npm run report` (reports/html)

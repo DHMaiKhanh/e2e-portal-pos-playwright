@@ -93,7 +93,7 @@ test.describe('Kết hợp nhiều bộ lọc — Orders', () => {
       expect(await ordersPage.rowCount()).toBe(1);
 
       // Resetting status re-fetches and widens the result set.
-      await ordersPage.selectStatus('All status');
+      await ordersPage.selectStatus('All statuses');
       expect(await ordersPage.rowCount()).toBe(2);
 
       // Resetting payment method clears the URL filter but the app does not re-fetch

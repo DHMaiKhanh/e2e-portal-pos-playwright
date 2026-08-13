@@ -12,7 +12,12 @@ test.describe('Lịch sử Batch (Batch History) — Overview', () => {
     async ({ dashboardPage }) => {
       await expect(dashboardPage.batchHistorySection).toBeVisible();
       await expect(dashboardPage.batchHistorySection).toContainText(/Last 7 days/i);
-      await expect(dashboardPage.batchHistoryTable.or(dashboardPage.batchEmptyState)).toBeVisible();
+      // The block renders the table shell AND an inline "no batches" message when
+      // the range is empty, so this `.or()` matches both at once — take the first
+      // match rather than tripping strict mode on a perfectly healthy page.
+      await expect(
+        dashboardPage.batchHistoryTable.or(dashboardPage.batchEmptyState).first(),
+      ).toBeVisible();
     },
   );
 

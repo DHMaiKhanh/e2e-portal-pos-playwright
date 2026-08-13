@@ -13,12 +13,77 @@ test.describe('Khả năng tiếp cận (Accessibility) — Services', () => {
    * Expected:
    * Thứ tự focus hợp lý (theo thứ tự hiển thị); mọi nút có thể kích hoạt bằng bàn phím; trạng thái disabled được bỏ qua focus hoặc thông báo rõ là disabled cho trình đọc màn hình.
    */
-  // TODO(manual/setup): Requires manual keyboard focus-order verification (Tab/Shift+Tab traversal and screen-reader disabled-state announcement) — not reliably assertable via static DOM checks.
-  test.fixme(
+  /**
+   * Two of the three things the case asks for are DOM-observable, and the third
+   * was misjudged: focus order can be walked with real Tab presses, activation
+   * can be driven with Enter, and "announced as disabled to a screen reader" is
+   * an attribute question (`disabled`/`aria-disabled`), not a listening one.
+   *
+   * The reordering buttons write to shared state, so this exercises the
+   * keyboard path on a category whose controls are *disabled* — "Other", pinned
+   * last — plus focus traversal on a live row without activating anything.
+   */
+  test(
     'TC-SVC-080 — keyboard navigation through category action buttons',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ productsPage }) => {
-      await productsPage.waitForReady();
+    async ({ productsPage, page }) => {
+      await productsPage.switchToActiveTab();
+      const names = await productsPage.categoryNamesInOrder();
+      const target = names[1];
+
+      await test.step('Tab walks the row’s actions in display order', async () => {
+        await productsPage.hoverCategory(target);
+        await productsPage.categoryReorderHandle(target).focus();
+
+        // Display order within a row: reorder handle, name, to-first, up, down,
+        // to-last, edit.
+        const expectedOrder = [
+          productsPage.categoryButton(target),
+          productsPage.categoryMoveToFirstButton(target),
+          productsPage.categoryMoveUpButton(target),
+          productsPage.categoryMoveDownButton(target),
+          productsPage.categoryMoveToLastButton(target),
+        ];
+        for (const control of expectedOrder) {
+          await page.keyboard.press('Tab');
+          await expect(control.first()).toBeFocused();
+        }
+      });
+
+      await test.step('Disabled controls expose their state rather than hiding it', async () => {
+        await productsPage.hoverCategory('Other');
+        for (const control of [
+          productsPage.categoryMoveUpButton('Other'),
+          productsPage.categoryMoveDownButton('Other'),
+          productsPage.categoryMoveToFirstButton('Other'),
+          productsPage.categoryMoveToLastButton('Other'),
+        ]) {
+          if ((await control.count()) === 0) continue;
+          await expect(control).toBeDisabled();
+        }
+        // "Other" is rendered without a drag handle at all — the row carries an
+        // "Other is always last" label instead. Where a handle does exist it
+        // must announce its disabled state rather than just look inert.
+        const handle = productsPage.categoryReorderHandle('Other');
+        if ((await handle.count()) > 0) {
+          await expect(handle).toHaveAttribute('aria-disabled', 'true');
+        } else {
+          await expect(page.getByLabel(/other is always last/i).first()).toBeAttached();
+        }
+      });
+
+      await test.step('Enter activates a category button from the keyboard', async () => {
+        await productsPage.hoverCategory(target);
+        await productsPage.categoryButton(target).first().focus();
+        await page.keyboard.press('Enter');
+        // Selecting a category filters the table rather than navigating away.
+        await productsPage.waitForReady();
+        // `.first()` wraps the whole union: both sides can match at once, which
+        // trips strict mode on an unqualified `.or()`.
+        await expect(
+          productsPage.table.rows.first().or(productsPage.paginationFooter).first(),
+        ).toBeVisible();
+      });
     },
   );
 

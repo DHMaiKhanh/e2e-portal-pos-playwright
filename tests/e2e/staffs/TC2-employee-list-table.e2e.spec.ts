@@ -1,5 +1,6 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
+import { Urls } from '@constants/urls';
 
 test.describe('Bảng danh sách nhân viên (Table) — Staffs', () => {
   test.beforeEach(async ({ staffsPage }) => {
@@ -29,12 +30,80 @@ test.describe('Bảng danh sách nhân viên (Table) — Staffs', () => {
    *  Tên, phone (định dạng `(XXX) XXX-XXXX`), email, code, ngày gia nhập, trạng thái hiển thị
    *  chính xác.
    */
-  // TODO(manual/setup): requires a known staff's real source data (phone/email/code/join date)
-  // to compare row-by-row against, which is not available as static fixture data here.
-  test.fixme(
+  /**
+   * The "source data" is available at run time — it is the `/staffs` collection
+   * the screen itself fetches. Capturing that response and diffing it against
+   * the rendered cells is a real comparison against the source, and it also
+   * covers the transforms the table applies (name composition, phone
+   * formatting, the join date in the store's +7 timezone).
+   */
+  test(
     'TC-STF-011 — dữ liệu dòng khớp với thông tin nhân viên thực tế',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
+    async ({ staffsPage, page }) => {
+      const payloads: Array<{ member?: Array<Record<string, unknown>> }> = [];
+      page.on('response', async (response) => {
+        if (!/\/staffs\?/.test(response.url())) return;
+        await response
+          .json()
+          .then((json) => payloads.push(json))
+          .catch(() => undefined);
+      });
+
+      await staffsPage.goto();
+      await staffsPage.waitForReady();
+
+      const source = payloads.filter((p) => (p.member?.length ?? 0) > 0).pop();
+      expect(source, 'no populated /staffs response was captured').toBeTruthy();
+      const member = (source as { member: Array<Record<string, unknown>> }).member;
+
+      const rendered = await staffsPage.table.rows.allInnerTexts();
+      expect(rendered).toHaveLength(member.length);
+
+      for (const [index, record] of member.entries()) {
+        const cells = rendered[index].split('\t').map((cell) => cell.trim());
+        const [staff, phone, email, code, joinedAt, status] = cells;
+
+        // STAFF shows the nickname when there is one, otherwise the full name.
+        const expectedName =
+          (record.nickname as string) ||
+          `${(record.firstName as string) ?? ''} ${(record.lastName as string) ?? ''}`.trim();
+        expect(staff.split('\n')[0].trim(), `row ${index} STAFF`).toBe(expectedName);
+
+        expect(email, `row ${index} EMAIL`).toBe((record.email as string) || '');
+
+        // CODE is stored unpadded (321) and rendered zero-padded to 4 ("0321"),
+        // so compare the value rather than the string.
+        if (record.staffCode !== null && record.staffCode !== undefined && code !== '') {
+          expect(Number(code), `row ${index} CODE`).toBe(Number(record.staffCode));
+          expect(code, `row ${index} CODE padding`).toMatch(/^\d{4,}$/);
+        }
+
+        expect(status.toLowerCase(), `row ${index} STATUS`).toBe(
+          String(record.status ?? '').toLowerCase(),
+        );
+
+        if (phone) {
+          // Rendered as (XXX) XXX-XXXX regardless of how it is stored.
+          expect(phone, `row ${index} PHONE`).toMatch(/^\(\d{3}\) \d{3}-\d{4}$/);
+          expect(phone.replace(/\D/g, ''), `row ${index} PHONE digits`).toContain(
+            String(record.phone ?? '')
+              .replace(/\D/g, '')
+              .slice(-10),
+          );
+        }
+
+        if (record.createdAt) {
+          const expectedDate = new Date(record.createdAt as string).toLocaleDateString('en-US', {
+            timeZone: 'Asia/Ho_Chi_Minh',
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          });
+          expect(joinedAt, `row ${index} JOINED AT`).toContain(expectedDate);
+        }
+      }
+    },
   );
 
   test(
@@ -82,13 +151,38 @@ test.describe('Bảng danh sách nhân viên (Table) — Staffs', () => {
    * Expected:
    *  Trang cuối chỉ hiển thị số dòng còn lại (≤30), nút "Next" bị disable.
    */
-  // TODO(manual/setup): requires deterministic knowledge of total page count (data volume can
-  // change over time), so repeatedly clicking Next to reach a specific last page is not stable
-  // as a live assertion here.
-  test.fixme(
+  /**
+   * The page count does not need to be known in advance — the "n / m" indicator
+   * reports it, so the last page is derived rather than assumed. That keeps the
+   * case stable as the roster grows.
+   */
+  test(
     'TC-STF-014 — điều hướng tới trang cuối',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
+    async ({ staffsPage, page }) => {
+      await staffsPage.waitForReady();
+      const footer = (await staffsPage.resultsFooter.first().innerText()).trim();
+      const total = Number(footer.match(/of (\d+) results/i)?.[1]);
+      const lastPage = Number((await staffsPage.pageIndicator.first().innerText()).split('/')[1]);
+      expect(total).toBeGreaterThan(0);
+      expect(lastPage).toBeGreaterThan(1);
+
+      await page.goto(`${Urls.STAFFS}?page=${lastPage}&status=active&sort=pos_order`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await staffsPage.waitForReady();
+
+      const pageSize = 30;
+      const expectedRows = total - (lastPage - 1) * pageSize;
+      await expect(staffsPage.table.rows).toHaveCount(expectedRows);
+      expect(expectedRows).toBeLessThanOrEqual(pageSize);
+
+      await expect(staffsPage.pagination.nextButton).toBeDisabled();
+      await expect(staffsPage.pagination.prevButton).toBeEnabled();
+      await expect(staffsPage.pageIndicator.first()).toHaveText(
+        new RegExp(`^${lastPage}\\s*/\\s*${lastPage}$`),
+      );
+    },
   );
 
   test(

@@ -112,7 +112,9 @@ export class DashboardPage extends BasePage {
     this.appRail = page.getByRole('complementary');
     this.logoHomeLink = page.getByRole('link', { name: /fastboypay home/i });
     this.posAppButton = page.getByRole('button', { name: 'POS', exact: true });
-    this.portalAppButton = page.getByRole('button', { name: 'Portal', exact: true });
+    // The second app-rail button is labelled "Payment" — it was "Portal" before
+    // 2026-08-12. The property keeps its name so callers are untouched.
+    this.portalAppButton = page.getByRole('button', { name: 'Payment', exact: true });
     this.businessAppButton = page.getByRole('button', { name: 'Business', exact: true });
     this.giftCardAppButton = page.getByRole('button', { name: 'Gift Card', exact: true });
 
@@ -131,7 +133,15 @@ export class DashboardPage extends BasePage {
     // Merchant Information
     this.merchantInfoSection = page.getByText(/Merchant Information/);
     this.merchantEmail = page.getByText(/^\S+@\S+\.\S+$/);
-    this.merchantAddress = page.getByText(/,\s*[A-Z]{2},?\s*\d{5}/);
+    // Matched on structure, not on a US mailing format. The previous pattern
+    // (/,\s*[A-Z]{2},?\s*\d{5}/) assumed a two-letter state before a 5-digit ZIP
+    // and stopped matching once the seeded merchant moved to a non-US address:
+    //   "56A Le Khoi, Phu Thanh War, HCM, B, 70111, AR"
+    // What actually identifies the line is that it is comma-separated and
+    // carries a postal code, so key off that instead of a country's convention.
+    this.merchantAddress = page.getByText(
+      /^(?:[^,\n]+,\s*){2,}[^,\n]*\d{4,6}[^,\n]*(?:,[^,\n]+)*$/,
+    );
     this.merchantTimezone = page.getByText(/Timezone:\s*\S+/);
     this.merchantWhmcs = page.getByText(/WHMCS:\s*\d+/);
     this.merchantPackage = page.getByText(/Package:\s*\S/);

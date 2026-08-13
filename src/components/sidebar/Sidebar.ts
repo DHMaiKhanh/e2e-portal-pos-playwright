@@ -15,6 +15,36 @@ export class Sidebar extends BaseComponent {
     return this.root.getByRole('link', { name });
   }
 
+  /**
+   * The collapse/expand control.
+   *
+   * Present in the DOM at every width but only *visible* below the tablet
+   * breakpoint. Verified across 1920 / 1280 / 1024 / 900 / 768 / 375 on
+   * 2026-08-12: from 768px up the nav is a permanent 218px column with no
+   * user-facing collapse affordance, and at 375px the column is gone and this
+   * trigger opens the nav as an overlay drawer instead. Tests that expect a
+   * desktop collapse button are testing something the Portal does not have.
+   */
+  get toggle(): Locator {
+    return this.page.locator('[data-slot="sidebar-trigger"]').first();
+  }
+
+  /** The persistent nav column. Absent (count 0) at mobile widths. */
+  get panel(): Locator {
+    return this.page.locator('[data-slot="sidebar"]').first();
+  }
+
+  /**
+   * The overlay drawer the mobile toggle opens.
+   *
+   * The sheet *is* the sidebar element (`<div data-slot="sidebar" role="dialog">`)
+   * rather than a wrapper around one, so this matches the element itself — a
+   * `filter({ has: … })` looking for a nested sidebar finds nothing.
+   */
+  get mobileDrawer(): Locator {
+    return this.page.locator('[data-slot="sidebar"][role="dialog"]');
+  }
+
   /** Click a top-level nav item by its visible label. */
   async navigateTo(name: string | RegExp): Promise<void> {
     await this.item(name).first().click();

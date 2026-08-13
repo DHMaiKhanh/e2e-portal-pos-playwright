@@ -40,12 +40,21 @@ test.describe('Tìm kiếm (Search) — Services', () => {
     'TC-SVC-022 — clearing search keyword restores full list',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ productsPage }) => {
+      // Baseline read at run time rather than hardcoded. The catalogue is live:
+      // it was 259 when this was written, and any test that adds a service —
+      // TC-SVC-050 does, briefly — used to break this one from another file.
+      const unfilteredFooter = await productsPage.paginationFooterText();
+      const unfilteredPager = await productsPage.pageIndicatorText();
+      const total = Number(unfilteredFooter.match(/of (\d+) results/i)?.[1]);
+      expect(total).toBeGreaterThan(0);
+
       await productsPage.search('Diamond Pedicure');
+      const filtered = await productsPage.paginationFooterText();
+      expect(Number(filtered.match(/of (\d+) results/i)?.[1])).toBeLessThan(total);
+
       await productsPage.search('');
-      const footerText = await productsPage.paginationFooterText();
-      expect(footerText).toContain('of 259 results');
-      const pageIndicatorText = await productsPage.pageIndicatorText();
-      expect(pageIndicatorText).toMatch(/1 \/ 9/);
+      expect(await productsPage.paginationFooterText()).toBe(unfilteredFooter);
+      expect(await productsPage.pageIndicatorText()).toBe(unfilteredPager);
     },
   );
 

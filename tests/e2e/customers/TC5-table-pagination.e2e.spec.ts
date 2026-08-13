@@ -33,19 +33,25 @@ test.describe('Bảng dữ liệu & phân trang (Tables/lists) — Customers', (
     'TC-CUS-038 — a fully populated customer row formats each column correctly',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ customersPage }) => {
-      const rows = customersPage.table.rows;
-      const count = await rows.count();
-      for (let i = 0; i < count; i++) {
-        const row = rows.nth(i);
-        const phone = (await row.getByRole('cell').nth(1).textContent())?.trim() ?? '';
-        const cashback = (await row.getByRole('cell').nth(6).textContent())?.trim() ?? '';
-        if (phone !== '—' && cashback.startsWith('$')) {
-          expect(phone).toMatch(/^\(\d{3}\) \d{3}-\d{4}$/);
-          expect(cashback).toMatch(/^\$[\d,]+\.\d{2}$/);
-          return;
-        }
+      await customersPage.waitForReady();
+      const populated = (await customersPage.rowCells()).filter(
+        (cells) => cells[1] !== '—' && cells[6].startsWith('$'),
+      );
+
+      // The unconditional `test.skip(true, ...)` this replaces made the case a
+      // no-op: it ran the loop, and if a fully-populated row *was* found the
+      // early `return` skipped the skip — but any other outcome reported green
+      // without asserting anything.
+      expect(populated.length, 'no fully-populated customer row on page 1').toBeGreaterThan(0);
+
+      for (const cells of populated) {
+        expect(cells[1]).toMatch(/^\(\d{3}\) \d{3}-\d{4}$/);
+        expect(cells[6]).toMatch(/^\$[\d,]+\.\d{2}$/);
+        // TOTAL VISITS / POINTS are deliberately not asserted as integers here:
+        // rows in this store render "—" for them, and whether that placeholder
+        // is correct is the subject of TC-CUS-039 and TC-CUS-050 rather than of
+        // this column-format case.
       }
-      test.skip(true, 'No fully-populated row found on page 1');
     },
   );
 
@@ -91,10 +97,10 @@ test.describe('Bảng dữ liệu & phân trang (Tables/lists) — Customers', (
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ customersPage, page }) => {
       await customersPage.waitForReady();
-      const totalPages = Number(
-        (await customersPage.pageIndicator.textContent())?.split('/')[1]?.trim(),
-      );
-      test.skip(!totalPages, 'Could not read total page count');
+      // totalPages() asserts the indicator is readable rather than skipping when
+      // it is not — an unreadable pager is a broken screen, not a missing
+      // precondition.
+      const totalPages = await customersPage.totalPages();
 
       await page.goto(`${Urls.CUSTOMERS}?page=${totalPages}&orderCreatedAt=desc`, {
         waitUntil: 'domcontentloaded',

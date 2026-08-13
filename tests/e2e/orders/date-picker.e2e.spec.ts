@@ -47,8 +47,9 @@ test.describe('Bộ lọc Date Picker (tuỳ chỉnh) — Orders', () => {
       const url = new URL(page.url());
       expect(url.searchParams.get('dateAfter')).toMatch(/-02$/);
       expect(url.searchParams.get('dateBefore')).toMatch(/-06$/);
-      // Quick filter no longer reflects the default "Today" once a custom range is set.
-      await expect(ordersPage.quickFilterCombobox).not.toContainText(/today/i);
+      // Quick filter no longer reflects a canned preset once a custom range is set.
+      // (The default preset is "Last 7 Days" as of 2026-08-12, previously "Today".)
+      await expect(ordersPage.quickFilterCombobox).not.toContainText(/today|last \d+ days/i);
 
       for (const order of orders) {
         await expect(ordersPage.table.rowContaining(order.orderCode)).toBeVisible();

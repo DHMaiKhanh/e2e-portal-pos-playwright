@@ -63,12 +63,33 @@ export class OrdersPage extends BasePage {
     this.searchInput = page.getByPlaceholder(/search by order id, customer name, phone/i);
     this.createButton = page.getByRole('button', { name: /new order|create/i });
     // Custom Radix `Select` triggers — not native `<select>`, and expose no accessible
-    // name matching their current value, so we key off the app's stable `data-slot`.
-    this.statusFilter = page.locator('[data-slot="order-filters-status"]');
+    // name matching their current value.
+    //
+    // The app used to give each one its own `data-slot` (order-filters-status,
+    // -payment-method, -date-preset); those were dropped when the filter bar was
+    // reworked and all three now share `data-slot="filter-select-trigger"`. Only
+    // the date and staff filters kept a dedicated slot. Other screens hang an
+    // `aria-label` on this shared slot (see StaffsPage / ServicesPage), but the
+    // Orders bar does not, so position within the bar is the only stable key.
+    //
+    // Filter bar, in DOM order:
+    //   filter-select-trigger  [0]  date preset ("Last 7 Days")
+    //   order-filters-date          the resolved range ("Aug 6, 2026 - Aug 12, 2026")
+    //   order-filters-staff         staff picker ("All staff")
+    //   filter-select-trigger  [1]  payment method ("All methods")
+    //   filter-select-trigger  [2]  status ("All statuses")
+    //
+    // Keyed by index rather than current text on purpose: the label changes to
+    // the selected value once a filter is applied, so `hasText` would stop
+    // matching exactly when a test needs it most.
+    const filterSelect = (index: number) =>
+      page.locator('[data-slot="filter-select-trigger"]').nth(index);
+
+    this.statusFilter = filterSelect(2);
 
     this.pageHeading = page.locator('[data-slot="page-title"]');
 
-    this.quickFilterCombobox = page.locator('[data-slot="order-filters-date-preset"]');
+    this.quickFilterCombobox = filterSelect(0);
     // Label is dynamic (shows the current date/range, e.g. "Jul 7, 2026" or a range).
     this.dateRangeButton = page.getByRole('button', { name: /\d{4}/ });
     this.datePickerDialog = page.getByRole('dialog');
@@ -77,7 +98,7 @@ export class OrdersPage extends BasePage {
     this.staffFilterPanel = page.getByRole('menu').or(page.getByRole('dialog'));
     this.allStaffOption = page.getByRole('option', { name: /^all staff$/i });
 
-    this.paymentMethodCombobox = page.locator('[data-slot="order-filters-payment-method"]');
+    this.paymentMethodCombobox = filterSelect(1);
 
     this.previousPageButton = page.getByRole('button', { name: /previous/i });
     this.nextPageButton = page.getByRole('button', { name: /^next$/i });
@@ -91,12 +112,21 @@ export class OrdersPage extends BasePage {
     this.backToOrdersLink = page.getByRole('link', { name: /back to orders/i });
     this.receiptButton = page.getByRole('button', { name: 'Receipt', exact: true });
     this.reOpenOrderButton = page.getByRole('button', { name: /re-open order/i });
-    this.orderInformationSection = page.getByText(/order information/i);
-    this.serviceDetailsSection = page.getByText(/service details\s*&\s*tip/i);
-    this.paymentDetailsSection = page.getByText(/payment details/i);
-    this.activityLogSection = page.getByText(/activity log/i);
-    this.orderSummarySection = page.getByText(/order summary/i);
-    this.cancelInformationSection = page.getByText(/cancel information/i);
+    // Detail sections are cards; match their title element rather than any text
+    // on the page. A bare getByText(/payment details/i) also matches the
+    // transaction rows inside the card, which trips strict mode.
+    //
+    // "Service Details" lost its "& Tip" suffix as of 2026-08-12 — the tip
+    // breakdown moved out into its own "Tip Breakdown" card.
+    const cardTitle = (name: RegExp) =>
+      page.locator('[data-slot="card-title"]').filter({ hasText: name });
+
+    this.orderInformationSection = cardTitle(/order information/i);
+    this.serviceDetailsSection = cardTitle(/service details/i);
+    this.paymentDetailsSection = cardTitle(/payment details/i);
+    this.activityLogSection = cardTitle(/activity log/i);
+    this.orderSummarySection = cardTitle(/order summary/i);
+    this.cancelInformationSection = cardTitle(/cancel information/i);
     this.cancelInformationEmptyState = page.getByText(/no cancel information/i);
     this.customerPlaceholder = page.getByText(/no customer is available/i);
     this.orderNotePlaceholder = page.getByText(/no note is available\.?/i);
@@ -106,8 +136,10 @@ export class OrdersPage extends BasePage {
   async waitForReady(): Promise<void> {
     await expect(this.searchInput).toBeVisible();
     // Rows render as animated skeletons while data loads; wait for those to clear
-    // so callers don't read/count placeholder cells as real data.
-    await expect(this.page.locator('[data-slot="skeleton"]')).toHaveCount(0);
+    // so callers don't read/count placeholder cells as real data. Scoped to
+    // `:visible` like the other list screens — a table that keeps hidden
+    // skeleton nodes mounted would otherwise stall this wait forever.
+    await expect(this.page.locator('[data-slot="skeleton"]:visible')).toHaveCount(0);
   }
 
   /**
@@ -179,6 +211,54 @@ export class OrdersPage extends BasePage {
     return this.table.rowCount();
   }
 
+  /**
+   * Guarantee the list has rows to work with, widening the window if it does not.
+   *
+   * The screen opens on a "Last 7 Days" preset, so a quiet week would leave the
+   * table empty. Several cases reacted to that by skipping themselves, which
+   * meant a genuinely broken list also reported as "skipped, no data". Widening
+   * to 30 days first turns the precondition into something the test can
+   * establish rather than something it has to hope for — and if 30 days of a
+   * live store still has no orders, that is a failure worth seeing.
+   */
+  async ensureRowsPresent(): Promise<void> {
+    await this.waitForReady();
+    if ((await this.rowCount()) === 0) {
+      await this.selectQuickFilter('Last 30 Days');
+    }
+    await expect(
+      this.table.rows.first(),
+      'no orders in the last 30 days — cannot exercise the order list',
+    ).toBeVisible();
+  }
+
+  /** CUSTOMER is the 4th column; it stacks "name" over "phone", or shows "—". */
+  customerCell(rowIndex: number): Locator {
+    return this.table.rows.nth(rowIndex).getByRole('cell').nth(3);
+  }
+
+  /**
+   * A customer name to search by, found by walking pages.
+   *
+   * Most orders in this store are walk-ins with no customer attached, so page 1
+   * is not guaranteed to hold a named one — the reason the search case used to
+   * skip. Scanning a bounded number of pages makes it deterministic without
+   * depending on which orders happen to be recent.
+   */
+  async findCustomerNameToSearch(maxPages = 5): Promise<string | null> {
+    for (let pageNumber = 1; pageNumber <= maxPages; pageNumber++) {
+      const cells = await this.table.rows.locator('td:nth-child(4)').allInnerTexts();
+      for (const text of cells) {
+        const name = text.split('\n')[0]?.trim() ?? '';
+        if (name && name !== '—') return name;
+      }
+      if (await this.nextPageButton.isDisabled()) break;
+      await this.goToNextPage();
+      await this.waitForReady();
+    }
+    return null;
+  }
+
   // --- Filters ---
 
   async selectQuickFilter(
@@ -233,29 +313,35 @@ export class OrdersPage extends BasePage {
   }
 
   async selectPaymentMethod(
-    method: 'All method' | 'Card' | 'Cash' | 'Gift Card' | 'Other',
+    method: 'All methods' | 'Card' | 'Cash' | 'Gift Card' | 'Other',
   ): Promise<void> {
     await this.chooseOption(this.paymentMethodCombobox, method);
   }
 
   /**
-   * Resets the payment method to "All method". Unlike picking a concrete method,
+   * Resets the payment method to "All methods". Unlike picking a concrete method,
    * the app clears the `paymentMethod` filter on the URL WITHOUT issuing a new
    * `/orders?` request, so we wait on the URL rather than a network response.
    */
   async clearPaymentMethod(): Promise<void> {
     await this.paymentMethodCombobox.click();
-    await this.page.getByRole('option', { name: 'All method', exact: true }).click();
+    await this.page.getByRole('option', { name: 'All methods', exact: true }).click();
     await this.page.waitForURL(/paymentMethod=all/);
   }
 
+  /**
+   * Option labels are read off the live Select. Kept in sync with the app on
+   * 2026-08-12: the reset option is "All statuses" (was "All status") and
+   * "Pending" was added.
+   */
   async selectStatus(
     status:
-      | 'All status'
+      | 'All statuses'
       | 'Cancel Issue'
       | 'Canceled'
       | 'Canceling'
       | 'Partial Refunded'
+      | 'Pending'
       | 'Refund Issue'
       | 'Refunded'
       | 'Refunding'

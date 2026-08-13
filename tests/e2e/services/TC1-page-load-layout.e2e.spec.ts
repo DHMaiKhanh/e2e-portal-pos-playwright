@@ -55,17 +55,33 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Services', () =
    * tìm kiếm vẫn giữ nguyên (nếu không được lưu, kết quả mong đợi là quay lại trạng thái mặc định
    * "Active" — cần xác minh hành vi thực tế).
    */
-  // TODO(manual/setup): Expected behavior explicitly depends on whether tab/search state is persisted
-  // via URL/query params, which needs live verification against the actual implementation before a
-  // reliable automated assertion can be written.
-  test.fixme(
+  /**
+   * Live verification settled the open question: the screen *does* persist both
+   * through the URL — a search writes `?name=<term>&page=1`, and the Inactive
+   * tab adds `categoryStatus=inactive`. So a reload is expected to come back to
+   * the same view, not to the "Active" default.
+   */
+  test(
     'TC-SVC-003 — reload (F5) preserves tab/search state',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ productsPage, page }) => {
       await productsPage.switchToInactiveTab();
       await productsPage.search('test');
-      await page.reload();
+
+      const urlBefore = page.url();
+      expect(urlBefore).toContain('name=test');
+      expect(urlBefore).toContain('categoryStatus=inactive');
+      const rowsBefore = await productsPage.table.rows.allInnerTexts();
+
+      await page.reload({ waitUntil: 'domcontentloaded' });
       await productsPage.waitForReady();
+
+      expect(page.url()).toBe(urlBefore);
+      await expect(productsPage.searchInput).toHaveValue('test');
+      await expect(productsPage.inactiveTab).toHaveAttribute('data-state', 'active');
+      await expect(productsPage.table.rows).toHaveText(rowsBefore, {
+        useInnerText: true,
+      });
     },
   );
 
