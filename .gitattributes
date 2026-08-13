@@ -1,0 +1,20 @@
+# The repo is LF-only: .editorconfig sets end_of_line = lf and .prettierrc sets
+# endOfLine: "lf", so the eslint-plugin-prettier rule flags every line of a CRLF
+# file ("Delete `␍`"). Without this file, a Windows checkout with
+# core.autocrlf=true rewrites the working tree to CRLF and the whole repo lights
+# up red in the editor. `eol=lf` pins the working tree to LF regardless of each
+# developer's core.autocrlf setting.
+* text=auto eol=lf
+
+# Playwright screenshot baselines and any other binaries: never touch the bytes.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.pdf binary
+*.xlsx binary
+*.zip binary
+*.ico binary
+*.woff binary
+*.woff2 binary
