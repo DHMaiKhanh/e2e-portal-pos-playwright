@@ -40,6 +40,13 @@ npm run report           # open the HTML report
 npm run report:allure    # generate + open Allure report
 ```
 
+## CI
+
+The suite runs on Jenkins via the [Jenkinsfile](Jenkinsfile) at the repo root —
+Playwright in a Docker container, env config and the captured login session
+supplied as Jenkins credentials, with JUnit + HTML + Allure published per build.
+Setup instructions (plugins, credentials, job creation): [docs/jenkins.md](docs/jenkins.md).
+
 ## Project structure
 
 ```
