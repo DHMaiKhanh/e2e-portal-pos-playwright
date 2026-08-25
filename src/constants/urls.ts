@@ -17,9 +17,13 @@ export const Urls = {
   ORDERS: `/pos/${store}/orders`,
   PRODUCTS: `/pos/${store}/services`,
   CUSTOMERS: `/pos/${store}/customers`,
-  REPORTS: `/pos/${store}/income`,
+  INCOME: `/pos/${store}/income`,
   SETTINGS: `/pos/${store}/setting`,
   PAYROLL: `/pos/${store}/payroll`,
   BATCH_HISTORY: `/pos/${store}/batch`,
   STAFFS: `/pos/${store}/staffs`,
+  // Internal/admin routes — NOT store-scoped: they span every merchant, so no
+  // `/pos/<id>/` segment. `/pos/merchants` self-normalises to `?tab=overview`.
+  MERCHANTS: '/pos/merchants',
+  ONBOARDING: '/pos/onboarding',
 } as const;
