@@ -46,6 +46,15 @@ The suite runs on Jenkins via the [Jenkinsfile](Jenkinsfile) at the repo root â€
 Playwright in a Docker container, env config and the captured login session
 supplied as Jenkins credentials, with JUnit + HTML + Allure published per build.
 Setup instructions (plugins, credentials, job creation): [docs/jenkins.md](docs/jenkins.md).
+New to Docker and Jenkins? Start here instead â€” every step from installing Docker
+to a green build: [docs/jenkins-getting-started.md](docs/jenkins-getting-started.md).
+
+No Jenkins yet? [ci/jenkins/](ci/jenkins/) brings one up with every required
+plugin and the Docker CLI already baked in:
+
+```bash
+docker compose -f ci/jenkins/docker-compose.yml up -d --build   # http://localhost:8090
+```
 
 ## Project structure
 

@@ -1,0 +1,581 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dựng Jenkins cho Portal POS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+<style>
+:root{
+  --bg:#F1F5F6; --surface:#FFFFFF; --surface-2:#E6EEEF; --surface-3:#DCE8EA;
+  --ink:#0F1719; --ink-2:#54666B; --ink-3:#7C8F94;
+  --line:#D2DFE2; --line-strong:#B4C7CB;
+  --accent:#0B6E75; --accent-soft:#D8ECEC; --accent-line:#8DC4C6;
+  --ok:#1D6FD1; --warn:#A66A00; --warn-soft:#F7EBD3;
+  --bad:#B32D24;
+  --shadow:0 1px 2px rgba(15,23,25,.05), 0 8px 24px -16px rgba(15,23,25,.28);
+  --sans:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --display:"Be Vietnam Pro","IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"JetBrains Mono","Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1315; --surface:#141D20; --surface-2:#1B2528; --surface-3:#223034;
+    --ink:#E4ECED; --ink-2:#93A5AA; --ink-3:#72868B;
+    --line:#28373A; --line-strong:#3A4C50;
+    --accent:#45C4BA; --accent-soft:#12302F; --accent-line:#2E6C69;
+    --ok:#6BA8F0; --warn:#D9A73E; --warn-soft:#2C2415;
+    --bad:#E8776C;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1315; --surface:#141D20; --surface-2:#1B2528; --surface-3:#223034;
+  --ink:#E4ECED; --ink-2:#93A5AA; --ink-3:#72868B;
+  --line:#28373A; --line-strong:#3A4C50;
+  --accent:#45C4BA; --accent-soft:#12302F; --accent-line:#2E6C69;
+  --ok:#6BA8F0; --warn:#D9A73E; --warn-soft:#2C2415;
+  --bad:#E8776C;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 10px 28px -18px rgba(0,0,0,.9);
+}
+
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0; background:var(--bg); color:var(--ink);
+  font:400 16px/1.68 var(--sans); -webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display); text-wrap:balance; margin:0; letter-spacing:-.015em}
+p{margin:0}
+a{color:var(--accent); text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--accent); outline-offset:3px; border-radius:3px}
+code{font:500 .87em/1.5 var(--mono); background:var(--surface-2); border:1px solid var(--line);
+  padding:.1em .38em; border-radius:5px; word-break:break-word}
+
+.masthead{border-bottom:1px solid var(--line); background:var(--surface)}
+.masthead__in{max-width:1120px; margin:0 auto; padding:52px 28px 40px}
+.eyebrow{font:500 11.5px/1 var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--accent)}
+h1{font-size:clamp(32px,5vw,46px); font-weight:700; line-height:1.1; margin:16px 0 0}
+.lede{margin-top:16px; max-width:64ch; font-size:17.5px; color:var(--ink-2)}
+.facts{display:flex; flex-wrap:wrap; gap:0 30px; margin:26px 0 0; padding-top:22px; border-top:1px solid var(--line)}
+.fact{display:flex; flex-direction:column; gap:3px; padding:4px 0}
+.fact dt{font:500 10.5px/1 var(--mono); letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3)}
+.fact dd{margin:0; font:500 13.5px/1.4 var(--mono); color:var(--ink); font-variant-numeric:tabular-nums}
+
+.wrap{max-width:1120px; margin:0 auto; padding:0 28px 110px;
+  display:grid; grid-template-columns:236px minmax(0,1fr); gap:0 60px; align-items:start}
+.rail{position:sticky; top:28px; padding-top:44px}
+.rail__title{font:500 10.5px/1 var(--mono); letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-3); margin-bottom:14px}
+.rail ol{list-style:none; margin:0; padding:0; display:flex; flex-direction:column}
+.rail li{position:relative; padding:0 0 0 26px}
+.rail li::before{content:""; position:absolute; left:5px; top:20px; bottom:-2px; width:1px; background:var(--line)}
+.rail li:last-child::before{display:none}
+.rail a{display:block; padding:7px 0; font-size:14px; text-decoration:none; color:var(--ink-2); line-height:1.4}
+.rail a:hover{color:var(--accent)}
+.rail .dot{position:absolute; left:0; top:13px; width:11px; height:11px; border-radius:50%;
+  border:2px solid var(--line-strong); background:var(--surface)}
+.rail li[data-state="done"] .dot{background:var(--accent); border-color:var(--accent)}
+.rail li[data-state="now"] .dot{border-color:var(--accent); background:var(--surface);
+  box-shadow:0 0 0 4px var(--accent-soft)}
+.rail li[data-state="now"] a{color:var(--ink); font-weight:600}
+
+.main{padding-top:44px; min-width:0; max-width:74ch}
+.sec{scroll-margin-top:24px}
+.sec + .sec{margin-top:56px}
+.sec__head{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap}
+.stepno{font:700 12px/1 var(--mono); color:var(--accent); letter-spacing:.06em; flex:none}
+h2{font-size:25px; font-weight:600; line-height:1.25}
+h3{font-size:16.5px; font-weight:600; margin-top:30px}
+.sec > p{margin-top:16px}
+
+.chip{display:inline-flex; align-items:center; flex:none;
+  font:500 11px/1 var(--mono); letter-spacing:.06em; text-transform:uppercase;
+  padding:5px 9px; border-radius:999px; border:1px solid transparent}
+.chip--done{background:var(--accent-soft); color:var(--accent); border-color:var(--accent-line)}
+.chip--now{background:var(--warn-soft); color:var(--warn); border-color:currentColor}
+.chip--todo{background:var(--surface-2); color:var(--ink-3); border-color:var(--line)}
+
+.why{border-left:2px solid var(--accent-line); padding:2px 0 2px 18px; color:var(--ink-2); font-size:15.5px}
+.why b{color:var(--ink); font-weight:600}
+
+.note{display:grid; grid-template-columns:auto minmax(0,1fr); gap:0 13px;
+  padding:15px 17px; border-radius:9px; font-size:15px; border:1px solid; align-items:start; margin-top:22px}
+.note__tag{font:700 10.5px/1.55 var(--mono); letter-spacing:.09em; text-transform:uppercase; white-space:nowrap}
+.note--warn{background:var(--warn-soft); border-color:var(--warn); color:var(--ink)}
+.note--warn .note__tag{color:var(--warn)}
+.note--check{background:var(--accent-soft); border-color:var(--accent-line); color:var(--ink)}
+.note--check .note__tag{color:var(--accent)}
+
+.trail{display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin-top:20px;
+  padding:11px 14px; background:var(--surface); border:1px solid var(--line); border-radius:9px}
+.trail span{font:500 13px/1.4 var(--mono)}
+.trail i{font-style:normal; color:var(--ink-3)}
+
+.tbl-scroll{overflow-x:auto; margin-top:20px; border:1px solid var(--line); border-radius:9px; background:var(--surface)}
+table{border-collapse:collapse; width:100%; font-size:14.5px; min-width:440px}
+th,td{text-align:left; padding:11px 15px; border-bottom:1px solid var(--line); vertical-align:top}
+tr:last-child td{border-bottom:0}
+th{font:500 10.5px/1.4 var(--mono); letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-3); background:var(--surface-2); white-space:nowrap}
+td code{background:transparent; border:0; padding:0; font-weight:500; color:var(--accent)}
+
+.term{margin-top:20px; background:#101A1C; border:1px solid #24373A; border-radius:9px; overflow:hidden}
+.term__bar{padding:9px 14px; border-bottom:1px solid #24373A}
+.term__bar em{font:500 11px/1 var(--mono); letter-spacing:.08em; text-transform:uppercase;
+  color:#7F9599; font-style:normal}
+.term pre{margin:0; padding:15px 17px; overflow-x:auto; font:400 13.4px/1.85 var(--mono); color:#D7E4E4}
+.term .c{color:#7F9599}
+.term .k{color:#5FD3C7}
+
+.shot{margin:22px 0 0}
+.shot__frame{border:1px solid var(--line); border-radius:10px; overflow:hidden;
+  background:var(--surface-2); box-shadow:var(--shadow)}
+.shot__frame img{display:block; width:100%; height:auto}
+.shot__frame.is-empty{border:1px dashed var(--line-strong); box-shadow:none; min-height:128px;
+  display:grid; place-items:center; padding:22px; text-align:center}
+.shot__frame.is-empty::after{content:"Khe ảnh trống — lưu screenshot thành  " attr(data-file);
+  font:500 12.5px/1.7 var(--mono); color:var(--ink-3); word-break:break-all; white-space:pre-wrap}
+.shot figcaption{margin-top:10px; font-size:13.5px; color:var(--ink-2); display:flex; gap:9px}
+.shot__n{font:700 11px/1.55 var(--mono); letter-spacing:.06em; text-transform:uppercase;
+  color:var(--accent); flex:none}
+
+.stages{display:grid; gap:1px; margin-top:22px; background:var(--line);
+  border:1px solid var(--line); border-radius:9px; overflow:hidden;
+  grid-template-columns:repeat(auto-fit,minmax(148px,1fr))}
+.stage{background:var(--surface); padding:14px 15px; display:flex; flex-direction:column; gap:5px}
+.stage b{font:500 12.5px/1.3 var(--mono); color:var(--accent)}
+.stage span{font-size:13px; color:var(--ink-2); line-height:1.5}
+
+.builds{display:flex; flex-direction:column; gap:1px; margin-top:20px;
+  background:var(--line); border:1px solid var(--line); border-radius:9px; overflow:hidden}
+.build{background:var(--surface); padding:14px 16px; display:grid;
+  grid-template-columns:auto minmax(0,1fr); gap:0 14px; align-items:start}
+.orb{width:11px; height:11px; border-radius:50%; margin-top:6px}
+.build b{font:500 12.5px/1.55 var(--mono); display:block}
+.build span{font-size:14.5px; color:var(--ink-2)}
+
+.check{list-style:none; margin:20px 0 0; padding:0; display:flex; flex-direction:column; gap:1px;
+  background:var(--line); border:1px solid var(--line); border-radius:9px; overflow:hidden}
+.check li{background:var(--surface); padding:11px 16px; font-size:14.5px; color:var(--ink-2);
+  display:grid; grid-template-columns:auto minmax(0,1fr); gap:0 12px; align-items:baseline}
+.check li::before{content:"●"; color:var(--accent); font-size:13px}
+
+ul.plain{margin:16px 0 0; padding-left:20px; display:flex; flex-direction:column; gap:9px; font-size:15.5px}
+ul.plain li::marker{color:var(--ink-3)}
+
+footer{border-top:1px solid var(--line); margin-top:34px; padding:26px 0 0;
+  font-size:13.5px; color:var(--ink-3)}
+
+@media (max-width:900px){
+  .wrap{grid-template-columns:1fr; gap:0}
+  .rail{position:static; padding-top:32px}
+  .rail ol{flex-direction:row; flex-wrap:wrap; gap:0 6px}
+  .rail li{padding:0 0 0 20px}
+  .rail li::before{display:none}
+  .rail .dot{top:11px}
+  .main{padding-top:32px; max-width:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none !important; transition:none !important}}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="masthead__in">
+    <div class="eyebrow">Runbook · Portal POS E2E</div>
+    <h1>Dựng Jenkins cho Portal POS</h1>
+    <p class="lede">Sáu bước để suite Playwright chạy được trên Jenkins cục bộ. Nền hạ tầng đã xong;
+      phần còn lại là hai secret, một job, và một lần build thử.</p>
+    <dl class="facts">
+      <div class="fact"><dt>Jenkins</dt><dd>2.568.2</dd></div>
+      <div class="fact"><dt>Giao diện</dt><dd>localhost:8090</dd></div>
+      <div class="fact"><dt>Container</dt><dd>jenkins + jenkins-dind</dd></div>
+      <div class="fact"><dt>Môi trường đích</dt><dd>local → v2.dev-fastboypay.com</dd></div>
+      <div class="fact"><dt>Cập nhật</dt><dd>25/08/2026</dd></div>
+    </dl>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <nav class="rail" aria-label="Các bước">
+    <div class="rail__title">Tiến độ</div>
+    <ol>
+      <li data-state="done"><span class="dot"></span><a href="#nen">Nền hạ tầng</a></li>
+      <li data-state="done"><span class="dot"></span><a href="#b1">1 · Tool Allure</a></li>
+      <li data-state="now"><span class="dot"></span><a href="#b2">2 · Chụp lại session</a></li>
+      <li data-state="todo"><span class="dot"></span><a href="#b3">3 · Hai credential</a></li>
+      <li data-state="todo"><span class="dot"></span><a href="#b4">4 · Tạo job</a></li>
+      <li data-state="todo"><span class="dot"></span><a href="#b5">5 · Build lần đầu</a></li>
+      <li data-state="todo"><span class="dot"></span><a href="#b6">6 · Đọc kết quả</a></li>
+      <li data-state="todo"><span class="dot"></span><a href="#tra-cuu">Tra cứu nhanh</a></li>
+    </ol>
+  </nav>
+
+  <main class="main">
+
+    <section class="sec" id="nen">
+      <div class="sec__head"><h2>Nền hạ tầng</h2><span class="chip chip--done">Xong</span></div>
+      <p>Phần này đã chạy, không phải đụng lại. Ghi ra đây để sau này dựng lại trên máy khác thì biết
+        điểm xuất phát ở đâu.</p>
+      <ul class="check">
+        <li><span>Docker Desktop chạy, WSL2 được cấp ≥ 8GB RAM</span></li>
+        <li><span><code>docker compose -f ci/jenkins/docker-compose.yml up -d --build</code> → 2 container sống</span></li>
+        <li><span>Wizard lần đầu đã qua, đã tạo user admin</span></li>
+        <li><span>10 plugin cài sẵn từ <code>ci/jenkins/plugins.txt</code> — không phải bấm tay cái nào</span></li>
+        <li><span><code>Jenkinsfile</code> đã nằm trên <code>origin/main</code>, local không lệch commit</span></li>
+      </ul>
+
+      <figure class="shot">
+        <div class="shot__frame" data-file="docs/images/jenkins/01-welcome.png">
+          <img src="images/jenkins/01-welcome.png" loading="lazy"
+               alt="Trang chủ Jenkins sau khi hoàn tất wizard, chưa có job nào"
+               onerror="this.parentNode.classList.add('is-empty');this.remove();">
+        </div>
+        <figcaption><span class="shot__n">Ảnh 1</span>
+          <span>Trang chủ sau wizard. Build Queue rỗng, Build Executor 0/2 — Jenkins sẵn sàng nhưng chưa có job nào.</span></figcaption>
+      </figure>
+
+      <p class="why" style="margin-top:24px"><b>Vì sao là Docker-in-Docker</b> chứ không mount
+        <code>/var/run/docker.sock</code> như hướng dẫn thường thấy trên mạng: <code>Jenkinsfile</code> dùng
+        <code>agent { docker { … } }</code>, tức Jenkins sẽ bind-mount workspace vào container Playwright.
+        Nếu daemon là daemon của host, nó resolve đường dẫn đó theo filesystem host → workspace rỗng,
+        checkout biến mất, build đỏ khó hiểu.</p>
+    </section>
+
+    <section class="sec" id="b1">
+      <div class="sec__head"><span class="stepno">BƯỚC 1</span><h2>Khai báo tool Allure</h2>
+        <span class="chip chip--done">Xong</span></div>
+
+      <p class="why" style="margin-top:16px"><b>Tại sao cần.</b> Reporter <code>allure-playwright</code>
+        chỉ ghi ra <code>reports/allure-results/</code> — JSON và attachment thô, hàng chục nghìn file, mắt
+        người không đọc được. Phải có binary <code>allure generate</code> mới dựng thành site HTML. Plugin
+        <code>allure-jenkins-plugin</code> chỉ làm phần gọi binary rồi gắn link vào trang build; bản thân
+        binary là app Java riêng, plugin không kèm theo.</p>
+
+      <div class="trail">
+        <span>Manage Jenkins</span><i>→</i><span>Tools</span><i>→</i><span>Allure Commandline installations</span>
+      </div>
+
+      <figure class="shot">
+        <div class="shot__frame" data-file="docs/images/jenkins/02-tools.png">
+          <img src="images/jenkins/02-tools.png" loading="lazy"
+               alt="Trang Manage Jenkins Tools, phần đầu với Maven Configuration và Git installations"
+               onerror="this.parentNode.classList.add('is-empty');this.remove();">
+        </div>
+        <figcaption><span class="shot__n">Ảnh 2</span>
+          <span>Đầu trang Tools. Phải cuộn xuống gần cuối mới tới phần Allure.</span></figcaption>
+      </figure>
+
+      <figure class="shot">
+        <div class="shot__frame" data-file="docs/images/jenkins/03-allure-section.png">
+          <img src="images/jenkins/03-allure-section.png" loading="lazy"
+               alt="Hai mục Allure 3 from PATH installations và Allure Commandline installations nằm cạnh nhau"
+               onerror="this.parentNode.classList.add('is-empty');this.remove();">
+        </div>
+        <figcaption><span class="shot__n">Ảnh 3</span>
+          <span>Có hai mục Allure cạnh nhau. Bấm <b>Add Allure Commandline</b> ở mục dưới.</span></figcaption>
+      </figure>
+
+      <div class="note note--warn">
+        <span class="note__tag">Bẫy</span>
+        <p>Đừng bấm nhầm <b>Allure 3 (from PATH) installations</b> ở ngay trên. Step
+          <code>allure(results: …)</code> trong Jenkinsfile tìm tool loại <i>AllureCommandlineInstallation</i>;
+          Allure 3 là loại khác, khai báo vào đó thì build vẫn không thấy tool.</p>
+      </div>
+
+      <p>Form mở ra thì điền:</p>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Trường</th><th>Giá trị</th><th>Lý do</th></tr></thead>
+          <tbody>
+            <tr><td>Name</td><td><code>allure</code></td><td>Khớp doc, và để sau này ghi rõ <code>commandline: 'allure'</code> thì không phải sửa lại</td></tr>
+            <tr><td>Install automatically</td><td>✔ tích</td><td>Jenkins tự tải binary về container ở build đầu rồi cache lại</td></tr>
+            <tr><td>Installer</td><td>From Maven Central</td><td>Mặc định, không cần đổi</td></tr>
+            <tr><td>Version</td><td><code>2.30.0</code></td><td>Khớp <code>"allure-commandline": "^2.30.0"</code> trong <code>package.json</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <figure class="shot">
+        <div class="shot__frame" data-file="docs/images/jenkins/04-allure-form.png">
+          <img src="images/jenkins/04-allure-form.png" loading="lazy"
+               alt="Form Allure Commandline đã điền Name allure, Install automatically được tích, version 2.30.0"
+               onerror="this.parentNode.classList.add('is-empty');this.remove();">
+        </div>
+        <figcaption><span class="shot__n">Ảnh 4</span>
+          <span>Form đã điền xong, trước khi bấm Save.</span></figcaption>
+      </figure>
+
+      <div class="note note--check">
+        <span class="note__tag">Đã kiểm chứng</span>
+        <p>Đọc trực tiếp trong container thấy file
+          <code>org.allurereport.jenkins.tools.AllureCommandlineInstallation.xml</code> đã có
+          <code>&lt;name&gt;allure&lt;/name&gt;</code> và installer <code>2.30.0</code>, plugin
+          <code>allure-jenkins-plugin@2.35.2</code>. Bước này hoàn tất.</p>
+      </div>
+
+      <h3>Nếu dropdown Version rỗng</h3>
+      <p>Nghĩa là Jenkins chưa tải xong metadata của tool installer. Ở bản 2.568 nút <b>Check now</b>
+        không còn nằm ở <i>Plugins → Advanced settings</i> nữa mà chuyển sang tab <b>Plugins → Updates</b>,
+        cuối danh sách. Bấm xong chờ khoảng 10 giây rồi mở lại trang Tools.</p>
+
+      <p class="why" style="margin-top:24px"><b>Không muốn dùng Allure?</b> Xoá dòng
+        <code>allure(...)</code> trong khối <code>post</code> của Jenkinsfile là bỏ được bước này — vẫn còn
+        JUnit và Playwright HTML report. Nhưng Allure là thứ duy nhất giữ lịch sử xuyên qua các build:
+        test nào flaky, test nào mới vỡ. Với suite E2E thì nên giữ.</p>
+    </section>
+
+    <section class="sec" id="b2">
+      <div class="sec__head"><span class="stepno">BƯỚC 2</span><h2>Chụp lại session đăng nhập</h2>
+        <span class="chip chip--now">Đang tới</span></div>
+
+      <p class="why" style="margin-top:16px"><b>Tại sao có bước này.</b> Portal đăng nhập bằng Google OAuth
+        kèm xác thực 2 bước, không drive headless được. Nghĩa là suite <b>không tự đăng nhập được trên
+        Jenkins</b>. Cách làm: chụp session một lần trên máy dev rồi nạp lên Jenkins dạng file bí mật.</p>
+
+      <div class="note note--warn">
+        <span class="note__tag">Phải làm</span>
+        <p>File <code>src/data/dynamic/auth/admin.json</code> hiện có <b>đã hết hạn</b> — cookie sớm nhất
+          trong đó hết hạn ngày 18/08, tức 7 ngày trước. Upload nguyên xi thì stage <b>Preflight</b> chặn
+          build ngay.</p>
+      </div>
+
+      <div class="term">
+        <div class="term__bar"><em>PowerShell · thư mục gốc repo</em></div>
+<pre><span class="c"># Mở browser thật — BẠN tự đăng nhập bằng tay</span>
+<span class="k">npm</span> run auth
+
+<span class="c"># Kiểm tra session mới có dùng được không</span>
+<span class="c"># (đây đúng là thứ stage Preflight chạy trên Jenkins)</span>
+<span class="k">npx</span> playwright test --project=setup --reporter=list</pre>
+      </div>
+
+      <p>Lệnh thứ hai pass thì mới đi tiếp. Fail ở local thì upload lên Jenkins cũng fail y hệt,
+        chỉ tốn thêm một vòng build 40 phút.</p>
+    </section>
+
+    <section class="sec" id="b3">
+      <div class="sec__head"><span class="stepno">BƯỚC 3</span><h2>Tạo hai credential</h2>
+        <span class="chip chip--todo">Chưa làm</span></div>
+
+      <p>Hai file bị gitignore nên không đi theo repo: file môi trường và file session. Cả hai nạp vào
+        Jenkins cùng một đường — kiểu <b>Secret file</b>.</p>
+
+      <div class="trail">
+        <span>Manage Jenkins</span><i>→</i><span>Credentials</span><i>→</i><span>System</span>
+        <i>→</i><span>Global credentials</span><i>→</i><span>Add Credentials</span>
+      </div>
+
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>ID (gõ chính xác)</th><th>Kind</th><th>File upload</th></tr></thead>
+          <tbody>
+            <tr><td><code>portal-pos-env-local</code></td><td>Secret file</td><td><code>configs/env/.env.local</code></td></tr>
+            <tr><td><code>portal-pos-storage-state-local</code></td><td>Secret file</td><td><code>src/data/dynamic/auth/admin.json</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Vì sao đuôi <code>-local</code> chứ không phải <code>-stage</code></h3>
+      <p>Jenkinsfile ghép chuỗi theo tham số build: <code>portal-pos-env-${TARGET_ENV}</code>. Máy này
+        hiện chỉ có <code>configs/env/.env.local</code>, và file đó trỏ
+        <code>https://v2.dev-fastboypay.com</code> — Portal dev thật, không phải localhost. Nên chạy
+        <code>TARGET_ENV=local</code> là đủ, khỏi đi xin giá trị stage. Muốn thêm môi trường thì tạo thêm
+        cặp <code>portal-pos-env-stage</code> + <code>portal-pos-storage-state-stage</code>.</p>
+
+      <div class="note note--warn">
+        <span class="note__tag">Bẫy</span>
+        <p>Sai một ký tự trong ID là build đỏ ở stage <b>Provision env</b>. Tệ hơn: nếu thiếu file env,
+          <code>loadEnv</code> rơi về mặc định → <code>BASE_URL</code> thành <code>http://localhost:3000</code>
+          → cả suite fail mà log không nói rõ lý do.</p>
+      </div>
+
+      <figure class="shot">
+        <div class="shot__frame" data-file="docs/images/jenkins/05-credentials.png">
+          <img src="images/jenkins/05-credentials.png" loading="lazy"
+               alt="Danh sách credential trong Jenkins sau khi tạo xong hai secret file"
+               onerror="this.parentNode.classList.add('is-empty');this.remove();">
+        </div>
+        <figcaption><span class="shot__n">Ảnh 5</span>
+          <span>Chụp khi làm tới — danh sách credential sau khi tạo xong cả hai.</span></figcaption>
+      </figure>
+
+      <p class="why" style="margin-top:24px"><b>Vì sao đóng gói cả file</b> thay vì tách từng biến thành
+        credential riêng: sau này thêm biến mới chỉ cần sửa file trên Jenkins, không phải đụng vào Jenkinsfile.</p>
+    </section>
+
+    <section class="sec" id="b4">
+      <div class="sec__head"><span class="stepno">BƯỚC 4</span><h2>Tạo job pipeline</h2>
+        <span class="chip chip--todo">Chưa làm</span></div>
+
+      <p>Trang chủ Jenkins → <b>New Item</b> → tên <code>portal-pos-e2e</code> → chọn <b>Pipeline</b> → OK.
+        Kéo xuống mục <b>Pipeline</b> ở cuối trang cấu hình:</p>
+
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Trường</th><th>Giá trị</th></tr></thead>
+          <tbody>
+            <tr><td>Definition</td><td>Pipeline script from SCM</td></tr>
+            <tr><td>SCM</td><td>Git</td></tr>
+            <tr><td>Repository URL</td><td><code>https://github.com/DHMaiKhanh/e2e-portal-pos-playwright.git</code></td></tr>
+            <tr><td>Credentials</td><td>GitHub PAT (Username with password, password = token) — chỉ cần nếu repo private</td></tr>
+            <tr><td>Branch Specifier</td><td><code>*/main</code></td></tr>
+            <tr><td>Script Path</td><td><code>Jenkinsfile</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note note--warn">
+        <span class="note__tag">Bẫy</span>
+        <p>Phải là URL remote. <b>Tuyệt đối không</b> trỏ vào <code>D:\3.Portal_POS\…</code> — Jenkins chạy
+          trong container Linux, nó không nhìn thấy ổ đĩa Windows của bạn.</p>
+      </div>
+
+      <figure class="shot">
+        <div class="shot__frame" data-file="docs/images/jenkins/06-job-scm.png">
+          <img src="images/jenkins/06-job-scm.png" loading="lazy"
+               alt="Mục Pipeline trong trang cấu hình job, đã chọn Pipeline script from SCM"
+               onerror="this.parentNode.classList.add('is-empty');this.remove();">
+        </div>
+        <figcaption><span class="shot__n">Ảnh 6</span>
+          <span>Chụp khi làm tới — mục Pipeline đã cấu hình xong.</span></figcaption>
+      </figure>
+    </section>
+
+    <section class="sec" id="b5">
+      <div class="sec__head"><span class="stepno">BƯỚC 5</span><h2>Build lần đầu</h2>
+        <span class="chip chip--todo">Chưa làm</span></div>
+
+      <p>Bấm <b>Build Now</b>. Lần này Jenkins chỉ đọc Jenkinsfile để nạp danh sách tham số rồi dừng —
+        <b>đây là hành vi bình thường</b> của Jenkins với job có <code>parameters</code>, không phải lỗi.
+        Từ lần thứ hai, menu bên trái đổi thành <b>Build with Parameters</b>.</p>
+
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Tham số</th><th>Lần chạy thử</th><th>Ghi chú</th></tr></thead>
+          <tbody>
+            <tr><td><code>TARGET_ENV</code></td><td><code>local</code></td><td>Quyết định cặp credential được nạp</td></tr>
+            <tr><td><code>TEST_PATH</code></td><td><code>tests/e2e/customers</code></td><td>Thu hẹp phạm vi cho lần đầu; rỗng = chạy hết</td></tr>
+            <tr><td><code>GREP</code></td><td><i>rỗng</i></td><td>Lọc theo tag, vd <code>@smoke</code></td></tr>
+            <tr><td><code>WORKERS</code></td><td><code>8</code></td><td>Điểm bão hoà đã đo — cao hơn không nhanh hơn, nghẽn ở server Portal</td></tr>
+            <tr><td><code>TRACE</code></td><td><code>off</code></td><td><code>retain-on-failure</code> vẫn phải record mọi test, chậm thêm ~25%</td></tr>
+            <tr><td><code>RUN_QUALITY</code></td><td>✔</td><td>Lint + typecheck trước khi test</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Một build chạy những gì</h3>
+      <div class="stages">
+        <div class="stage"><b>Install</b><span>npm ci, tải Chromium khớp version image</span></div>
+        <div class="stage"><b>Quality</b><span>lint + typecheck</span></div>
+        <div class="stage"><b>Provision env</b><span>Nạp hai secret vào workspace</span></div>
+        <div class="stage"><b>Preflight</b><span>Portal có tới được không, session còn sống không</span></div>
+        <div class="stage"><b>E2E tests</b><span>Chạy suite; fail thì đánh dấu UNSTABLE chứ không dừng</span></div>
+        <div class="stage"><b>post</b><span>Publish report, archive, xoá sạch secret khỏi workspace</span></div>
+      </div>
+
+      <p class="why" style="margin-top:24px"><b>Vì sao <code>triggers { cron(…) }</code> bị comment sẵn:</b>
+        session Portal chết theo thời gian và phải chụp lại thủ công. Build đêm sẽ đỏ hàng loạt ngay khi
+        session hết hạn — đó là tiếng ồn chứ không phải tín hiệu. Bật lại khi nào có cách làm mới session
+        tự động.</p>
+    </section>
+
+    <section class="sec" id="b6">
+      <div class="sec__head"><span class="stepno">BƯỚC 6</span><h2>Đọc kết quả</h2>
+        <span class="chip chip--todo">Chưa làm</span></div>
+
+      <p>Vào trang build vừa chạy, sidebar bên trái có bốn thứ:</p>
+      <ul class="plain">
+        <li><b>Test Result</b> (JUnit) — số pass/fail và xu hướng qua các build</li>
+        <li><b>Playwright HTML Report</b> — report quen thuộc, xem được từng bước test</li>
+        <li><b>Allure Report</b> — thống kê chi tiết hơn, giữ lịch sử xuyên build</li>
+        <li><b>Build Artifacts</b> — <code>results.json</code>, screenshot / video / trace của test fail</li>
+      </ul>
+
+      <h3>Ba màu build</h3>
+      <div class="builds">
+        <div class="build"><span class="orb" style="background:var(--ok)"></span>
+          <div><b>SUCCESS</b><span>Toàn bộ test pass.</span></div></div>
+        <div class="build"><span class="orb" style="background:var(--warn)"></span>
+          <div><b>UNSTABLE</b><span>Có test fail — lỗi nằm ở app hoặc ở test. Mở report ra xem.</span></div></div>
+        <div class="build"><span class="orb" style="background:var(--bad)"></span>
+          <div><b>FAILURE</b><span>Hỏng <i>trước khi</i> test chạy: install, lint/typecheck, hoặc Preflight đỏ.</span></div></div>
+      </div>
+
+      <p class="why" style="margin-top:22px">Tách vàng khỏi đỏ là có chủ ý: <b>"test tìm ra vấn đề"</b> và
+        <b>"pipeline không chạy nổi"</b> là hai chuyện khác nhau, cần người khác nhau xử lý.</p>
+
+      <figure class="shot">
+        <div class="shot__frame" data-file="docs/images/jenkins/07-build.png">
+          <img src="images/jenkins/07-build.png" loading="lazy"
+               alt="Trang kết quả build với stage view và link tới các report"
+               onerror="this.parentNode.classList.add('is-empty');this.remove();">
+        </div>
+        <figcaption><span class="shot__n">Ảnh 7</span>
+          <span>Chụp khi làm tới — trang kết quả build đầu tiên.</span></figcaption>
+      </figure>
+    </section>
+
+    <section class="sec" id="tra-cuu">
+      <div class="sec__head"><h2>Tra cứu nhanh</h2></div>
+
+      <h3>Lệnh dùng hằng ngày</h3>
+      <div class="term">
+        <div class="term__bar"><em>PowerShell · thư mục gốc repo</em></div>
+<pre><span class="c"># Xem log Jenkins theo thời gian thực (Ctrl+C để thoát)</span>
+docker compose -f ci/jenkins/docker-compose.yml logs -f jenkins
+
+<span class="c"># Restart sau khi sửa cấu hình</span>
+docker compose -f ci/jenkins/docker-compose.yml restart jenkins
+
+<span class="c"># Dừng Jenkins, GIỮ NGUYÊN job + credentials + lịch sử build</span>
+docker compose -f ci/jenkins/docker-compose.yml down
+
+<span class="c"># Bật lại</span>
+docker compose -f ci/jenkins/docker-compose.yml up -d
+
+<span class="c"># Build lại image sau khi sửa Dockerfile / plugins.txt</span>
+docker compose -f ci/jenkins/docker-compose.yml up -d --build
+
+<span class="c"># XOÁ SẠCH: mất hết job, credentials, lịch sử. Chỉ khi muốn làm lại từ đầu</span>
+docker compose -f ci/jenkins/docker-compose.yml down -v</pre>
+      </div>
+      <p>Khác biệt duy nhất cần nhớ: <code>down</code> giữ dữ liệu, <code>down -v</code> xoá luôn volume
+        <code>jenkins-data</code>. Gõ nhầm <code>-v</code> là phải làm lại toàn bộ runbook này.</p>
+
+      <h3>Lỗi hay gặp</h3>
+      <div class="tbl-scroll">
+        <table>
+          <thead><tr><th>Triệu chứng</th><th>Nguyên nhân</th><th>Xử lý</th></tr></thead>
+          <tbody>
+            <tr><td>Preflight đỏ: "Session đăng nhập không dùng được"</td><td>Session hết hạn — <b>lỗi hay gặp nhất</b></td><td><code>npm run auth</code> rồi Update lại credential <code>portal-pos-storage-state-local</code></td></tr>
+            <tr><td>Cả suite fail, URL trỏ <code>localhost:3000</code></td><td>Thiếu credential <code>portal-pos-env-local</code></td><td>Kiểm tra ID đúng chính tả từng ký tự</td></tr>
+            <tr><td><code>docker: not found</code> trong build</td><td>Dùng image <code>jenkins/jenkins</code> gốc</td><td>Dựng lại bằng <code>ci/jenkins/Dockerfile</code></td></tr>
+            <tr><td>Checkout xong nhưng workspace rỗng</td><td>Dùng <code>docker.sock</code> của host thay vì dind</td><td>Dùng đúng <code>docker-compose.yml</code> của repo</td></tr>
+            <tr><td>Test fail rải rác, tab Chromium crash</td><td>WSL2 thiếu RAM, bị OOM-kill</td><td>Sửa <code>.wslconfig</code> ≥ 8GB, hoặc hạ <code>WORKERS</code></td></tr>
+            <tr><td><code>port is already allocated</code></td><td>Cổng 8090 bị chiếm</td><td>Đổi số bên trái trong <code>ports:</code> thành <code>8091:8080</code></td></tr>
+            <tr><td>403 khi checkout</td><td>Repo private, thiếu credential Git</td><td>Thêm GitHub PAT vào cấu hình job</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Khi nâng version Playwright</h3>
+      <p>Tag image trong <code>Jenkinsfile</code> phải khớp <code>@playwright/test</code> trong
+        <code>package-lock.json</code>. Hiện tại là <code>mcr.microsoft.com/playwright:v1.61.1-noble</code>.
+        Lệch version thì browser bundled trong image không dùng được — stage Install vẫn tự tải bản đúng
+        nhưng chậm hơn nhiều.</p>
+
+      <footer>
+        Nguồn chi tiết: <code>docs/jenkins-getting-started.md</code> (bản đầy đủ A–Z) ·
+        <code>docs/jenkins.md</code> (bản tóm tắt) ·
+        <code>docs/authentication.md</code> (vì sao không headless được).
+      </footer>
+    </section>
+
+  </main>
+</div>
+
+</body>
+</html>
