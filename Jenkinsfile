@@ -9,19 +9,21 @@
 // credentials và job.
 
 pipeline {
-  // Image phải khớp version @playwright/test trong package-lock.json (hiện tại
-  // 1.61.1). Lệch version thì browser bundled trong image không dùng được —
-  // stage 'Install' sẽ tự tải bản đúng nhưng chậm hơn nhiều, nên cập nhật tag
-  // này mỗi lần nâng Playwright.
+  // Agent ở cấp pipeline là node của Jenkins, KHÔNG phải container: mọi bước
+  // trong post{} (junit, publishHTML, allure, archiveArtifacts) chạy ở đây.
   //
-  //   --ipc=host : Chromium dùng shared memory; thiếu cờ này tab hay crash
-  //                trong container (/dev/shm mặc định chỉ 64MB).
-  agent {
-    docker {
-      image 'mcr.microsoft.com/playwright:v1.61.1-noble'
-      args '--ipc=host'
-    }
-  }
+  // Trước đây `agent { docker { ... } }` đặt ở cấp này, nên post{} cũng bị chạy
+  // bên trong container Playwright — mà Allure CLI lại nằm trên controller ở
+  // /var/jenkins_home/tools/... (thư mục đó không được mount vào container, và
+  // image Playwright cũng không có Java). Kết quả: mọi build đều đỏ ở post với
+  //
+  //   OCI runtime exec failed: ... allure: no such file or directory
+  //   AllurePluginException: Can not generate Allure Report, exit code: 127
+  //
+  // Container giờ khai báo ở stage 'Build & test' bên dưới với `reuseNode true`,
+  // tức vẫn dùng đúng workspace này — reports/ ghi từ trong container vẫn nhìn
+  // thấy được ở post{}.
+  agent any
 
   parameters {
     choice(
@@ -87,90 +89,132 @@ pipeline {
   }
 
   stages {
-    stage('Install') {
-      steps {
-        // --ignore-scripts bỏ qua `postinstall` (playwright install --with-deps,
-        // cần root + apt) và `prepare` (husky, vô nghĩa trên CI). Browser cài
-        // riêng ở bước dưới, không kèm --with-deps vì image đã có sẵn deps hệ
-        // thống.
-        sh 'npm ci --ignore-scripts --prefer-offline --no-audit --fund=false'
-        sh 'npx playwright install chromium'
-        sh 'npx playwright --version'
-      }
-    }
-
-    stage('Quality') {
-      when { expression { params.RUN_QUALITY } }
-      steps {
-        sh 'npm run lint'
-        sh 'npm run typecheck'
-      }
-    }
-
-    stage('Provision env') {
-      steps {
-        // File .env.<env> là secret file trong Jenkins (BASE_URL, API_URL,
-        // STORE_ID, ADMIN_*). Repo cố tình gitignore các file này, nên nếu
-        // không nạp thì loadEnv rơi về .env.example → trỏ localhost và cả suite
-        // fail một cách vô nghĩa.
-        withCredentials([
-          file(credentialsId: "portal-pos-env-${params.TARGET_ENV}", variable: 'ENV_FILE')
-        ]) {
-          sh 'install -m 600 "$ENV_FILE" "configs/env/.env.$ENV"'
-        }
-
-        // Session đăng nhập chụp sẵn bằng `npm run auth` trên máy dev rồi
-        // upload lên Jenkins dạng Secret file.
-        withCredentials([
-          file(credentialsId: "portal-pos-storage-state-${params.TARGET_ENV}", variable: 'STATE_FILE')
-        ]) {
-          sh 'mkdir -p "$(dirname "$STORAGE_STATE")" && install -m 600 "$STATE_FILE" "$STORAGE_STATE"'
+    stage('Build & test') {
+      // Image phải khớp version @playwright/test trong package-lock.json (hiện
+      // tại 1.61.1). Lệch version thì browser bundled trong image không dùng
+      // được — stage 'Install' sẽ tự tải bản đúng nhưng chậm hơn nhiều, nên cập
+      // nhật tag này mỗi lần nâng Playwright.
+      //
+      //   --ipc=host     : Chromium dùng shared memory; thiếu cờ này tab hay
+      //                    crash trong container (/dev/shm mặc định chỉ 64MB).
+      //   reuseNode true : dùng lại workspace của node ngoài thay vì cấp
+      //                    workspace mới, để post{} (chạy ngoài container) đọc
+      //                    được reports/ do các stage bên trong sinh ra.
+      agent {
+        docker {
+          image 'mcr.microsoft.com/playwright:v1.61.1-noble'
+          args '--ipc=host'
+          reuseNode true
         }
       }
-    }
 
-    stage('Preflight') {
-      steps {
-        // Hai lỗi hạ tầng phổ biến nhất, tách riêng để đọc log là biết ngay
-        // build đỏ vì môi trường hay vì test:
-        //   1. Portal không truy cập được từ agent (mạng/VPN/BASE_URL sai)
-        //   2. Session đã bị server thu hồi → phải chụp lại
-        sh 'node scripts/check-server.mjs'
-
-        script {
-          def status = sh(script: 'npx playwright test --project=setup --reporter=list', returnStatus: true)
-          if (status != 0) {
-            error(
-              "Session đăng nhập không dùng được.\n" +
-              "Trên máy dev chạy: npm run auth\n" +
-              "rồi upload lại src/data/dynamic/auth/admin.json vào credential " +
-              "'portal-pos-storage-state-${params.TARGET_ENV}' (Secret file)."
-            )
+      stages {
+        stage('Install') {
+          steps {
+            // --ignore-scripts bỏ qua `postinstall` (playwright install --with-deps,
+            // cần root + apt) và `prepare` (husky, vô nghĩa trên CI). Browser cài
+            // riêng ở bước dưới, không kèm --with-deps vì image đã có sẵn deps hệ
+            // thống.
+            sh 'npm ci --ignore-scripts --prefer-offline --no-audit --fund=false'
+            sh 'npx playwright install chromium'
+            sh 'npx playwright --version'
           }
         }
-      }
-    }
 
-    stage('E2E tests') {
-      steps {
-        // Preflight cũng ghi vào reports/ (nó chạy project `setup` qua chính
-        // Playwright). Xoá đi để report publish ra chỉ chứa lần chạy thật.
-        sh 'rm -rf reports test-results'
-
-        script {
-          def cmd = ['npx', 'playwright', 'test']
-          if (params.TEST_PATH?.trim()) {
-            cmd << params.TEST_PATH.trim()
+        stage('Quality') {
+          when { expression { params.RUN_QUALITY } }
+          steps {
+            sh 'npm run lint'
+            sh 'npm run typecheck'
           }
-          if (params.GREP?.trim()) {
-            cmd << '--grep' << "'${params.GREP.trim()}'"
-          }
+        }
 
-          // Test fail không được làm dừng pipeline ngay: post{} vẫn cần chạy để
-          // publish report. Kết quả thật phản ánh qua junit + build status.
-          def status = sh(script: cmd.join(' '), returnStatus: true)
-          if (status != 0) {
-            unstable("Playwright thoát với mã ${status} — có test fail. Xem HTML/Allure report.")
+        stage('Provision env') {
+          steps {
+            // File .env.<env> là secret file trong Jenkins (BASE_URL, API_URL,
+            // STORE_ID, ADMIN_*). Repo cố tình gitignore các file này, nên nếu
+            // không nạp thì loadEnv rơi về .env.example → trỏ localhost và cả
+            // suite fail một cách vô nghĩa.
+            //
+            // Session đăng nhập chụp sẵn bằng `npm run auth` trên máy dev rồi
+            // upload lên Jenkins dạng Secret file.
+            script {
+              def envCred = "portal-pos-env-${params.TARGET_ENV}"
+              def stateCred = "portal-pos-storage-state-${params.TARGET_ENV}"
+
+              try {
+                withCredentials([file(credentialsId: envCred, variable: 'ENV_FILE')]) {
+                  sh 'install -m 600 "$ENV_FILE" "configs/env/.env.$ENV"'
+                }
+                withCredentials([file(credentialsId: stateCred, variable: 'STATE_FILE')]) {
+                  sh 'mkdir -p "$(dirname "$STORAGE_STATE")" && install -m 600 "$STATE_FILE" "$STORAGE_STATE"'
+                }
+              } catch (err) {
+                // Lỗi hay gặp nhất ở lần chạy job đầu tiên: plugin và job dựng
+                // xong nhưng chưa ai tạo credential. Message mặc định của Jenkins
+                // ("Could not find credentials entry with ID ...") nằm tít cuối
+                // log và không nói phải làm gì tiếp.
+                error(
+                  "Không nạp được cấu hình môi trường '${params.TARGET_ENV}': ${err}\n" +
+                  "\n" +
+                  "Cần 2 credential kind 'Secret file' ở Manage Jenkins → Credentials → System → Global:\n" +
+                  "  ${envCred}\n" +
+                  "      nội dung = file configs/env/.env.${params.TARGET_ENV} trên máy dev\n" +
+                  "  ${stateCred}\n" +
+                  "      nội dung = file src/data/dynamic/auth/admin.json (sinh bằng: npm run auth)\n" +
+                  "\n" +
+                  "Chưa có .env.${params.TARGET_ENV} thì build lại với TARGET_ENV=local.\n" +
+                  "Chi tiết: docs/jenkins.md mục 2."
+                )
+              }
+            }
+          }
+        }
+
+        stage('Preflight') {
+          steps {
+            // Hai lỗi hạ tầng phổ biến nhất, tách riêng để đọc log là biết ngay
+            // build đỏ vì môi trường hay vì test:
+            //   1. Portal không truy cập được từ agent (mạng/VPN/BASE_URL sai)
+            //   2. Session đã bị server thu hồi → phải chụp lại
+            sh 'node scripts/check-server.mjs'
+
+            script {
+              def status = sh(script: 'npx playwright test --project=setup --reporter=list', returnStatus: true)
+              if (status != 0) {
+                error(
+                  "Session đăng nhập không dùng được.\n" +
+                  "Trên máy dev chạy: npm run auth\n" +
+                  "rồi upload lại src/data/dynamic/auth/admin.json vào credential " +
+                  "'portal-pos-storage-state-${params.TARGET_ENV}' (Secret file)."
+                )
+              }
+            }
+          }
+        }
+
+        stage('E2E tests') {
+          steps {
+            // Preflight cũng ghi vào reports/ (nó chạy project `setup` qua chính
+            // Playwright). Xoá đi để report publish ra chỉ chứa lần chạy thật.
+            sh 'rm -rf reports test-results'
+
+            script {
+              def cmd = ['npx', 'playwright', 'test']
+              if (params.TEST_PATH?.trim()) {
+                cmd << params.TEST_PATH.trim()
+              }
+              if (params.GREP?.trim()) {
+                cmd << '--grep' << "'${params.GREP.trim()}'"
+              }
+
+              // Test fail không được làm dừng pipeline ngay: post{} vẫn cần chạy để
+              // publish report. Kết quả thật phản ánh qua junit + build status.
+              def status = sh(script: cmd.join(' '), returnStatus: true)
+              if (status != 0) {
+                unstable("Playwright thoát với mã ${status} — có test fail. Xem HTML/Allure report.")
+              }
+            }
           }
         }
       }
@@ -191,11 +235,26 @@ pipeline {
       ])
 
       // Cần Allure plugin + một Allure Commandline tool tên 'allure' khai báo ở
-      // Manage Jenkins → Tools. Bỏ block này nếu không dùng Allure.
-      allure(results: [[path: 'reports/allure-results']], reportBuildPolicy: 'ALWAYS')
+      // Manage Jenkins → Tools (nên chọn "Install automatically"). Bỏ block này
+      // nếu không dùng Allure.
+      //
+      // Bọc try/catch vì đây là bước publish chứ không phải bước test: Allure
+      // hỏng không được phép nuốt luôn junit/HTML report của một lần chạy đã
+      // xong.
+      script {
+        try {
+          allure(results: [[path: 'reports/allure-results']], reportBuildPolicy: 'ALWAYS')
+        } catch (err) {
+          echo(
+            "Bỏ qua Allure report: ${err}\n" +
+            "Kiểm tra Manage Jenkins → Tools → Allure Commandline có tool tên 'allure' " +
+            "và đang bật 'Install automatically'."
+          )
+        }
+      }
 
       archiveArtifacts(
-        artifacts: 'reports/json/results.json, reports/junit/results.xml, test-results/**/*.png, test-results/**/*.webm, test-results/**/trace.zip',
+        artifacts: 'reports/json/results.json, reports/junit/results.xml, reports/allure-results/**, test-results/**/*.png, test-results/**/*.webm, test-results/**/trace.zip',
         allowEmptyArchive: true
       )
 
