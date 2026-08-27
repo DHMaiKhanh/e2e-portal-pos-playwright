@@ -501,7 +501,7 @@ Kéo xuống mục **Pipeline**:
 | ---------------- | ---------------------------------------------------------------------------------------------------------- |
 | Definition       | **Pipeline script from SCM**                                                                               |
 | SCM              | **Git**                                                                                                    |
-| Repository URL   | `https://github.com/DHMaiKhanh/e2e-portal-pos-playwright.git`                                              |
+| Repository URL   | `https://github.com/khanhdo-afk/e2e-portal-pos-playwright.git` _(fork — upstream 403 khi push)_            |
 | Credentials      | GitHub Personal Access Token (Kind: _Username with password_, password = token) — chỉ cần nếu repo private |
 | Branch Specifier | `*/main`                                                                                                   |
 | Script Path      | `Jenkinsfile`                                                                                              |
@@ -646,6 +646,7 @@ Tick hết là xong:
 ## Đọc tiếp
 
 - [jenkins.md](jenkins.md) — bản tham khảo ngắn, cho người đã quen Jenkins
+- [docker-jenkins-flow.md](docker-jenkins-flow.md) — bản đồ luồng: file nào gọi file nào, từ A đến Z
 - [authentication.md](authentication.md) — vì sao suite không tự đăng nhập được
 - [auth-session-expiry-issue.md](auth-session-expiry-issue.md) — sự cố 112 test fail vì session chết
 - [test-performance-optimization.md](test-performance-optimization.md) — vì sao là 8 worker

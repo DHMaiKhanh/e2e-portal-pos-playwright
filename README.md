@@ -48,6 +48,8 @@ supplied as Jenkins credentials, with JUnit + HTML + Allure published per build.
 Setup instructions (plugins, credentials, job creation): [docs/jenkins.md](docs/jenkins.md).
 New to Docker and Jenkins? Start here instead — every step from installing Docker
 to a green build: [docs/jenkins-getting-started.md](docs/jenkins-getting-started.md).
+Want the map instead — which file calls which, from `docker compose up` to the
+published report: [docs/docker-jenkins-flow.md](docs/docker-jenkins-flow.md).
 
 No Jenkins yet? [ci/jenkins/](ci/jenkins/) brings one up with every required
 plugin and the Docker CLI already baked in:

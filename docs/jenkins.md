@@ -7,6 +7,9 @@ Jenkins Credentials, rồi publish JUnit / HTML / Allure report.
 > Chưa từng dùng Docker/Jenkins? Đọc bản chi tiết từng bước trước:
 > [jenkins-getting-started.md](jenkins-getting-started.md). Tài liệu này giả định
 > bạn đã quen Jenkins.
+>
+> Muốn xem bản đồ luồng — file nào gọi file nào, từ `docker compose up` tới lúc
+> ra report: [docker-jenkins-flow.md](docker-jenkins-flow.md).
 
 ## 0. Dựng Jenkins bằng Docker
 
@@ -124,12 +127,40 @@ Chưa có `.env.stage` thì cứ chạy `TARGET_ENV=local` cho lần đầu: `.e
 vào Portal DEV thật (không phải localhost) nên container trên Jenkins gọi tới được,
 và `npm run auth` cũng ghim `ENV=local` — session chụp ra khớp luôn môi trường đó.
 
+### Login Jenkins của bạn — **không** lưu trong repo
+
+Hai credential trên là secret của _suite test_, nạp vào Jenkins là đúng chỗ. Còn
+username/password bạn dùng để đăng nhập chính Jenkins thì khác: không dòng code
+nào trong repo cần tới nó, nên nó không có lý do gì nằm trong working tree —
+`.gitignore` chỉ chặn `git add` vô tình, không chặn ai đó zip cả thư mục repo,
+copy sang máy khác, hay `git add -f`.
+
+Chỗ lưu đang dùng, cố ý đặt ngoài repo:
+
+```
+%USERPROFILE%\.config\portal-pos\jenkins.env      # ACL: chỉ user hiện tại đọc được
+```
+
+Và lưu **API token** thay cho mật khẩu — tạo ở
+`http://localhost:8090/user/<user>/security` → _Add new Token_. Token thu hồi được
+riêng lẻ khi nghi bị lộ; mật khẩu thì đổi là mất luôn phiên trên mọi thiết bị.
+
+Đọc ra khi cần gọi Jenkins API:
+
+```bash
+set -a; . "$USERPROFILE/.config/portal-pos/jenkins.env"; set +a
+curl -sS -u "$JENKINS_USER:$JENKINS_TOKEN" "$JENKINS_URL/job/portal-pos-e2e/lastBuild/api/json"
+```
+
 ## 3. Tạo job
 
 New Item → **Pipeline** (hoặc Multibranch Pipeline nếu muốn build theo branch):
 
 - Definition: **Pipeline script from SCM**
-- SCM: Git → Repository URL `https://github.com/DHMaiKhanh/e2e-portal-pos-playwright.git`
+- SCM: Git → Repository URL `https://github.com/khanhdo-afk/e2e-portal-pos-playwright.git`
+  (fork. Upstream `DHMaiKhanh/...` là read-only với account này — `git push` trả 403 —
+  nên job trỏ vào fork để build được code vừa sửa mà không phải đợi PR merge.
+  Muốn build upstream thì đổi lại URL, nhưng nhớ là mọi fix Jenkinsfile phải merge xong mới có hiệu lực.)
 - Credentials: Personal Access Token của GitHub (kind **Username with password**,
   password = token) nếu repo private
 - Branch: `*/main`
