@@ -1,0 +1,14 @@
+# Plugin Jenkinsfile bắt buộc phải có. Thiếu ansicolor hoặc timestamper thì
+# pipeline fail ngay ở bước parse chứ không phải lúc chạy.
+workflow-aggregator
+git
+docker-workflow
+credentials-binding
+junit
+htmlpublisher
+allure-jenkins-plugin
+ansicolor
+timestamper
+
+# Không bắt buộc, nhưng đọc kết quả dễ hơn nhiều
+pipeline-stage-view

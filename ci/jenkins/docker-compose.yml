@@ -1,0 +1,62 @@
+# Jenkins cục bộ cho suite E2E Portal POS.
+#
+#   docker compose -f ci/jenkins/docker-compose.yml up -d --build
+#   → http://localhost:8090
+#
+# Tại sao là Docker-in-Docker chứ không mount /var/run/docker.sock (cách thường
+# thấy trên mạng): Jenkinsfile dùng `agent { docker { ... } }`, tức Jenkins sẽ
+# bind-mount workspace `/var/jenkins_home/workspace/<job>` vào container
+# Playwright. Nếu daemon là daemon của host, nó resolve đường dẫn đó theo
+# filesystem của host → workspace rỗng, checkout biến mất, build đỏ khó hiểu.
+# Ở đây daemon `dind` mount chung volume `jenkins-data`, nên đường dẫn khớp.
+# Đây cũng là layout trong tài liệu chính thức của Jenkins.
+
+name: portal-pos-jenkins
+
+services:
+  # Docker daemon riêng cho các build. Image Playwright (~2GB) nằm trong
+  # dind-storage nên chỉ tải một lần, sống qua các lần restart.
+  dind:
+    image: docker:dind
+    container_name: jenkins-dind
+    privileged: true
+    restart: unless-stopped
+    command: ['--storage-driver=overlay2']
+    environment:
+      DOCKER_TLS_CERTDIR: /certs
+    networks:
+      jenkins:
+        aliases: [docker] # DOCKER_HOST bên dưới trỏ vào alias này
+    volumes:
+      - jenkins-docker-certs:/certs/client
+      - jenkins-data:/var/jenkins_home # bắt buộc — xem ghi chú ở đầu file
+      - dind-storage:/var/lib/docker
+
+  jenkins:
+    build: .
+    image: portal-pos-jenkins:latest
+    container_name: jenkins
+    restart: unless-stopped
+    environment:
+      DOCKER_HOST: tcp://docker:2376
+      DOCKER_CERT_PATH: /certs/client
+      DOCKER_TLS_VERIFY: '1'
+    ports:
+      # 8090 chứ không phải 8080: volt-pos-app đã giữ sẵn 8080 trên máy này.
+      # Đổi số bên TRÁI nếu 8090 cũng vướng; bên phải là port Jenkins nghe
+      # trong container, giữ nguyên.
+      - '8090:8080' # UI
+      - '50000:50000' # agent JNLP, để sẵn cho lúc tách agent ra máy khác
+    networks: [jenkins]
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - jenkins-docker-certs:/certs/client:ro
+    depends_on: [dind]
+
+volumes:
+  jenkins-data: # JENKINS_HOME: job, credentials, build history
+  jenkins-docker-certs: # cert TLS dind sinh ra lúc khởi động
+  dind-storage: # image + layer cache của daemon build
+
+networks:
+  jenkins:

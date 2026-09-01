@@ -40,6 +40,24 @@ npm run report           # open the HTML report
 npm run report:allure    # generate + open Allure report
 ```
 
+## CI
+
+The suite runs on Jenkins via the [Jenkinsfile](Jenkinsfile) at the repo root —
+Playwright in a Docker container, env config and the captured login session
+supplied as Jenkins credentials, with JUnit + HTML + Allure published per build.
+Setup instructions (plugins, credentials, job creation): [docs/jenkins.md](docs/jenkins.md).
+New to Docker and Jenkins? Start here instead — every step from installing Docker
+to a green build: [docs/jenkins-getting-started.md](docs/jenkins-getting-started.md).
+Want the map instead — which file calls which, from `docker compose up` to the
+published report: [docs/docker-jenkins-flow.md](docs/docker-jenkins-flow.md).
+
+No Jenkins yet? [ci/jenkins/](ci/jenkins/) brings one up with every required
+plugin and the Docker CLI already baked in:
+
+```bash
+docker compose -f ci/jenkins/docker-compose.yml up -d --build   # http://localhost:8090
+```
+
 ## Project structure
 
 ```
@@ -97,7 +115,7 @@ import { buildCustomerInput, buildOrder, buildProducts } from '@data/dynamic/fac
 
 const input = buildCustomerInput({ email: 'qa.fixed@example.com' }); // for API/UI creation
 const products = buildProducts(5);
-const order = buildOrder({ products, status: 'paid' });             // full entity for mocks
+const order = buildOrder({ products, status: 'paid' }); // full entity for mocks
 ```
 
 Set `FAKER_SEED=<number>` in the env to make generated data reproducible across runs.
