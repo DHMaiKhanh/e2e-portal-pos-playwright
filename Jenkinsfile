@@ -5,8 +5,35 @@
 // HTML + Allure report.
 //
 // Plugin cần có: Docker Pipeline, Credentials Binding, JUnit, HTML Publisher,
-// Allure, AnsiColor, Timestamper. Xem docs/jenkins.md để biết cách tạo
-// credentials và job.
+// Allure, AnsiColor, Timestamper, GitHub, Email Extension. Xem docs/jenkins.md
+// để biết cách tạo credentials và job.
+
+// --- Helpers dùng chung giữa các stage / post condition ---
+//
+// Cả hai bọc try/catch vì đây là bước phụ (report ra ngoài), không phải bước
+// test: thiếu credential 'github-token' hay SMTP chưa cấu hình không được phép
+// làm hỏng cả build đã chạy xong.
+
+def notifyGithub(String status, String description) {
+  try {
+    githubNotify(
+      credentialsId: 'github-token',
+      context: 'jenkins/portal-pos-e2e',
+      description: description,
+      status: status
+    )
+  } catch (err) {
+    echo "Bỏ qua GitHub commit status (${status}): ${err}"
+  }
+}
+
+def notifyEmail(String subject, String body) {
+  try {
+    emailext(to: env.NOTIFY_EMAIL, subject: subject, body: body)
+  } catch (err) {
+    echo "Bỏ qua email notify: ${err}"
+  }
+}
 
 pipeline {
   // Agent ở cấp pipeline là node của Jenkins, KHÔNG phải container: mọi bước
@@ -66,12 +93,22 @@ pipeline {
     buildDiscarder(logRotator(numToKeepStr: '30', artifactNumToKeepStr: '10'))
   }
 
-  // Session đăng nhập Portal hết hạn theo thời gian và phải chụp lại thủ công
-  // (Google OAuth + 2FA, không tự động hoá được — xem docs/authentication.md).
-  // Vì vậy KHÔNG bật cron mặc định: build đêm sẽ đỏ hàng loạt ngay khi session
-  // chết, và đó là tiếng ồn chứ không phải tín hiệu. Bật khi đã có cách làm
-  // mới session tự động.
-  // triggers { cron('H 2 * * 1-5') }
+  triggers {
+    // Jenkins chạy ở localhost:8090, GitHub không gọi webhook vào được (không
+    // có URL public) nên dùng poll thay cho webhook thật. H/5 * * * * = mỗi
+    // ~5 phút, phút lệch ngẫu nhiên để tránh nhiều job cùng poll một lúc.
+    //
+    // Khi Jenkins đã có URL public (ngrok, domain nội bộ, v.v.) thì đổi sang
+    // githubPush() — nhanh hơn poll và không tốn tài nguyên chờ. Cần thêm
+    // webhook trên GitHub trỏ về <jenkins-url>/github-webhook/, xem
+    // docs/jenkins.md mục 9.
+    //
+    // KHÔNG dùng cron theo giờ cố định: session đăng nhập Portal hết hạn bất kỳ
+    // lúc nào (Google OAuth + 2FA, không tự động hoá được — xem
+    // docs/authentication.md), build theo lịch cố định sẽ đỏ hàng loạt ngay khi
+    // đó xảy ra mà không ai theo dõi (mục 6).
+    pollSCM('H/5 * * * *')
+  }
 
   environment {
     CI = 'true'
@@ -86,9 +123,21 @@ pipeline {
     PLAYWRIGHT_BROWSERS_PATH = "${WORKSPACE}/.cache/ms-playwright"
 
     STORAGE_STATE = 'src/data/dynamic/auth/admin.json'
+
+    // Người nhận email báo kết quả build (Manage Jenkins → System → Extended
+    // E-mail Notification cấu hình SMTP, xem docs/jenkins.md mục 9).
+    NOTIFY_EMAIL = 'khanh_do@fastboy.net'
   }
 
   stages {
+    stage('Notify: pending') {
+      // Chạy ở agent ngoài (agent any cấp pipeline), không cần container —
+      // báo PENDING lên GitHub càng sớm càng tốt, trước khi tải image/npm ci.
+      steps {
+        script { notifyGithub('PENDING', 'Đang chạy…') }
+      }
+    }
+
     stage('Build & test') {
       // Image phải khớp version @playwright/test trong package-lock.json (hiện
       // tại 1.61.1). Lệch version thì browser bundled trong image không dùng
@@ -260,6 +309,43 @@ pipeline {
 
       // Secret không được nằm lại trong workspace giữa các build.
       sh 'rm -f configs/env/.env.local configs/env/.env.stage configs/env/.env.prod "$STORAGE_STATE" || true'
+    }
+
+    success {
+      script { notifyGithub('SUCCESS', 'Tất cả test pass') }
+    }
+
+    // GitHub không có khái niệm "unstable" — map về FAILURE để PR check đỏ,
+    // vì UNSTABLE nghĩa là có test fail (khác PENDING/SUCCESS), không nên xanh.
+    unstable {
+      script { notifyGithub('FAILURE', 'Có test fail — xem Playwright/Allure report') }
+      script {
+        notifyEmail(
+          "[portal-pos-e2e] #${env.BUILD_NUMBER} UNSTABLE (${params.TARGET_ENV})",
+          "Có test fail. Report: ${env.BUILD_URL}"
+        )
+      }
+    }
+
+    failure {
+      script { notifyGithub('FAILURE', 'Pipeline lỗi trước khi test chạy xong') }
+      script {
+        notifyEmail(
+          "[portal-pos-e2e] #${env.BUILD_NUMBER} FAILURE (${params.TARGET_ENV})",
+          "Build lỗi trước khi ra được test result — xem log: ${env.BUILD_URL}console"
+        )
+      }
+    }
+
+    // Chạy sau khi build trước đó FAILURE/UNSTABLE và build này SUCCESS —
+    // báo "đã xanh lại" một lần, tránh spam email mỗi build pass liên tiếp.
+    fixed {
+      script {
+        notifyEmail(
+          "[portal-pos-e2e] #${env.BUILD_NUMBER} back to green (${params.TARGET_ENV})",
+          "Suite đã pass trở lại: ${env.BUILD_URL}"
+        )
+      }
     }
   }
 }

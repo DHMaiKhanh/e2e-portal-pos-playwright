@@ -9,6 +9,8 @@ htmlpublisher
 allure-jenkins-plugin
 ansicolor
 timestamper
+github
+email-ext
 
 # Không bắt buộc, nhưng đọc kết quả dễ hơn nhiều
 pipeline-stage-view

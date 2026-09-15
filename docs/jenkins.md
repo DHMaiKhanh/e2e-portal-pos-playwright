@@ -70,6 +70,8 @@ Jenkins dựng sẵn theo cách khác. Manage Jenkins → Plugins:
 | Allure              | `allure(...)`                               |
 | AnsiColor           | `ansiColor('xterm')` — log có màu           |
 | Timestamper         | `timestamps()`                              |
+| GitHub              | `githubNotify(...)` — commit status trên PR |
+| Email Extension     | `emailext(...)` — báo kết quả qua email     |
 
 Thiếu AnsiColor hoặc Timestamper thì pipeline **fail ngay ở bước parse**, không
 phải lúc chạy — nên cài đủ trước khi tạo job. Nếu không dùng Allure, xoá block
@@ -235,9 +237,10 @@ Lệch version không làm build đỏ — stage `Install` sẽ tự tải brows
 cache trong workspace — nhưng mỗi build phải tải thêm ~150MB. Đổi tag cùng lúc
 với lần nâng package là xong.
 
-Hai file CI cũ ([.github/workflows/e2e.yml](../.github/workflows/e2e.yml) và
-[.gitlab-ci.yml](../.gitlab-ci.yml)) vẫn đang ghi `v1.48.0-jammy` — đã lỗi thời so
-với lockfile, cần sửa nếu còn dùng.
+> File GitHub Actions (`.github/workflows/e2e.yml`) và GitLab CI (`.gitlab-ci.yml`)
+> đã bị xoá (2026-09-15) — Jenkins là pipeline chính thức duy nhất, giữ 2 file cũ
+> lệch version chỉ gây nhầm lẫn không biết cái nào là thật. Vẫn còn trong git
+> history nếu cần khôi phục.
 
 ## 8. Hai lỗi ở lần chạy job đầu tiên
 
@@ -271,3 +274,74 @@ cũng được bọc `try/catch` để lỗi publish không nuốt mất JUnit +
 
 Vẫn lỗi thì kiểm tra Manage Jenkins → Tools → Allure Commandline: phải có một
 tool tên `allure`, bật **Install automatically** (bản 2.30.x).
+
+## 9. Trigger tự động, commit status & email
+
+Ba thứ dưới đây không bắt buộc để build chạy được (build tay vẫn hoạt động bình
+thường nếu bỏ qua mục này), nhưng là chuẩn tối thiểu của một pipeline CI thật:
+tự động chạy khi có code mới, báo kết quả ngược lại nơi review code, và báo cho
+người phụ trách khi build đỏ mà không cần tự vào Jenkins xem.
+
+### 9.1. Trigger — `pollSCM`, không phải webhook thật
+
+Jenkinsfile khai báo:
+
+```groovy
+triggers { pollSCM('H/5 * * * *') }
+```
+
+GitHub không gọi được webhook vào `localhost:8090` vì Jenkins không có URL
+public — poll là cách duy nhất chạy được với setup local hiện tại. Jenkins tự
+kiểm tra remote mỗi ~5 phút, build nếu có commit mới trên `main`. Không cần cấu
+hình gì thêm ở phía GitHub.
+
+Khi Jenkins đã có URL public thật (ngrok, domain nội bộ, reverse proxy...), đổi
+sang webhook cho nhanh hơn và đỡ tốn tài nguyên chờ:
+
+```groovy
+triggers { githubPush() }
+```
+
+và ở GitHub: repo → Settings → Webhooks → Add webhook → Payload URL
+`<jenkins-url>/github-webhook/`, content type `application/json`, event `Just
+the push event`.
+
+### 9.2. Commit status trên GitHub (PR check)
+
+Jenkinsfile gọi `githubNotify(...)` ở stage `Notify: pending` (đầu build) và ở
+`post { success / unstable / failure }` — trạng thái hiện ra ở tab Checks của PR
+và commit, không phải vào Jenkins xem mới biết. UNSTABLE (có test fail) được map
+thành `FAILURE` phía GitHub vì GitHub không có khái niệm "unstable".
+
+Cần một credential:
+
+**`github-token`** — Kind: **Secret text**
+
+Giá trị là GitHub Personal Access Token, scope tối thiểu `repo:status` (classic
+token) hoặc `Commit statuses: Read and write` (fine-grained token), tạo ở
+GitHub → Settings → Developer settings → Personal access tokens.
+
+Thiếu credential này thì `notifyGithub()` trong Jenkinsfile bắt lỗi và chỉ
+`echo` ra log — build vẫn chạy và publish report bình thường, chỉ là PR không
+thấy status.
+
+### 9.3. Email khi build đỏ
+
+`post { unstable / failure }` gọi `notifyEmail(...)` (dùng bước `emailext` của
+plugin Email Extension); `post { fixed }` gửi thêm một email khi suite xanh trở
+lại sau lần đỏ trước đó, để không phải im lặng dò xem đã hết đỏ chưa nhưng cũng
+không spam mỗi build pass liên tiếp.
+
+Người nhận cấu hình ở biến `NOTIFY_EMAIL` trong Jenkinsfile (`environment` ở đầu
+file) — sửa thẳng ở đó nếu đổi người phụ trách, không cần đụng vào phần logic
+notify.
+
+SMTP là cấu hình global, không nằm trong Jenkinsfile: Manage Jenkins → System →
+**Extended E-mail Notification** — điền SMTP server, port, credential (nếu SMTP
+yêu cầu đăng nhập), và **Default user e-mail suffix** / **System Admin e-mail
+address** (địa chỉ gửi đi). Bấm **Test configuration** ở cuối trang để kiểm tra
+trước khi tin build thật gửi được.
+
+Chưa có SMTP thì `emailext` throw lỗi, `notifyEmail()` bắt lại và chỉ `echo` ra
+log — cùng kiểu graceful-degrade như commit status ở trên, build không vì thế
+mà đỏ oan.
