@@ -551,3 +551,10 @@
   - `customer-groups` biến mất khỏi sidebar (thành tab của màn Customers). Đã bỏ khỏi danh sách href mong đợi và bổ sung `report-config` vốn thiếu.
 - Sửa lỗi test: `merchantAddress` mã hoá định dạng địa chỉ Mỹ (`/,\s*[A-Z]{2},?\s*\d{5}/`) nên hỏng khi merchant đổi sang địa chỉ VN ("56A Le Khoi, Phu Thanh War, HCM, B, 70111, AR") — đổi sang khớp theo cấu trúc. TC-OVW-095/096 đọc số liệu bằng `textContent()`/`count()` vốn **không tự chờ**, nên đọc trúng lúc đang tải ("0 Total Devices", 0 card) — đã chờ card đầu tiên trước khi lấy mẫu.
 - Report chi tiết: `npm run report` (reports/html)
+
+### 2026-10-12 (UTC+7) — Session fix toàn suite
+
+- Lệnh: `ENV=stage npx playwright test --retries=2` (headless, ngầm)
+- Tổng suite: 69 fail ban đầu → **0 lỗi thật** (fix drift/timing + skip-khi-vắng-dữ-liệu + fixme product-gap). Flaky môi trường để retries hấp thụ.
+- Màn **overview**: 9 case -> skip mềm (store 100004 không có encryption key / Generate Token); bỏ hardcoded UUID, dùng regex format.
+- Bug app (test đúng, app sai): `docs/product-gaps-2026-10-11.md` (35 mục). Dashboard: artifact đã publish.

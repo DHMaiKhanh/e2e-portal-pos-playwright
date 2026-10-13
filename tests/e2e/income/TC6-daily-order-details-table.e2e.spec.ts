@@ -32,6 +32,13 @@ import {
  * test cases name; it is passed as URL state (`?tab=daily&date=…`), which is
  * how every filter on this screen is addressed.
  */
+
+/**
+ * The DEV Daily day verified to hold orders + income — pins the data-gated
+ * positive cases to a day with rows so they run instead of skipping on "today".
+ */
+const DAILY_DATA_DATE = '2026-08-18';
+
 test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
   test.beforeEach(async ({ incomePage }) => {
     await incomePage.goto();
@@ -75,7 +82,7 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
     'TC-INC-050 — the "<N> orders" counter equals the footer total',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
-      await incomePage.gotoWithQuery({ tab: 'daily', date: '2026-08-18' });
+      await incomePage.gotoWithQuery({ tab: 'daily', date: DAILY_DATA_DATE });
       await incomePage.waitForDataSettled();
 
       const total = await incomePage.totalResults();
@@ -130,6 +137,9 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
     'TC-INC-052 — every ORDER # matches #OD######-######## with an optional (Refund) suffix',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
+      await incomePage.gotoWithQuery({ tab: 'daily', date: DAILY_DATA_DATE });
+      await incomePage.waitForDataSettled();
+
       const codes = await incomePage.columnValues(
         incomePage.orderDetailsTable,
         IncomeDailyColumn.ORDER,
@@ -158,7 +168,7 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
     'TC-INC-053 — SALE/REFUND + TAX + TIP equals TOTAL on every row',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
-      await incomePage.gotoWithQuery({ tab: 'daily', date: '2026-08-18' });
+      await incomePage.gotoWithQuery({ tab: 'daily', date: DAILY_DATA_DATE });
       await incomePage.waitForDataSettled();
 
       const table = incomePage.orderDetailsTable;
@@ -247,6 +257,9 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
     'TC-INC-056 — on a single-page day both arrows are disabled and the indicator reads 1 / 1',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage }) => {
+      await incomePage.gotoWithQuery({ tab: 'daily', date: DAILY_DATA_DATE });
+      await incomePage.waitForDataSettled();
+
       const [current, totalPages] = await incomePage.pagePosition();
       expect(current).toBe(1);
       // Page 1 is a lower boundary whatever the data volume is.
@@ -276,6 +289,9 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
     'TC-INC-057 — Next advances the page, the footer range and the URL, with disjoint rows',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage, page }) => {
+      await incomePage.gotoWithQuery({ tab: 'daily', date: DAILY_DATA_DATE });
+      await incomePage.waitForDataSettled();
+
       const [, totalPages] = await incomePage.pagePosition();
       test.skip(
         totalPages <= 1,
@@ -319,6 +335,9 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
     'TC-INC-058 — Previous restores page 1 with its original rows',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage }) => {
+      await incomePage.gotoWithQuery({ tab: 'daily', date: DAILY_DATA_DATE });
+      await incomePage.waitForDataSettled();
+
       const [, totalPages] = await incomePage.pagePosition();
       test.skip(
         totalPages <= 1,

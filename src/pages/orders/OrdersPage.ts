@@ -90,8 +90,13 @@ export class OrdersPage extends BasePage {
     this.pageHeading = page.locator('[data-slot="page-title"]');
 
     this.quickFilterCombobox = filterSelect(0);
-    // Label is dynamic (shows the current date/range, e.g. "Jul 7, 2026" or a range).
-    this.dateRangeButton = page.getByRole('button', { name: /\d{4}/ });
+    // Resolved date-range button; its label is dynamic (the current range, e.g.
+    // "Oct 4, 2026 - Oct 10, 2026"). It used to be matched by
+    // `getByRole('button', { name: /\d{4}/ })`, but that now also matches the
+    // store-switcher button in the header ("Test 100004 #100004"), which trips
+    // strict mode. Key off the dedicated `data-slot` the filter bar gives this
+    // control (confirmed in the failure ARIA snapshots) so it resolves uniquely.
+    this.dateRangeButton = page.locator('[data-slot="order-filters-date"]');
     this.datePickerDialog = page.getByRole('dialog');
 
     this.staffFilterButton = page.getByRole('button', { name: /all staff/i });

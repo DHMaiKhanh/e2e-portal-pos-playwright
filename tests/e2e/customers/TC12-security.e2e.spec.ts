@@ -107,10 +107,10 @@ test.describe('Bảo mật & phân quyền (Security/permissions) — Customers'
       });
 
       await test.step('URL and data follow the new store', async () => {
-        await expect(isolatedPage).not.toHaveURL(new RegExp(`/pos/${env.STORE_ID}/`), {
+        await expect(isolatedPage).not.toHaveURL(new RegExp(`/pos/nail/${env.STORE_ID}/`), {
           timeout: 20_000,
         });
-        await expect(isolatedPage).toHaveURL(/\/pos\/\d+\//);
+        await expect(isolatedPage).toHaveURL(/\/pos\/nail\/\d+\//);
 
         // Scoped, not merely re-rendered: the previous store's rows are gone.
         // Poll rather than wait on the network — the new store's rows arrive

@@ -41,6 +41,23 @@ services:
       DOCKER_HOST: tcp://docker:2376
       DOCKER_CERT_PATH: /certs/client
       DOCKER_TLS_VERIFY: '1'
+
+      # JCasC (ci/jenkins/casc.yaml) đọc các biến này lúc boot. Giá trị ${X:-}
+      # lấy từ shell host trước `docker compose up`, thiếu thì rơi về default.
+      # Cách set gọn: tạo file ci/jenkins/jenkins.env rồi `--env-file`, hoặc export
+      # từng biến. Để trống SMTP_HOST thì email tắt, Jenkins vẫn chạy.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
+      SMTP_USE_SSL: ${SMTP_USE_SSL:-false}
+      EMAIL_ADMIN: ${EMAIL_ADMIN:-}
+      JENKINS_PUBLIC_URL: ${JENKINS_PUBLIC_URL:-http://localhost:8090/}
+      # Repo + branch mà 2 job trong casc.yaml build. Mặc định trỏ fork.
+      REPO_URL: ${REPO_URL:-https://github.com/khanhdo-afk/e2e-portal-pos-playwright.git}
+      GIT_BRANCH: ${GIT_BRANCH:-*/main}
+      GIT_CREDENTIALS_ID: ${GIT_CREDENTIALS_ID:-}
     ports:
       # 8090 chứ không phải 8080: volt-pos-app đã giữ sẵn 8080 trên máy này.
       # Đổi số bên TRÁI nếu 8090 cũng vướng; bên phải là port Jenkins nghe

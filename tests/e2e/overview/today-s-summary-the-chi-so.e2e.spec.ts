@@ -7,14 +7,13 @@ test.describe("Today's Summary (Thẻ chỉ số) — Overview", () => {
   });
 
   test(
-    'TC-OVW-064 — renders all six summary metric cards with correct labels/order',
+    'TC-OVW-064 — renders all five summary metric cards with correct labels/order',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage }) => {
       await expect(dashboardPage.todaysSummarySection).toBeVisible();
 
-      const labels: Array<
-        'Total Order' | 'Sale' | 'Appointments' | 'Total Tip' | 'Total Payment' | 'Gross Sale'
-      > = ['Total Order', 'Sale', 'Appointments', 'Total Tip', 'Total Payment', 'Gross Sale'];
+      const labels: Array<'Total Order' | 'Sale' | 'Appointments' | 'Total Tip' | 'Total Payment'> =
+        ['Total Order', 'Sale', 'Appointments', 'Total Tip', 'Total Payment'];
 
       for (const label of labels) {
         await expect(dashboardPage.metric(label)).toBeVisible();
@@ -29,8 +28,8 @@ test.describe("Today's Summary (Thẻ chỉ số) — Overview", () => {
       // The metric label ("Sale", "Total Tip", ...) is its own text node — the
       // "$<amount>.<2dp>" value renders as a SIBLING node inside the card, not a
       // descendant of the label, so `metric(label).toContainText(...)` can never
-      // match. Assert the currency format itself renders (>= 4 times, one per
-      // currency card: Sale, Total Tip, Total Payment, Gross Sale).
+      // match. Assert the currency format itself renders (>= 4 times, across the
+      // currency cards — Sale, Total Tip, Total Payment — and the Batch amounts).
       await expect(dashboardPage.todaysSummarySection).toBeVisible();
       const currency = page.getByText(/\$[\d,]+\.\d{2}/);
       await expect(currency.first()).toBeVisible();
@@ -45,7 +44,8 @@ test.describe("Today's Summary (Thẻ chỉ số) — Overview", () => {
       await expect(dashboardPage.summaryViewAllLink).toBeVisible();
       await dashboardPage.summaryViewAllLink.click();
 
-      await expect(page).toHaveURL(/\/pos\/\d+\/income/);
+      // "View All" now opens the new income-summary report page, not /income.
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/report-pages\/income-summary/);
     },
   );
 });

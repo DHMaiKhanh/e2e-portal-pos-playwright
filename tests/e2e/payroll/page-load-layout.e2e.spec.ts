@@ -12,7 +12,7 @@ test.describe('Page load & layout — Payroll', () => {
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ payrollPage, page }) => {
       await payrollPage.waitForReady();
-      await expect(page).toHaveURL(/\/pos\/\d+\/payroll(\?.*tab=checks.*)?$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/payroll(\?.*tab=checks.*)?$/);
       await expect(payrollPage.pageHeading).toBeVisible();
       await expect(payrollPage.checksTab).toBeVisible();
       await expect(page.getByRole('table').first()).toBeVisible();

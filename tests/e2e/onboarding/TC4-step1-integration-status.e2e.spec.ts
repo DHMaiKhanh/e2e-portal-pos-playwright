@@ -498,7 +498,7 @@ test.describe('Bước 1 — Panel `Integration Status` — Onboarding', () => {
 
       await expect(onboardingPage.enterWhmcsIdHeading).toBeVisible({ timeout: Timeouts.LONG });
       await expect(onboardingPage.whmcsIdInput).toBeVisible();
-      await expect(page).toHaveURL(/\/pos\/onboarding/);
+      await expect(page).toHaveURL(/\/pos\/nail\/admin\/onboarding/);
       await expect(page).not.toHaveURL(/[?&]whmcsId=/);
       expect(onboardingPage.currentWhmcsId()).toBe('');
     },

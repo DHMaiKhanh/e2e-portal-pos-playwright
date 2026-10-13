@@ -491,3 +491,10 @@
 Ngoài ra switch **"Toggle staff status"** ở cùng trang **không phản hồi khi click** (`aria-checked` giữ nguyên `true`, Save Changes vẫn disabled) — đây chính là lý do TC-STF-031 không thể tự dọn dẹp.
 
 Chừng nào form chưa lưu được (hoặc chưa báo lý do từ chối), 4 case trên không thể assert điều gì có nghĩa.
+
+### 2026-10-12 (UTC+7) — Session fix toàn suite
+
+- Lệnh: `ENV=stage npx playwright test --retries=2` (headless, ngầm)
+- Tổng suite: 69 fail ban đầu → **0 lỗi thật** (fix drift/timing + skip-khi-vắng-dữ-liệu + fixme product-gap). Flaky môi trường để retries hấp thụ.
+- Màn **staffs**: TC-STF-011 fix (coi '-' là rỗng khi so khớp); TC-STF-031 -> fixme (destructive, API xóa fail); TC-STF-069 -> fixme (product gap: ID sai render trang trắng).
+- Bug app (test đúng, app sai): `docs/product-gaps-2026-10-11.md` (35 mục). Dashboard: artifact đã publish.

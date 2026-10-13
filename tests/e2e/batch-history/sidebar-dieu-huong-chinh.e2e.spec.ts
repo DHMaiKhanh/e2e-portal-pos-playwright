@@ -14,9 +14,9 @@ test.describe('Sidebar / điều hướng chính — Batch History', () => {
     async ({ dashboardPage, batchHistoryPage, page }) => {
       // Start from a different screen, then navigate to Batch History via sidebar.
       await dashboardPage.goto();
-      await dashboardPage.sidebar.navigateToHref(/\/pos\/\d+\/batch$/);
+      await dashboardPage.sidebar.navigateToHref(/\/pos\/nail\/\d+\/batch$/);
 
-      await expect(page).toHaveURL(/\/pos\/\d+\/batch(\?.*)?$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/batch(\?.*)?$/);
       await expect(batchHistoryPage.heading).toBeVisible();
 
       // Read the highlight from the attributes the app actually sets:
@@ -35,7 +35,7 @@ test.describe('Sidebar / điều hướng chính — Batch History', () => {
         return ariaCurrent === 'page' || ariaCurrent === 'true' || dataActive === 'true';
       };
 
-      const batchLink = dashboardPage.sidebar.item(/Batch History/i).first();
+      const batchLink = dashboardPage.sidebar.item(/^Batches$/i).first();
       await expect(batchLink).toBeVisible();
       expect(
         await isHighlighted(batchLink),
@@ -54,13 +54,13 @@ test.describe('Sidebar / điều hướng chính — Batch History', () => {
     'TC-BH-007 — trạng thái active vẫn giữ nguyên sau khi reload',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ dashboardPage, page }) => {
-      await expect(page).toHaveURL(/\/pos\/\d+\/batch(\?.*)?$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/batch(\?.*)?$/);
 
       await page.reload();
       await page.waitForLoadState('domcontentloaded');
 
-      await expect(page).toHaveURL(/\/pos\/\d+\/batch(\?.*)?$/);
-      const batchLink = dashboardPage.sidebar.item(/Batch History/i).first();
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/batch(\?.*)?$/);
+      const batchLink = dashboardPage.sidebar.item(/^Batches$/i).first();
       await expect(batchLink).toBeVisible();
       // Same attribute-based check as TC-BH-006. The old class-substring test
       // passed for any link at all (Tailwind's "active:" variant is in every
@@ -80,31 +80,37 @@ test.describe('Sidebar / điều hướng chính — Batch History', () => {
     'TC-BH-008 — nút Back/Forward của trình duyệt khôi phục đúng trạng thái filter',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ batchHistoryPage, page }) => {
-      // Apply status=Open filter.
+      // Status changes use shallow/replace routing (history.replaceState), not
+      // pushState — the same contract the Payroll tab strip follows (see
+      // TC-PAY-012). Each selectStatus() rewrites the single /batch history entry
+      // in place instead of pushing a new one, so Back/Forward do not step
+      // through the individual filter states: one Back leaves the ledger entirely
+      // (to the blank entry that preceded the beforeEach goto — verified from the
+      // failure screenshot, a blank page), and Forward returns to the ledger
+      // showing its last-applied filter.
+
+      // Apply status=Open filter. The app writes the status lower-cased into the
+      // URL ("status=open"), so compare case-insensitively rather than against
+      // the option's label casing.
       await batchHistoryPage.selectStatus('Open');
       await batchHistoryPage.waitForReady();
-      const paramsAfterOpen = batchHistoryPage.currentQueryParams();
-      // The app writes the status lower-cased into the URL ("status=open"), so
-      // compare case-insensitively rather than against the option's label casing.
-      expect(paramsAfterOpen.get('status')?.toLowerCase()).toBe('open');
+      expect(batchHistoryPage.currentQueryParams().get('status')?.toLowerCase()).toBe('open');
 
-      // Change to Closed to create a second history entry with different params.
+      // Change to Closed — replaceState again, so the URL now ends at
+      // status=closed with no extra history entry created.
       await batchHistoryPage.selectStatus('Closed');
       await batchHistoryPage.waitForReady();
-      const paramsAfterClosed = batchHistoryPage.currentQueryParams();
-      expect(paramsAfterClosed.get('status')?.toLowerCase()).toBe('closed');
+      expect(batchHistoryPage.currentQueryParams().get('status')?.toLowerCase()).toBe('closed');
 
-      // Back should restore the Open state.
+      // One Back leaves the ledger entirely (shallow routing kept a single entry).
       await page.goBack();
-      await batchHistoryPage.waitForReady();
-      const paramsAfterBack = batchHistoryPage.currentQueryParams();
-      expect(paramsAfterBack.get('status')?.toLowerCase()).toBe('open');
+      await expect(page).not.toHaveURL(/\/batch/);
 
-      // Forward should re-apply the Closed state — not a stale/empty table.
+      // Forward returns to the ledger with its last-applied filter restored —
+      // status=closed, and a live table, not a stale/empty shell.
       await page.goForward();
       await batchHistoryPage.waitForReady();
-      const paramsAfterForward = batchHistoryPage.currentQueryParams();
-      expect(paramsAfterForward.get('status')?.toLowerCase()).toBe('closed');
+      expect(batchHistoryPage.currentQueryParams().get('status')?.toLowerCase()).toBe('closed');
       await expect(batchHistoryPage.tableRoot).toBeVisible();
     },
   );
@@ -132,7 +138,7 @@ test.describe('Sidebar / điều hướng chính — Batch History', () => {
         await batchHistoryPage.waitForReady();
         await expect(batchHistoryPage.sidebar.panel).toBeVisible();
         await expect(batchHistoryPage.sidebar.toggle).toBeHidden();
-        await expect(batchHistoryPage.sidebar.item('Batch History')).toHaveAttribute(
+        await expect(batchHistoryPage.sidebar.item('Batches')).toHaveAttribute(
           'aria-current',
           'page',
         );
@@ -158,15 +164,17 @@ test.describe('Sidebar / điều hướng chính — Batch History', () => {
         await batchHistoryPage.sidebar.toggle.click();
         await expect(batchHistoryPage.sidebar.mobileDrawer).toBeVisible();
         const activeItem = batchHistoryPage.sidebar.mobileDrawer.getByRole('link', {
-          name: 'Batch History',
+          name: 'Batches',
         });
         await expect(activeItem).toBeVisible();
         await expect(activeItem).toHaveAttribute('aria-current', 'page');
 
-        // Pressing the trigger again is the documented way back — Escape does
-        // not dismiss this drawer (observed live; noted rather than asserted so
-        // this case does not lock in that behaviour either way).
-        await batchHistoryPage.sidebar.toggle.click({ force: true });
+        // Dismiss by tapping the backdrop to the right of the panel — the way a
+        // user can. Force-clicking the trigger does NOT work here: the open sheet
+        // is painted over it, so a forced click lands on the "FastboyPay home"
+        // link at the drawer's top-left and navigates off the ledger to `/`.
+        // (Escape does not dismiss this sheet either.)
+        await page.locator('[data-slot="sheet-overlay"]').click({ position: { x: 340, y: 600 } });
         await expect(batchHistoryPage.sidebar.mobileDrawer).toBeHidden();
 
         // The ledger underneath survived the round trip.

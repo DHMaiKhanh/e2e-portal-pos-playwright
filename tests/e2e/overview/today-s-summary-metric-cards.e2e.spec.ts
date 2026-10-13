@@ -4,9 +4,9 @@ import { Tag } from '@/types/testTags';
 /**
  * Overview screen — "Today's Summary (Metric Cards)" area (lean core).
  *
- * The six metric tiles (Total Order, Sale, Appointments, Total Tip, Total
- * Payment, Gross Sale). Values are store- and time-scoped, so assertions match
- * FORMAT (currency /\$[\d,]+\.\d{2}/) — never the live amounts.
+ * The five metric tiles (Total Order, Sale, Appointments, Total Tip, Total
+ * Payment). Values are store- and time-scoped, so assertions match FORMAT
+ * (currency /\$[\d,]+\.\d{2}/) — never the live amounts.
  */
 test.describe("Today's Summary (Metric Cards) — Overview", () => {
   test.beforeEach(async ({ dashboardPage }) => {
@@ -14,7 +14,7 @@ test.describe("Today's Summary (Metric Cards) — Overview", () => {
   });
 
   test(
-    'TC-OVW-064 — renders all six metric cards with the expected labels',
+    'TC-OVW-064 — renders all five metric cards with the expected labels',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage }) => {
       await expect(dashboardPage.todaysSummarySection).toBeVisible();
@@ -23,7 +23,6 @@ test.describe("Today's Summary (Metric Cards) — Overview", () => {
       await expect(dashboardPage.metric('Appointments')).toBeVisible();
       await expect(dashboardPage.metric('Total Tip')).toBeVisible();
       await expect(dashboardPage.metric('Total Payment')).toBeVisible();
-      await expect(dashboardPage.metric('Gross Sale')).toBeVisible();
     },
   );
 
@@ -32,9 +31,9 @@ test.describe("Today's Summary (Metric Cards) — Overview", () => {
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ dashboardPage, page }) => {
       await expect(dashboardPage.todaysSummarySection).toBeVisible();
-      // The four currency cards (Sale, Total Tip, Total Payment, Gross Sale) each
-      // render "$<amount>.<2dp>". Wait for the values to load (count() does not
-      // auto-wait), then assert the format appears for >= 4 values.
+      // The currency cards (Sale, Total Tip, Total Payment) plus the Batch History
+      // amounts each render "$<amount>.<2dp>". Wait for the values to load (count()
+      // does not auto-wait), then assert the format appears for >= 4 values.
       const currency = page.getByText(/\$[\d,]+\.\d{2}/);
       await expect(currency.first()).toBeVisible();
       await expect.poll(() => currency.count()).toBeGreaterThanOrEqual(4);
@@ -46,7 +45,8 @@ test.describe("Today's Summary (Metric Cards) — Overview", () => {
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage, page }) => {
       await dashboardPage.summaryViewAllLink.click();
-      await expect(page).toHaveURL(/\/pos\/\d+\/income/);
+      // "View All" now opens the new income-summary report page, not /income.
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/report-pages\/income-summary/);
       await expect(page).not.toHaveURL(/\/login/);
     },
   );

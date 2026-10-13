@@ -26,7 +26,7 @@ test.describe('Responsive — Batch History', () => {
       // `.or()` resolves to two elements. `.first()` has to wrap the whole chain
       // — putting it on one operand, as before, leaves the union ambiguous.
       await expect(
-        batchHistoryPage.sidebar.item('Batch history').or(batchHistoryPage.heading).first(),
+        batchHistoryPage.sidebar.item('Batches').or(batchHistoryPage.heading).first(),
       ).toBeVisible();
       await expect(batchHistoryPage.dateRangeButton).toBeVisible();
       await expect(batchHistoryPage.statusCombobox).toBeVisible();

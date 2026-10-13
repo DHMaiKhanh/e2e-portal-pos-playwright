@@ -41,14 +41,14 @@ test.describe('App Switcher Rail — Overview', () => {
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage, page }) => {
       // Navigate away first (labels repeat, so match the store-scoped href).
-      await dashboardPage.sidebar.navigateToHref(/^\/pos\/\d+\/orders$/);
-      await expect(page).toHaveURL(/\/pos\/\d+\/orders/);
+      await dashboardPage.sidebar.navigateToHref(/^\/pos\/nail\/\d+\/orders$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/orders/);
 
       await dashboardPage.logoHomeLink.click();
 
       // The logo is href="/" and `/` no longer redirects into the store — it now
       // lands on the Fastboy Portal app chooser. See the note on TC-OVW-002.
-      await expect(page).not.toHaveURL(/\/pos\/\d+\//);
+      await expect(page).not.toHaveURL(/\/pos\/nail\/\d+\//);
       await expect(page.getByText(/choose where you'?d like to start/i)).toBeVisible();
     },
   );

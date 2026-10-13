@@ -35,7 +35,7 @@ test.describe('Bảng danh sách nhân viên (Table) — Staffs', () => {
    * the screen itself fetches. Capturing that response and diffing it against
    * the rendered cells is a real comparison against the source, and it also
    * covers the transforms the table applies (name composition, phone
-   * formatting, the join date in the store's +7 timezone).
+   * formatting, the join date in the store's local US Central timezone).
    */
   test(
     'TC-STF-011 — dữ liệu dòng khớp với thông tin nhân viên thực tế',
@@ -60,17 +60,27 @@ test.describe('Bảng danh sách nhân viên (Table) — Staffs', () => {
       const rendered = await staffsPage.table.rows.allInnerTexts();
       expect(rendered).toHaveLength(member.length);
 
+      // The DOM collapses runs of whitespace when read via innerText, but a raw
+      // source record can carry a stray double space (e.g. a trailing space on
+      // firstName), so normalise both sides before comparing the composed name.
+      const normalizeWhitespace = (value: string) => value.replace(/\s+/g, ' ').trim();
+
       for (const [index, record] of member.entries()) {
         const cells = rendered[index].split('\t').map((cell) => cell.trim());
         const [staff, phone, email, code, joinedAt, status] = cells;
 
         // STAFF shows the nickname when there is one, otherwise the full name.
-        const expectedName =
+        const expectedName = normalizeWhitespace(
           (record.nickname as string) ||
-          `${(record.firstName as string) ?? ''} ${(record.lastName as string) ?? ''}`.trim();
-        expect(staff.split('\n')[0].trim(), `row ${index} STAFF`).toBe(expectedName);
+            `${(record.firstName as string) ?? ''} ${(record.lastName as string) ?? ''}`,
+        );
+        expect(normalizeWhitespace(staff.split('\n')[0]), `row ${index} STAFF`).toBe(expectedName);
 
-        expect(email, `row ${index} EMAIL`).toBe((record.email as string) || '');
+        // Empty Phone/Email fields render as the "-" placeholder (see
+        // TC-STF-012), so treat it as the empty value when diffing the source.
+        expect(email === '-' ? '' : email, `row ${index} EMAIL`).toBe(
+          (record.email as string) || '',
+        );
 
         // CODE is stored unpadded (321) and rendered zero-padded to 4 ("0321"),
         // so compare the value rather than the string.
@@ -83,8 +93,9 @@ test.describe('Bảng danh sách nhân viên (Table) — Staffs', () => {
           String(record.status ?? '').toLowerCase(),
         );
 
-        if (phone) {
-          // Rendered as (XXX) XXX-XXXX regardless of how it is stored.
+        if (phone && phone !== '-') {
+          // Rendered as (XXX) XXX-XXXX regardless of how it is stored. Empty
+          // phones show the "-" placeholder, which is not a formatted number.
           expect(phone, `row ${index} PHONE`).toMatch(/^\(\d{3}\) \d{3}-\d{4}$/);
           expect(phone.replace(/\D/g, ''), `row ${index} PHONE digits`).toContain(
             String(record.phone ?? '')
@@ -94,8 +105,11 @@ test.describe('Bảng danh sách nhân viên (Table) — Staffs', () => {
         }
 
         if (record.createdAt) {
+          // The table renders JOINED AT in the store's local timezone, which is
+          // US Central — the cells carry a "(UTC-5)"/"(UTC-6)" suffix (CDT/CST),
+          // not "+7". Compute the expected date in that same zone so they agree.
           const expectedDate = new Date(record.createdAt as string).toLocaleDateString('en-US', {
-            timeZone: 'Asia/Ho_Chi_Minh',
+            timeZone: 'America/Chicago',
             month: 'short',
             day: 'numeric',
             year: 'numeric',
@@ -198,7 +212,7 @@ test.describe('Bảng danh sách nhân viên (Table) — Staffs', () => {
 
       await firstDataRow.click();
 
-      await expect(page).toHaveURL(/\/pos\/\d+\/staffs\/[^/?]+\?tab=profile/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/staffs\/[^/?]+\?tab=profile/);
       if (firstCellText) {
         await expect(page.getByText(firstCellText, { exact: false }).first()).toBeVisible();
       }

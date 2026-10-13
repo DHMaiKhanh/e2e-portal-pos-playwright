@@ -2,7 +2,7 @@ import { type Locator, type Page, expect } from '@playwright/test';
 import { BasePage } from '@pages/BasePage';
 import { DataTable } from '@components/table/DataTable';
 import { Sidebar } from '@components/sidebar/Sidebar';
-import { Urls } from '@constants/urls';
+import { Urls, posAdminBase } from '@constants/urls';
 import { Timeouts } from '@configs/constants/timeouts';
 import { addDays, toIsoDate } from '@utils/dateUtils';
 
@@ -26,10 +26,10 @@ import { addDays, toIsoDate } from '@utils/dateUtils';
 export const INCOME_PAGE_TITLE = 'Income Reports | Portal';
 
 /** The on-page label. Rendered as loose text, not a heading. */
-export const INCOME_SCREEN_LABEL = 'Income Reports';
+export const INCOME_SCREEN_LABEL = 'Income Reports (Legacy)';
 
-/** Store-scoped route matcher — never hard-code the numeric store id. */
-export const INCOME_URL_PATTERN = /\/pos\/\d+\/income/;
+/** Store-scoped route matcher — the app injects the `nail` vertical segment. */
+export const INCOME_URL_PATTERN = /\/pos\/nail\/\d+\/income/;
 
 /** `?tab=` values. Anything else is normalised back to `daily`. */
 export const IncomeTab = {
@@ -50,9 +50,9 @@ export type IncomeTabValue = (typeof INCOME_TABS)[number]['value'];
 /** Just the labels, in order — asserted by the tab-strip cases. */
 export const INCOME_TAB_LABELS = INCOME_TABS.map((tab) => tab.label);
 
-/** URL matcher for one tab, e.g. `/pos/14/income?tab=summary`. */
+/** URL matcher for one tab, e.g. `/pos/nail/14/income?tab=summary`. */
 export function incomeTabUrlPattern(tab: IncomeTabValue): RegExp {
-  return new RegExp(`/pos/\\d+/income\\?[^#]*tab=${tab}`);
+  return new RegExp(`/pos/nail/\\d+/income\\?[^#]*tab=${tab}`);
 }
 
 /** Visible label for a `?tab=` value. */
@@ -332,29 +332,32 @@ export const INCOME_EMPTY_STATES = {
 export const INCOME_SIDEBAR_OPERATIONS = [
   { label: 'Overview', href: Urls.DASHBOARD },
   { label: 'Orders', href: Urls.ORDERS },
-  { label: 'Batch History', href: Urls.BATCH_HISTORY },
-  { label: 'Income Reports', href: Urls.INCOME },
+  { label: 'Batches', href: Urls.BATCH_HISTORY },
+  { label: 'Income Reports (Legacy)', href: Urls.INCOME },
   { label: 'Payroll', href: Urls.PAYROLL },
 ] as const;
 
 /** Sidebar `Management` group. */
 export const INCOME_SIDEBAR_MANAGEMENT = [
-  { label: 'Staffs', href: Urls.STAFFS },
+  { label: 'Staff Members', href: Urls.STAFFS },
   { label: 'Services', href: Urls.PRODUCTS },
   { label: 'Customers', href: Urls.CUSTOMERS },
-  { label: 'Settings', href: Urls.SETTINGS },
+  { label: 'Store Settings', href: Urls.SETTINGS },
 ] as const;
 
-/** Sidebar `Internal` group — admin routes, not store-scoped. */
+/**
+ * Sidebar `Internal` group — admin routes, not store-scoped but carrying the
+ * `nail` vertical segment (`/pos/nail/admin/...`). The former `Monitor`,
+ * `Versions` and admin `Settings` links are no longer anchors — the group now
+ * exposes `System` / `Users & Roles` buttons instead — so only the five real
+ * links remain inventoried here.
+ */
 export const INCOME_SIDEBAR_INTERNAL = [
   { label: 'Merchants', href: Urls.MERCHANTS },
   { label: 'Onboarding', href: Urls.ONBOARDING },
-  { label: 'Packages', href: '/pos/admin/packages' },
-  { label: 'All Orders', href: '/pos/admin/orders' },
-  { label: 'Devices', href: '/pos/admin/devices' },
-  { label: 'Monitor', href: '/pos/admin/monitor' },
-  { label: 'Versions', href: '/pos/admin/versions' },
-  { label: 'Settings', href: '/pos/admin/setting' },
+  { label: 'Packages', href: `${posAdminBase}/packages` },
+  { label: 'All Orders', href: `${posAdminBase}/orders` },
+  { label: 'Devices', href: `${posAdminBase}/devices` },
 ] as const;
 
 /** Icon-rail buttons (aria-label only, no text). */
@@ -645,7 +648,12 @@ export class IncomePage extends BasePage {
     this.sidebar = new Sidebar(page);
     this.orderDetailDialog = new OrderDetailDialog(page);
     this.homeLink = page.getByRole('link', { name: 'FastboyPay home' });
-    this.userMenuButton = page.getByRole('button', { name: 'Open user menu' });
+    // Located by its popup attribute, not role/name: opening the menu makes Radix
+    // mark the rest of the page `aria-hidden`, which drops the trigger out of the
+    // accessibility tree — a `getByRole` lookup then cannot read its
+    // `aria-expanded` while the menu is open. A CSS attribute locator still can
+    // (this mirrors how `storeSwitcherButton` is reached).
+    this.userMenuButton = page.locator('button[aria-haspopup="menu"]').first();
     this.storeSwitcherButton = page.locator('button[aria-haspopup="dialog"]').first();
     this.toggleSidebarButton = page.getByRole('button', { name: 'Toggle Sidebar' });
     this.notificationsRegion = page.getByRole('region', { name: /notifications/i });
@@ -1000,6 +1008,19 @@ export class IncomePage extends BasePage {
 
   /** Every text label the plot renders (both axes, in DOM order). */
   async chartAxisLabels(): Promise<string[]> {
+    // Axis ticks render as SVG `<text>` nodes; `innerText` does not reliably
+    // surface SVG text, so read the text nodes directly (`textContent` works on
+    // SVG) and fall back to `innerText` for any build that keeps the labels in
+    // HTML. DOM order still runs left-to-right / top-to-bottom per axis.
+    const svgText = (
+      await this.chartRegion
+        .locator('text')
+        .allTextContents()
+        .catch(() => [])
+    )
+      .map((label) => label.replace(/\s+/g, ' ').trim())
+      .filter(Boolean);
+    if (svgText.length > 0) return svgText;
     const text = (await this.chartRegion.innerText().catch(() => '')) ?? '';
     return text
       .split('\n')
@@ -1074,7 +1095,11 @@ export class IncomePage extends BasePage {
   /** The card's headline figure (`$3,279.37` / `23`), parsed off the card text. */
   async kpiValue(label: IncomeKpiLabel): Promise<string> {
     const text = await this.cardText(label);
-    return text.match(/(-?\$[\d,]+\.\d{2}|-?[\d,]+)\s*[+-]?\d+%/)?.[1] ?? '';
+    // The comparison badge is optional: a day with no prior-day baseline (an
+    // empty far-past date, or a brand-new store) renders the value and
+    // `vs Yesterday` with no `%` at all, so requiring the badge would miss the
+    // figure entirely and read back as `NaN`.
+    return text.match(/(-?\$[\d,]+\.\d{2}|-?[\d,]+)(?:\s*[+-]?\d+%)?/)?.[1] ?? '';
   }
 
   /** The card's comparison badge, e.g. `-95%`. */
@@ -1149,6 +1174,26 @@ export class IncomePage extends BasePage {
   get paymentDetailHeading(): Locator {
     return this.page
       .getByText(/^payment detail$/i)
+      .filter({ visible: true })
+      .first();
+  }
+
+  /**
+   * The right rail's empty state on a day/period with no income — the rail
+   * swaps its `INCOME DETAIL` breakdown for this sentence when there is nothing
+   * to break down (e.g. a day the store never traded).
+   */
+  get incomeDetailEmptyState(): Locator {
+    return this.page
+      .getByText(/no income data for this (?:day|period) yet/i)
+      .filter({ visible: true })
+      .first();
+  }
+
+  /** The `PAYMENT DETAIL` rail's matching empty state. */
+  get paymentDetailEmptyState(): Locator {
+    return this.page
+      .getByText(/no payment data for this (?:day|period) yet/i)
       .filter({ visible: true })
       .first();
   }
@@ -1503,25 +1548,31 @@ export class IncomePage extends BasePage {
   /** Browser Back, then wait for the chrome (history walks through filter states). */
   async goBack(): Promise<void> {
     await this.page.goBack({ waitUntil: 'domcontentloaded' });
+    // A Back/Forward can land on the same flaky DEV route chunk that `open()`
+    // recovers from; without this the chrome never paints and `waitForReady`
+    // times out on the missing tab strip.
+    await this.recoverIfUnavailable();
     await this.waitForReady();
   }
 
   /** Browser Forward, then wait for the chrome. */
   async goForward(): Promise<void> {
     await this.page.goForward({ waitUntil: 'domcontentloaded' });
+    await this.recoverIfUnavailable();
     await this.waitForReady();
   }
 
   /**
-   * `/pos/<storeId>/income` for an arbitrary store id — the cross-store and
-   * malformed-id cases (`999999`, `abc`).
+   * `/pos/nail/<storeId>/income` for an arbitrary store id — the cross-store and
+   * malformed-id cases (`999999`, `abc`). Keeps the `nail` vertical segment so
+   * the route exercises the store-id path, not vertical-segment parsing.
    *
    * Deliberately does NOT wait for the chrome: the point of those cases is that
    * the screen may legitimately refuse to render.
    */
   async gotoStore(storeId: string | number, query?: Record<string, string>): Promise<void> {
     const suffix = query ? `?${new URLSearchParams(query).toString()}` : '';
-    await this.page.goto(`/pos/${storeId}/income${suffix}`, { waitUntil: 'domcontentloaded' });
+    await this.page.goto(`/pos/nail/${storeId}/income${suffix}`, { waitUntil: 'domcontentloaded' });
   }
 
   /** Assert the visit bounced to `/login` — see {@link INCOME_LOGIN_URL_PATTERN}. */
@@ -2167,21 +2218,29 @@ export class OrderDetailDialog {
   constructor(private readonly page: Page) {}
 
   get root(): Locator {
-    return this.page.getByRole('dialog').filter({ hasText: /order detail #OD/i });
+    // Identified by the dialog's accessible name, not its body text: at narrow
+    // (mobile) widths the title splits into a heading ("Order detail") and a
+    // separate order-code line, so a `hasText: /order detail #OD/` filter stops
+    // matching — the accessible name stays "Order detail" at every width.
+    return this.page.getByRole('dialog', { name: /order detail/i });
   }
 
   async waitForReady(): Promise<void> {
-    await expect(this.title).toBeVisible({ timeout: Timeouts.MEDIUM });
+    // Gate on the dialog root, not the title heading: at mobile (390px) widths
+    // the title stays in the a11y tree but renders with no box, so a
+    // title-visibility gate flakes there. The title text is still asserted
+    // directly by the desktop cases that care about it.
+    await expect(this.root).toBeVisible({ timeout: Timeouts.MEDIUM });
   }
 
-  /** `Order detail #OD260820-40932030`. */
+  /** The dialog heading — `Order detail` (the `#OD…` code sits beside it). */
   get title(): Locator {
-    return this.root.getByText(/^Order detail #OD\d{6}-\d{8}$/).first();
+    return this.root.getByRole('heading', { name: /order detail/i }).first();
   }
 
-  /** The order code out of the dialog title, '' when unreadable. */
+  /** The order code shown in the dialog, '' when unreadable. */
   async orderCode(): Promise<string> {
-    const text = (await this.title.textContent()) ?? '';
+    const text = (await this.root.innerText().catch(() => '')) ?? '';
     return text.match(/#OD\d{6}-\d{8}/)?.[0] ?? '';
   }
 
@@ -2231,9 +2290,14 @@ export class OrderDetailDialog {
     return this.root.getByText(/times in UTC[+-]\d+/i).first();
   }
 
-  /** The log's sub-tabs — see {@link INCOME_ACTIVITY_LOG_TABS}. */
+  /**
+   * The log's subject filter — see {@link INCOME_ACTIVITY_LOG_TABS}.
+   *
+   * Rendered as a tablist at desktop width and as a radiogroup ("Filter activity
+   * by subject") once the dialog narrows to mobile, so both roles are accepted.
+   */
   get activityLogTabs(): Locator {
-    return this.root.getByRole('tab');
+    return this.root.getByRole('tab').or(this.root.getByRole('radio'));
   }
 
   activityLogTab(name: string): Locator {

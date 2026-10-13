@@ -68,6 +68,12 @@ npm run test:regression -- --grep Dashboard    # test:regression = playwright te
 npm run test:e2e                               # chạy toàn bộ tests/e2e (rộng hơn dashboard)
 ```
 
+Mặc định `HEADLESS=true` (`configs/env/loadEnv.ts` → `playwright.config.ts` `use.headless`), nên các lệnh trên đã chạy ẩn, không hiện cửa sổ Chrome. Nếu muốn ép rõ ràng hoặc project đang có `.env` override thành `false`:
+
+```bash
+npx cross-env ENV=local HEADLESS=true playwright test tests/e2e/dashboard
+```
+
 Xem report sau khi chạy:
 
 ```bash
@@ -78,11 +84,14 @@ npm run report:allure       # allure generate + open
 ### Công cụ report-dashboard (khác, không liên quan đến test Overview)
 
 ```bash
-npm run test:report         # chạy toàn bộ suite rồi build + mở reports/dashboard-app
-npm run dashboard:install   # npm install trong reports/dashboard-app
-npm run dashboard:build     # build reports/dashboard-app
-npm run dashboard:open      # preview reports/dashboard-app
+npm run test:report              # chạy TOÀN BỘ suite rồi build + mở reports/dashboard/index.html
+NO_OPEN=1 npm run test:report    # chạy ngầm (CI / background): build dashboard nhưng KHÔNG tự mở trình duyệt
+ENV=local npm run test:report    # đổi môi trường (mặc định của script này là ENV=stage, khác các script test:* khác)
+npm run dashboard:build          # chỉ build lại reports/dashboard từ kết quả đã có (reports/*-results)
+npm run dashboard:open           # mở reports/dashboard/index.html đã build
 ```
+
+> Chi tiết: [scripts/run-tests-and-report.mjs](scripts/run-tests-and-report.mjs) chạy 3 bước — (1) `playwright test` (mặc định `ENV=stage`), (2) `node scripts/build-dashboard.mjs`, (3) mở `reports/dashboard/index.html`. Dashboard luôn được build **kể cả khi test fail**, và exit code của lệnh = exit code của bước test (nên CI vẫn báo đỏ khi có test fail). Dùng `NO_OPEN=1` để chạy nền/giám sát log mà không bật cửa sổ trình duyệt.
 
 ## 5. Khoảng trống test coverage
 

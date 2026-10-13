@@ -11,10 +11,12 @@ test.describe('Tìm kiếm & lọc (Search / Filter) — Staffs', () => {
     'TC-STF-020 — search by nick name returns matching results',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ staffsPage, page }) => {
-      await staffsPage.search('trine');
-      await expect(page).toHaveURL(/search=trine/);
+      // "trine" matches no staff in the roster; the real records are "trinh14"
+      // and "Trinh Men", so search a substring that actually returns rows.
+      await staffsPage.search('trinh');
+      await expect(page).toHaveURL(/search=trinh/);
       const rows = staffsPage.table.rows;
-      await expect(rows.first()).toContainText(/trine/i);
+      await expect(rows.first()).toContainText(/trinh/i);
     },
   );
 
@@ -69,7 +71,9 @@ test.describe('Tìm kiếm & lọc (Search / Filter) — Staffs', () => {
       await staffsPage.sortFilter.click();
       await page.getByRole('option', { name: /oldest first/i }).click();
 
-      await expect(page).toHaveURL(/orderCreatedAt=asc/);
+      // The app encodes the sort choice as `sort=oldest` (it previously used
+      // `orderCreatedAt=asc`); assert the current contract.
+      await expect(page).toHaveURL(/sort=oldest/);
       const rows = staffsPage.table.rows;
       await expect(rows.first()).toBeVisible();
     },

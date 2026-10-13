@@ -10,7 +10,7 @@ test.describe('Tải trang & Bố cục — Overview', () => {
     'TC-OVW-001 — vào Overview qua route theo store /pos/<id>/overview',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage, page }) => {
-      await expect(page).toHaveURL(/\/pos\/\d+\/overview/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/overview/);
       await expect(dashboardPage.heading).toBeVisible();
     },
   );

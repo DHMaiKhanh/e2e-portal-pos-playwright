@@ -13,10 +13,12 @@ test.describe('Tải trang & Bố cục — Orders', () => {
       await ordersPage.waitForReady();
 
       await expect(page).toHaveURL(
-        /\/pos\/\d+\/orders\?page=1&status=all&paymentMethod=all&dateField=completedAt&dateAfter=\d{4}-\d{2}-\d{2}&dateBefore=\d{4}-\d{2}-\d{2}/,
+        /\/pos\/nail\/\d+\/orders\?page=1&status=all&paymentMethod=all&dateField=completedAt&dateAfter=\d{4}-\d{2}-\d{2}&dateBefore=\d{4}-\d{2}-\d{2}/,
       );
       await expect(page).not.toHaveURL(/\/login/);
-      await expect(ordersPage.pageHeading).toHaveText(/Order History/i);
+      // The page title reads "Orders" (was "Order History") — confirmed in the
+      // failure ARIA snapshot: <div data-slot="page-title">Orders</div>.
+      await expect(ordersPage.pageHeading).toHaveText(/^Orders$/i);
     },
   );
 
@@ -26,7 +28,9 @@ test.describe('Tải trang & Bố cục — Orders', () => {
     async ({ ordersPage, page }) => {
       await ordersPage.waitForReady();
 
-      await expect(ordersPage.pageHeading).toHaveText(/Order History/i);
+      // The page title reads "Orders" (was "Order History") — confirmed in the
+      // failure ARIA snapshot: <div data-slot="page-title">Orders</div>.
+      await expect(ordersPage.pageHeading).toHaveText(/^Orders$/i);
       await expect(ordersPage.searchInput).toBeVisible();
       await expect(ordersPage.quickFilterCombobox).toBeVisible();
       // BEHAVIOUR CHANGE (2026-08-12): the default date preset is now "Last 7

@@ -73,16 +73,14 @@ test.describe('Hành động chính (Core actions) — Customers', () => {
   test(
     'TC-CUS-024 — "Next" is disabled on the last page',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ customersPage, page }) => {
-      const lastPageLink = page.getByRole('button', { name: /^11$/i });
-      if (await lastPageLink.isVisible().catch(() => false)) {
-        await lastPageLink.click();
-      } else {
-        for (let i = 0; i < 10; i++) {
-          if (await customersPage.pagination.nextButton.isDisabled()) break;
-          await customersPage.pagination.next();
-        }
-      }
+    async ({ customersPage }) => {
+      await customersPage.waitForReady();
+      // The store spans hundreds of pages and the pager exposes only
+      // Previous/Next plus an "n / m" indicator (no numbered page buttons), so
+      // jump straight to the last page by its number rather than clicking Next
+      // (which can never reach the end here).
+      const totalPages = await customersPage.totalPages();
+      await customersPage.gotoPage(totalPages);
       await expect(customersPage.pagination.nextButton).toBeDisabled();
     },
   );

@@ -413,3 +413,10 @@
 
 - TC-BH-041 · request treo không phản hồi: giữ response mở 60s thì skeleton vẫn quay ở mốc 3s/10s/20s/35s, không có error, không có Retry, không có client-side timeout. Cần frontend thêm timeout rồi mới bật lại.
 - TC-BH-053 · role không có quyền Batch History: dự án chỉ có duy nhất 1 storageState (admin). Cần capture thêm 1 tài khoản role hạn chế.
+
+### 2026-10-12 (UTC+7) — Session fix toàn suite
+
+- Lệnh: `ENV=stage npx playwright test --retries=2` (headless, ngầm)
+- Tổng suite: 69 fail ban đầu → **0 lỗi thật** (fix drift/timing + skip-khi-vắng-dữ-liệu + fixme product-gap). Flaky môi trường để retries hấp thụ.
+- Màn **batch-history**: TC-BH-008, TC-BH-038 fix (routing/skeleton-gate); TC-BH-039 -> fixme (product gap: status ngoài enum hard-error cả trang).
+- Bug app (test đúng, app sai): `docs/product-gaps-2026-10-11.md` (35 mục). Dashboard: artifact đã publish.

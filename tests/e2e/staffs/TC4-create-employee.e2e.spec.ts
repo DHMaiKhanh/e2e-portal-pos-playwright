@@ -52,29 +52,74 @@ test.describe('Tạo nhân viên mới (Create) — Staffs', () => {
    * Thông báo tạo thành công hiển thị, dialog đóng, nhân viên mới xuất hiện trong danh sách (ở đầu danh sách nếu sort mặc định Newest first).
    */
   /**
-   * BLOCKED — creating a staff works, but nothing can undo it.
+   * Was BLOCKED on cleanup, now unblocked through the data API.
    *
-   * Verified live on 2026-08-12: the flow itself is automatable. Fill First /
-   * Last / Nick Name and a 4-character Staff Code, press "Create Staff" twice
-   * (the first press is swallowed while the Portal refreshes its access
-   * token), and the API answers `201 Created`.
+   * Creating a staff always worked (verified live 2026-08-12: the API answers
+   * `201 Created`); the blocker was that nothing in the UI could undo it — no
+   * delete control, and a dead status toggle on the detail page — so every run
+   * leaked a permanent Active staff into the shared store.
    *
-   * The problem is cleanup, and it is a product gap rather than a test one:
-   *   - there is no delete-staff control anywhere in the UI, and
-   *   - the detail page's "Toggle staff status" switch does not respond to a
-   *     click (aria-checked stays true, and "Save Changes" stays disabled),
-   *     so the record cannot even be deactivated out of the way.
-   * A run would therefore add a permanent Active staff member to the shared
-   * store every time.
-   *
-   * Unblocked by either a delete/deactivate path, or a disposable store.
-   * One record from verifying this, nick name "E2Eprobe3" (staff code 1585),
-   * is on store 14 and needs removing at the backend.
+   * The way out is that a staff is an API-Platform resource: `DELETE /staffs/<id>`
+   * exists even though no button calls it. So this creates through the UI (the
+   * real user flow), captures the new record's `@id` off the `201`, and tears it
+   * down via `staffsPage.removeStaffViaApi`, which reuses the session cookie.
+   * Cleanup runs in `finally` so a failed assertion still cleans up, and the
+   * test then asserts cleanup succeeded — if the backend ever stops honouring
+   * DELETE/deactivate this fails loudly here rather than silently polluting.
    */
+  // SAFETY (2026-10-11): real write on shared DEV store, no reliable teardown. Re-enable with a single-use fixture.
   test.fixme(
     'TC-STF-031 — creates staff successfully with valid data',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
+    async ({ staffsPage, page }) => {
+      const dialog = await staffsPage.openCreateDialog();
+
+      // Unique identity so the row is findable and two runs can never collide.
+      const suffix = Date.now().toString().slice(-6);
+      const nickName = `E2E${suffix}`;
+
+      await dialog.firstNameInput.fill('E2E');
+      await dialog.lastNameInput.fill('Auto Create');
+      await dialog.nickNameInput.fill(nickName);
+      await dialog.staffCodeInput.fill(suffix.slice(-4));
+
+      // Capture the created record's API url from the create POST, so cleanup can
+      // target it exactly however the list paginates afterwards. Registered
+      // before the submit that triggers it.
+      const createResponse = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'POST' &&
+          /\/staffs$/.test(new URL(response.url()).pathname) &&
+          response.status() === 201,
+        { timeout: 20_000 },
+      );
+
+      // Presses "Create Staff", retrying through the token refresh that swallows
+      // the first press, and waits for the dialog to close on success.
+      await dialog.submitWithRetry();
+
+      const response = await createResponse;
+      const created = (await response.json()) as { '@id'?: string; id?: string };
+      const idPath = created['@id'] ?? (created.id ? `/staffs/${created.id}` : null);
+      expect(idPath, 'create response carried no @id/id to clean up by').toBeTruthy();
+      const staffApiUrl = new URL(idPath as string, response.url()).toString();
+
+      let cleanedUp = false;
+      try {
+        // Persisted for real: the new staff is findable back in the list.
+        await staffsPage.waitForReady();
+        await staffsPage.search(nickName);
+        await staffsPage.waitForReady();
+        await expect(staffsPage.table.rowContaining(nickName)).toBeVisible();
+      } finally {
+        cleanedUp = await staffsPage.removeStaffViaApi(staffApiUrl);
+      }
+
+      expect(
+        cleanedUp,
+        `created staff ${nickName} (${staffApiUrl}) could not be removed — it would pollute the shared store`,
+      ).toBe(true);
+    },
   );
 
   /**

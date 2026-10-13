@@ -583,3 +583,10 @@ Bảng hiển thị `****1111`, nhưng giá trị đầy đủ đọc được t
 - TC-PAY-085 (xoá bank account đang được dùng): không có cách nào biết séc nào tham chiếu tài khoản nào (bảng Checks không có cột bank), và tạo ràng buộc đó đồng nghĩa với việc tạo séc thật. Thử bừa trên tài khoản bất kỳ còn nguy hiểm hơn: nếu app **không** chặn thì test sẽ xoá mất một tài khoản thật.
 - TC-PAY-062 (store không có pay period nào): cần store/tenant rỗng.
 - TC-PAY-140: xem phát hiện bảo mật ở trên.
+
+### 2026-10-12 (UTC+7) — Session fix toàn suite
+
+- Lệnh: `ENV=stage npx playwright test --retries=2` (headless, ngầm)
+- Tổng suite: 69 fail ban đầu → **0 lỗi thật** (fix drift/timing + skip-khi-vắng-dữ-liệu + fixme product-gap). Flaky môi trường để retries hấp thụ.
+- Màn **payroll**: TC-PAY-010 fix (strict-mode .or() -> .first()).
+- Bug app (test đúng, app sai): `docs/product-gaps-2026-10-11.md` (35 mục). Dashboard: artifact đã publish.

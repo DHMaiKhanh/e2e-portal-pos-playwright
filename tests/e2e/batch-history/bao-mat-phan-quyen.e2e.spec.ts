@@ -48,7 +48,7 @@ test.describe('Bảo mật & phân quyền — Batch History', () => {
     'TC-BH-053 — menu/screen hidden or blocked for role without Batch History permission',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ dashboardPage }) => {
-      const menuItem = dashboardPage.sidebar.item('Batch History');
+      const menuItem = dashboardPage.sidebar.item('Batches');
       await expect(menuItem).toBeHidden();
     },
   );
@@ -63,7 +63,7 @@ test.describe('Bảo mật & phân quyền — Batch History', () => {
     'TC-BH-054 — cross-store access is blocked',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ page }) => {
-      await expectCrossStoreBlocked(page, (storeId) => `/pos/${storeId}/batch`);
+      await expectCrossStoreBlocked(page, (storeId) => `/pos/nail/${storeId}/batch`);
       // No ledger column headers either — the screen is not merely empty, it is absent.
       await expect(page.getByRole('columnheader', { name: /batch number/i })).toHaveCount(0);
     },

@@ -31,6 +31,11 @@ pipeline {
       choices: ['stage', 'prod', 'local'],
       description: 'Môi trường đích. Quyết định credential nào được nạp và giá trị ENV truyền cho Playwright.'
     )
+    choice(
+      name: 'SUITE',
+      choices: ['full', 'smoke', 'regression'],
+      description: 'Bộ test chạy. smoke = --grep @smoke (nhanh, hợp cho mỗi lần đẩy code); regression = --grep @regression; full = cả suite. Tag định nghĩa ở src/types/testTags.ts.'
+    )
     string(
       name: 'TEST_PATH',
       defaultValue: '',
@@ -39,7 +44,12 @@ pipeline {
     string(
       name: 'GREP',
       defaultValue: '',
-      description: 'Lọc theo tag/tên test (--grep), ví dụ @smoke. Để trống = không lọc.'
+      description: 'Lọc thêm theo tag/tên test (--grep), ví dụ @auth. Kết hợp AND với SUITE. Để trống = chỉ lọc theo SUITE.'
+    )
+    string(
+      name: 'NOTIFY_EMAIL',
+      defaultValue: '',
+      description: 'Email nhận thông báo khi build fail/unstable/trở lại xanh. Nhiều địa chỉ cách nhau bằng dấu phẩy. Để trống = không gửi. SMTP khai báo ở ci/jenkins/casc.yaml.'
     )
     string(
       name: 'WORKERS',
@@ -204,8 +214,20 @@ pipeline {
               if (params.TEST_PATH?.trim()) {
                 cmd << params.TEST_PATH.trim()
               }
-              if (params.GREP?.trim()) {
-                cmd << '--grep' << "'${params.GREP.trim()}'"
+
+              // SUITE chọn bộ tag, GREP lọc thêm bên trong bộ đó. Gom cả hai thành
+              // MỘT --grep theo kiểu AND: Playwright nhận regex, lookahead
+              // (?=.*@smoke)(?=.*@auth) = "có @smoke VÀ có @auth". Ghép bằng --grep
+              // hai lần không AND được (lần sau đè lần trước).
+              def greps = []
+              if (params.SUITE == 'smoke')      { greps << '@smoke' }
+              if (params.SUITE == 'regression') { greps << '@regression' }
+              if (params.GREP?.trim())          { greps << params.GREP.trim() }
+              if (greps.size() == 1) {
+                cmd << '--grep' << "'${greps[0]}'"
+              } else if (greps.size() > 1) {
+                def lookahead = greps.collect { "(?=.*${it})" }.join('')
+                cmd << '--grep' << "'${lookahead}'"
               }
 
               // Test fail không được làm dừng pipeline ngay: post{} vẫn cần chạy để
@@ -261,5 +283,43 @@ pipeline {
       // Secret không được nằm lại trong workspace giữa các build.
       sh 'rm -f configs/env/.env.local configs/env/.env.stage configs/env/.env.prod "$STORAGE_STATE" || true'
     }
+
+    // Email chỉ gửi khi trạng thái đáng báo: có test fail (unstable), pipeline
+    // hỏng (failure), hoặc vừa xanh lại sau một lần đỏ (fixed). Build xanh liên
+    // tục thì im lặng — thông báo mọi lần chỉ làm người ta tắt noti.
+    unstable { script { notifyByEmail('UNSTABLE — có test fail') } }
+    failure { script { notifyByEmail('FAILURE — pipeline hỏng trước khi test xong') } }
+    fixed   { script { notifyByEmail('FIXED — build đã xanh trở lại') } }
+  }
+}
+
+// Khai báo ngoài block pipeline{} để dùng lại ở cả 3 post section. Guard rỗng:
+// không nhập NOTIFY_EMAIL thì bỏ qua, không để thiếu SMTP làm post{} đỏ theo.
+void notifyByEmail(String headline) {
+  def to = params.NOTIFY_EMAIL?.trim()
+  if (!to) {
+    echo "NOTIFY_EMAIL trống — bỏ qua gửi email (${headline})."
+    return
+  }
+  try {
+    mail(
+      to: to,
+      subject: "[Jenkins] ${env.JOB_NAME} #${env.BUILD_NUMBER} — ${headline}",
+      body: """\
+${headline}
+
+Job     : ${env.JOB_NAME} #${env.BUILD_NUMBER}
+Env      : ${params.TARGET_ENV}  |  Suite: ${params.SUITE}
+Kết quả  : ${currentBuild.currentResult}  (${currentBuild.durationString.replace(' and counting', '')})
+
+Build       : ${env.BUILD_URL}
+HTML report : ${env.BUILD_URL}Playwright_20HTML_20Report/
+Test result : ${env.BUILD_URL}testReport/
+"""
+    )
+  } catch (err) {
+    // SMTP chưa cấu hình ở casc.yaml, hoặc server từ chối: đừng để chuyện gửi
+    // email làm hỏng kết quả build vốn đã xong.
+    echo "Gửi email thất bại (bỏ qua): ${err}"
   }
 }
