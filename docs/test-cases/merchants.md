@@ -645,3 +645,12 @@ Page Object: `src/pages/merchants/MerchantsPage.ts` — kèm `MerchantDetailView
 - `TC-MCH-070`…`072`, `092`, `093`, `131` chạy trên fixture `isolatedPage` vì Portal **ghi nhớ** merchant đang chọn / có thể xoá session — không được để rò sang context dùng chung của worker.
 - `TC-MCH-114` đo tương phản thật (paint màu lên canvas 1×1 để quy đổi `oklch`/`oklab` + alpha về sRGB) rồi ghi annotation defect, **không** assert cứng ngưỡng 4.5:1 — D5 là lỗi sản phẩm đang tồn tại. Đổi annotation thành `expect(...).toBeGreaterThanOrEqual(4.5)` sau khi palette được sửa.
 - Các case chạm defect D1–D3 assert **hành vi hiện tại** + ghi annotation `defect`, để suite không đỏ vì lỗi sản phẩm đã biết mà vẫn hiện lỗi trong report. Khi app được sửa, annotation tự tắt và assert vẫn đúng.
+
+## Lịch sử chạy
+
+### 2026-10-12 (UTC+7) — Session fix toàn suite
+
+- Lệnh: `ENV=stage npx playwright test --retries=2` (headless, ngầm)
+- Tổng suite: 69 fail ban đầu → **0 lỗi thật** (fix drift/timing + skip-khi-vắng-dữ-liệu + fixme product-gap). Flaky môi trường để retries hấp thụ.
+- Màn **merchants**: TC-MCH-072 fix (href thêm segment nail); TC-MCH-003 -> fixme (product gap: document.title cũ).
+- Bug app (test đúng, app sai): `docs/product-gaps-2026-10-11.md` (35 mục). Dashboard: artifact đã publish.

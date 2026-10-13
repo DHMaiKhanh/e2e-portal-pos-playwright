@@ -1,0 +1,111 @@
+# Jenkins Configuration as Code (JCasC) cho suite E2E Portal POS.
+#
+# File này là "nguồn sự thật" cho cấu hình Jenkins: tool Allure, SMTP email, và
+# 2 job (portal-pos-e2e + portal-pos-session-health). Mỗi lần container jenkins
+# khởi động, plugin configuration-as-code đọc file này và áp lại — nên:
+#
+#   • Dựng lại Jenkins từ đầu KHÔNG phải bấm tay lại job/tool/email.
+#   • Sửa cấu hình thì sửa Ở ĐÂY rồi `docker compose restart jenkins`, ĐỪNG sửa
+#     trên UI — lần restart sau JCasC sẽ ghi đè thay đổi trên UI.
+#
+# Đường dẫn file được trỏ bởi biến môi trường CASC_JENKINS_CONFIG (xem Dockerfile).
+# Các giá trị ${...} lấy từ môi trường container jenkins (xem docker-compose.yml);
+# thiếu thì rơi về mặc định sau dấu ':-'. Secret (mật khẩu SMTP) KHÔNG hard-code ở
+# đây — truyền qua env, để file này commit được an toàn.
+
+jenkins:
+  systemMessage: >
+    Portal POS E2E — cấu hình bằng JCasC (ci/jenkins/casc.yaml).
+    Sửa cấu hình ở file đó rồi restart, đừng sửa trực tiếp trên UI.
+  numExecutors: 2
+  # Build log không được chứa secret kể cả khi script lỡ echo ra.
+  mode: NORMAL
+
+unclassified:
+  # URL để link trong email trỏ đúng về build. Local thì giữ localhost:8090.
+  location:
+    adminAddress: "${EMAIL_ADMIN:-jenkins@portal-pos.local}"
+    url: "${JENKINS_PUBLIC_URL:-http://localhost:8090/}"
+
+  # SMTP cho step `mail` (Mailer plugin). Để trống SMTP_HOST thì email không gửi
+  # được nhưng Jenkins vẫn chạy bình thường — build không vì thế mà đỏ.
+  mailer:
+    smtpHost: "${SMTP_HOST:-}"
+    smtpPort: "${SMTP_PORT:-587}"
+    charset: "UTF-8"
+    useSsl: "${SMTP_USE_SSL:-false}"
+    useTls: "${SMTP_USE_TLS:-true}"
+    authentication:
+      username: "${SMTP_USER:-}"
+      password: "${SMTP_PASSWORD:-}"
+
+tool:
+  # Allure Commandline tên 'allure' — chính tên mà Jenkinsfile post{} gọi tới.
+  # installSource tự tải bản 2.30.0 lần đầu, khỏi cài tay ở Manage Jenkins → Tools.
+  allure:
+    installations:
+      - name: "allure"
+        properties:
+          - installSource:
+              installers:
+                - allureCommandlineInstaller:
+                    id: "2.30.0"
+
+jobs:
+  # Job chính: chạy toàn bộ pipeline trong Jenkinsfile ở gốc repo.
+  #
+  # Local (không có IP public) nên không nhận webhook GitHub được — dùng
+  # pollSCM 15 phút/lần làm trigger tự động; vẫn Build with Parameters tay được.
+  - script: |
+      def repoUrl   = '${REPO_URL:-https://github.com/khanhdo-afk/e2e-portal-pos-playwright.git}'
+      def repoBranch= '${GIT_BRANCH:-*/main}'
+      def gitCred   = '${GIT_CREDENTIALS_ID:-}'
+
+      pipelineJob('portal-pos-e2e') {
+        description('Suite E2E Portal POS trong container Playwright. Cấu hình bằng JCasC — sửa ci/jenkins/casc.yaml, không sửa trên UI.')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url(repoUrl)
+                  if (gitCred) { credentials(gitCred) }
+                }
+                branch(repoBranch)
+              }
+            }
+            scriptPath('Jenkinsfile')
+            lightweight(true)
+          }
+        }
+        triggers {
+          pollSCM('H/15 * * * *')
+        }
+      }
+
+  # Job canh session: nightly, CHỈ kiểm tra session còn sống không rồi email cảnh
+  # báo. Tách khỏi job chính để không phải chạy cả suite mới biết session chết
+  # (đã từng mất 1 tiếng + 112 fail vì điều đó).
+  - script: |
+      def repoUrl   = '${REPO_URL:-https://github.com/khanhdo-afk/e2e-portal-pos-playwright.git}'
+      def repoBranch= '${GIT_BRANCH:-*/main}'
+      def gitCred   = '${GIT_CREDENTIALS_ID:-}'
+
+      pipelineJob('portal-pos-session-health') {
+        description('Nightly: kiểm tra session đăng nhập (admin.json) sắp/đã hết hạn và gửi email cảnh báo. Không chạy test. Cấu hình bằng JCasC.')
+        definition {
+          cpsScm {
+            scm {
+              git {
+                remote {
+                  url(repoUrl)
+                  if (gitCred) { credentials(gitCred) }
+                }
+                branch(repoBranch)
+              }
+            }
+            scriptPath('ci/jenkins/Jenkinsfile.session-health')
+            lightweight(true)
+          }
+        }
+      }

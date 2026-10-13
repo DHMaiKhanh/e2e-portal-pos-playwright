@@ -2,7 +2,11 @@ import { test, expect } from '@fixtures/index';
 import type { Page } from '@playwright/test';
 import { Tag } from '@/types/testTags';
 import { Timeouts } from '@configs/constants/timeouts';
-import { ONBOARDING_ERRORS, ONBOARDING_SAMPLE_IDS } from '@pages/onboarding/OnboardingPage';
+import {
+  ONBOARDING_API,
+  ONBOARDING_ERRORS,
+  ONBOARDING_SAMPLE_IDS,
+} from '@pages/onboarding/OnboardingPage';
 
 /**
  * Step 1 of the merchant onboarding wizard — the `Enter WHMCS ID` form.
@@ -95,7 +99,7 @@ test.describe('Bước 1 — Form `Validate` — Onboarding', () => {
       await expect(onboardingPage.validateButton).toBeVisible();
 
       // The screen is admin-wide, not store-scoped.
-      await expect(page).toHaveURL(/\/pos\/onboarding/);
+      await expect(page).toHaveURL(/\/pos\/nail\/admin\/onboarding/);
       expect(page.url(), 'onboarding must not be store-scoped').not.toMatch(/\/pos\/\d+\//);
     },
   );
@@ -447,14 +451,37 @@ test.describe('Bước 1 — Form `Validate` — Onboarding', () => {
    *  Nút "Validate" hiển thị icon spinner (`animate-spin`) và ở trạng thái
    *  `disabled`; sau khi có phản hồi thì trở lại bình thường.
    */
-  // TODO(manual/setup): needs the `merchant_settings` response stalled (network
-  // throttling / route delay) to hold the pending window open — unthrottled, DEV
-  // answers faster than the spinner can be observed, and no throttling profile is
-  // configured in playwright.config.
-  test.fixme(
+  // The `merchant_settings` lookup is stalled with a `page.route` delay so the
+  // pending window stays open long enough to observe — unthrottled, DEV answers
+  // faster than the spinner paints (same technique as TC-ONB-159). 3660 is an
+  // already-onboarded id, so the lookup is a single read-only GET that 200s and
+  // leaves the Validate button in place to re-enable afterwards.
+  test(
     'TC-ONB-037 — Validate shows a spinner and is disabled while the lookup is in flight',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
+    async ({ onboardingPage, page }) => {
+      const stallMs = 1_500;
+      await page.route(ONBOARDING_API.MERCHANT_SETTINGS, async (route) => {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, stallMs);
+        });
+        await route.continue();
+      });
+
+      await onboardingPage.submitWhmcsId(WHMCS_ID);
+
+      // While the lookup is held open, the button spins and refuses further input.
+      await expect(
+        onboardingPage.validateSpinner,
+        'the Validate button spins while the lookup is in flight',
+      ).toBeVisible({ timeout: Timeouts.MEDIUM });
+      await expect(onboardingPage.validateButton).toBeDisabled();
+
+      // Once the response lands the spinner clears and the button returns to normal.
+      await expect(onboardingPage.validateSpinner).toHaveCount(0, { timeout: Timeouts.LONG });
+      await expect(onboardingPage.validateButton).toBeEnabled();
+      await page.unroute(ONBOARDING_API.MERCHANT_SETTINGS);
+    },
   );
 
   /**
@@ -466,13 +493,38 @@ test.describe('Bước 1 — Form `Validate` — Onboarding', () => {
    *  Chỉ có một chuỗi request được phát (nút disable ngay khi pending); không xuất
    *  hiện lỗi trùng hoặc nhấp nháy giao diện.
    */
-  // TODO(manual/setup): deterministic only with the same stalled-response setup as
-  // TC-ONB-037 — Playwright's click waits for the button to be enabled again, so
-  // three unthrottled clicks fire three sequential chains and the case can neither
-  // prove nor disprove the pending-disable.
-  test.fixme(
+  // Same stalled-response setup as TC-ONB-037: with the lookup held open the
+  // button stays disabled across all three clicks. The first (unforced) click
+  // fires while the button is still enabled; the next two are `force`d onto the
+  // now-disabled button and must be swallowed, so only one lookup reaches the
+  // network. Without the stall, Playwright would wait for the button to re-enable
+  // between clicks and each would fire its own chain.
+  test(
     'TC-ONB-038 — three rapid Validate clicks fire only one request chain',
     { tag: [Tag.REGRESSION] },
-    async () => {},
+    async ({ onboardingPage, page }) => {
+      const settingsRequests: string[] = [];
+      page.on('request', (request) => {
+        if (/merchant_settings/.test(request.url())) settingsRequests.push(request.url());
+      });
+
+      const stallMs = 1_500;
+      await page.route(ONBOARDING_API.MERCHANT_SETTINGS, async (route) => {
+        await new Promise<void>((resolve) => {
+          setTimeout(resolve, stallMs);
+        });
+        await route.continue();
+      });
+
+      await onboardingPage.whmcsIdInput.fill(WHMCS_ID);
+      await onboardingPage.validateButton.click();
+      await onboardingPage.validateButton.click({ force: true });
+      await onboardingPage.validateButton.click({ force: true });
+
+      // Let the stalled lookup resolve, then confirm only one chain went out.
+      await expect(onboardingPage.validateSpinner).toHaveCount(0, { timeout: Timeouts.LONG });
+      await page.unroute(ONBOARDING_API.MERCHANT_SETTINGS);
+      expect(settingsRequests, 'only one lookup chain may fire').toHaveLength(1);
+    },
   );
 });

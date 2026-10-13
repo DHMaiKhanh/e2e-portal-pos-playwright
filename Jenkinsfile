@@ -5,14 +5,14 @@
 // HTML + Allure report.
 //
 // Plugin cần có: Docker Pipeline, Credentials Binding, JUnit, HTML Publisher,
-// Allure, AnsiColor, Timestamper, GitHub, Email Extension. Xem docs/jenkins.md
-// để biết cách tạo credentials và job.
+// Allure, AnsiColor, Timestamper, GitHub, Mailer. Xem docs/jenkins.md để biết
+// cách tạo credentials và job.
 
 // --- Helpers dùng chung giữa các stage / post condition ---
 //
-// Cả hai bọc try/catch vì đây là bước phụ (report ra ngoài), không phải bước
-// test: thiếu credential 'github-token' hay SMTP chưa cấu hình không được phép
-// làm hỏng cả build đã chạy xong.
+// Bọc try/catch vì đây là bước phụ (report ra ngoài), không phải bước test:
+// thiếu credential 'github-token' không được phép làm hỏng cả build đã chạy
+// xong. Email dùng notifyByEmail() ở cuối file.
 
 def notifyGithub(String status, String description) {
   try {
@@ -24,14 +24,6 @@ def notifyGithub(String status, String description) {
     )
   } catch (err) {
     echo "Bỏ qua GitHub commit status (${status}): ${err}"
-  }
-}
-
-def notifyEmail(String subject, String body) {
-  try {
-    emailext(to: env.NOTIFY_EMAIL, subject: subject, body: body)
-  } catch (err) {
-    echo "Bỏ qua email notify: ${err}"
   }
 }
 
@@ -58,6 +50,11 @@ pipeline {
       choices: ['stage', 'prod', 'local'],
       description: 'Môi trường đích. Quyết định credential nào được nạp và giá trị ENV truyền cho Playwright.'
     )
+    choice(
+      name: 'SUITE',
+      choices: ['full', 'smoke', 'regression'],
+      description: 'Bộ test chạy. smoke = --grep @smoke (nhanh, hợp cho mỗi lần đẩy code); regression = --grep @regression; full = cả suite. Tag định nghĩa ở src/types/testTags.ts.'
+    )
     string(
       name: 'TEST_PATH',
       defaultValue: '',
@@ -66,7 +63,12 @@ pipeline {
     string(
       name: 'GREP',
       defaultValue: '',
-      description: 'Lọc theo tag/tên test (--grep), ví dụ @smoke. Để trống = không lọc.'
+      description: 'Lọc thêm theo tag/tên test (--grep), ví dụ @auth. Kết hợp AND với SUITE. Để trống = chỉ lọc theo SUITE.'
+    )
+    string(
+      name: 'NOTIFY_EMAIL',
+      defaultValue: 'khanh_do@fastboy.net',
+      description: 'Email nhận thông báo khi build fail/unstable/trở lại xanh. Nhiều địa chỉ cách nhau bằng dấu phẩy. Để trống = không gửi. SMTP khai báo ở ci/jenkins/casc.yaml.'
     )
     string(
       name: 'WORKERS',
@@ -123,10 +125,6 @@ pipeline {
     PLAYWRIGHT_BROWSERS_PATH = "${WORKSPACE}/.cache/ms-playwright"
 
     STORAGE_STATE = 'src/data/dynamic/auth/admin.json'
-
-    // Người nhận email báo kết quả build (Manage Jenkins → System → Extended
-    // E-mail Notification cấu hình SMTP, xem docs/jenkins.md mục 9).
-    NOTIFY_EMAIL = 'khanh_do@fastboy.net'
   }
 
   stages {
@@ -253,8 +251,20 @@ pipeline {
               if (params.TEST_PATH?.trim()) {
                 cmd << params.TEST_PATH.trim()
               }
-              if (params.GREP?.trim()) {
-                cmd << '--grep' << "'${params.GREP.trim()}'"
+
+              // SUITE chọn bộ tag, GREP lọc thêm bên trong bộ đó. Gom cả hai thành
+              // MỘT --grep theo kiểu AND: Playwright nhận regex, lookahead
+              // (?=.*@smoke)(?=.*@auth) = "có @smoke VÀ có @auth". Ghép bằng --grep
+              // hai lần không AND được (lần sau đè lần trước).
+              def greps = []
+              if (params.SUITE == 'smoke')      { greps << '@smoke' }
+              if (params.SUITE == 'regression') { greps << '@regression' }
+              if (params.GREP?.trim())          { greps << params.GREP.trim() }
+              if (greps.size() == 1) {
+                cmd << '--grep' << "'${greps[0]}'"
+              } else if (greps.size() > 1) {
+                def lookahead = greps.collect { "(?=.*${it})" }.join('')
+                cmd << '--grep' << "'${lookahead}'"
               }
 
               // Test fail không được làm dừng pipeline ngay: post{} vẫn cần chạy để
@@ -317,35 +327,53 @@ pipeline {
 
     // GitHub không có khái niệm "unstable" — map về FAILURE để PR check đỏ,
     // vì UNSTABLE nghĩa là có test fail (khác PENDING/SUCCESS), không nên xanh.
+    //
+    // Email chỉ gửi khi trạng thái đáng báo: có test fail (unstable), pipeline
+    // hỏng (failure), hoặc vừa xanh lại sau một lần đỏ (fixed). Build xanh liên
+    // tục thì im lặng — thông báo mọi lần chỉ làm người ta tắt noti.
     unstable {
       script { notifyGithub('FAILURE', 'Có test fail — xem Playwright/Allure report') }
-      script {
-        notifyEmail(
-          "[portal-pos-e2e] #${env.BUILD_NUMBER} UNSTABLE (${params.TARGET_ENV})",
-          "Có test fail. Report: ${env.BUILD_URL}"
-        )
-      }
+      script { notifyByEmail('UNSTABLE — có test fail') }
     }
 
     failure {
       script { notifyGithub('FAILURE', 'Pipeline lỗi trước khi test chạy xong') }
-      script {
-        notifyEmail(
-          "[portal-pos-e2e] #${env.BUILD_NUMBER} FAILURE (${params.TARGET_ENV})",
-          "Build lỗi trước khi ra được test result — xem log: ${env.BUILD_URL}console"
-        )
-      }
+      script { notifyByEmail('FAILURE — pipeline hỏng trước khi test xong') }
     }
 
-    // Chạy sau khi build trước đó FAILURE/UNSTABLE và build này SUCCESS —
-    // báo "đã xanh lại" một lần, tránh spam email mỗi build pass liên tiếp.
     fixed {
-      script {
-        notifyEmail(
-          "[portal-pos-e2e] #${env.BUILD_NUMBER} back to green (${params.TARGET_ENV})",
-          "Suite đã pass trở lại: ${env.BUILD_URL}"
-        )
-      }
+      script { notifyByEmail('FIXED — build đã xanh trở lại') }
     }
+  }
+}
+
+// Khai báo ngoài block pipeline{} để dùng lại ở cả 3 post section. Guard rỗng:
+// không nhập NOTIFY_EMAIL thì bỏ qua, không để thiếu SMTP làm post{} đỏ theo.
+void notifyByEmail(String headline) {
+  def to = params.NOTIFY_EMAIL?.trim()
+  if (!to) {
+    echo "NOTIFY_EMAIL trống — bỏ qua gửi email (${headline})."
+    return
+  }
+  try {
+    mail(
+      to: to,
+      subject: "[Jenkins] ${env.JOB_NAME} #${env.BUILD_NUMBER} — ${headline}",
+      body: """\
+${headline}
+
+Job     : ${env.JOB_NAME} #${env.BUILD_NUMBER}
+Env      : ${params.TARGET_ENV}  |  Suite: ${params.SUITE}
+Kết quả  : ${currentBuild.currentResult}  (${currentBuild.durationString.replace(' and counting', '')})
+
+Build       : ${env.BUILD_URL}
+HTML report : ${env.BUILD_URL}Playwright_20HTML_20Report/
+Test result : ${env.BUILD_URL}testReport/
+"""
+    )
+  } catch (err) {
+    // SMTP chưa cấu hình ở casc.yaml, hoặc server từ chối: đừng để chuyện gửi
+    // email làm hỏng kết quả build vốn đã xong.
+    echo "Gửi email thất bại (bỏ qua): ${err}"
   }
 }

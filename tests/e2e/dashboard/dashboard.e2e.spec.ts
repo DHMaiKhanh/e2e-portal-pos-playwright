@@ -9,13 +9,14 @@ test.describe(`Dashboard ${Tag.REGRESSION} ${Tag.UI}`, () => {
 
   test('renders the overview for an authenticated user', async ({ dashboardPage, page }) => {
     await expect(dashboardPage.heading).toBeVisible();
-    await expect(page).toHaveURL(/\/pos\/\d+\/overview/);
+    await expect(page).toHaveURL(/\/pos\/nail\/\d+\/overview/);
   });
 
   test('navigates to Orders via the sidebar', async ({ dashboardPage, page }) => {
     // Labels repeat in the sidebar (store "Orders" vs admin "Orders"), so match
-    // the store-scoped destination by href.
-    await dashboardPage.sidebar.navigateToHref(/^\/pos\/\d+\/orders$/);
-    await expect(page).toHaveURL(/\/pos\/\d+\/orders/);
+    // the store-scoped destination by href. Routes carry the vertical segment:
+    // /pos/nail/<id>/orders.
+    await dashboardPage.sidebar.navigateToHref(/^\/pos\/nail\/\d+\/orders$/);
+    await expect(page).toHaveURL(/\/pos\/nail\/\d+\/orders/);
   });
 });

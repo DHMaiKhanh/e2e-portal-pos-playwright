@@ -38,7 +38,7 @@ test.describe('Thanh App Switcher — Overview', () => {
 
       // Logo is href="/", và `/` giờ là trang chọn ứng dụng chứ không redirect
       // vào store nữa. Xem ghi chú ở TC-OVW-002.
-      await expect(page).not.toHaveURL(/\/pos\/\d+\//);
+      await expect(page).not.toHaveURL(/\/pos\/nail\/\d+\//);
       await expect(page.getByText(/choose where you'?d like to start/i)).toBeVisible();
     },
   );

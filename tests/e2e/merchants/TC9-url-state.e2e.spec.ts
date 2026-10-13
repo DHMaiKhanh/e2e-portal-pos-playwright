@@ -26,6 +26,11 @@ test.describe('Tham số URL & trạng thái (URL state) — Merchants', () => {
    * [CẦN XÁC MINH] resolved: no other `tab` value is supported on the list, and
    * there is no visible tab bar here — so "same content" is asserted directly and
    * the absence of a tab strip is pinned.
+   *
+   * Behaviour changed since 2026-08-18: an explicit `?tab=overview` is now
+   * *preserved* on the URL rather than normalised away (verified live 2026-10-10;
+   * the bare route itself stays bare — TC-MCH-002). "Same list" therefore means
+   * identical rows, not an identical URL — the deep link keeps its query.
    */
   test(
     'TC-MCH-080 — explicit ?tab=overview and the bare route render the same list',
@@ -34,12 +39,11 @@ test.describe('Tham số URL & trạng thái (URL state) — Merchants', () => {
       await merchantsPage.goto();
       await merchantsPage.waitForReady();
       const bareRouteIds = await merchantsPage.columnValues(MerchantColumn.WHMCS_ID);
-      const bareRouteUrl = page.url();
 
       await merchantsPage.gotoWithQuery({ tab: 'overview' });
       await merchantsPage.waitForReady();
 
-      expect(page.url()).toBe(bareRouteUrl);
+      await expect(page).toHaveURL(/\/pos\/nail\/admin\/merchant\?tab=overview$/);
       expect(await merchantsPage.columnValues(MerchantColumn.WHMCS_ID)).toEqual(bareRouteIds);
       await expect(page.getByRole('tab')).toHaveCount(0);
     },
@@ -54,10 +58,14 @@ test.describe('Tham số URL & trạng thái (URL state) — Merchants', () => {
    *  App fallback êm về nội dung mặc định (hoặc chuẩn hoá URL về `tab=overview`);
    *  không trang trắng, không crash, không lỗi console.
    *
-   * Measured: the junk value is actively rewritten to `?tab=overview`.
+   * Behaviour changed since 2026-08-18: an unknown `tab` value is now stripped
+   * back to the bare route rather than rewritten to `?tab=overview` (verified live
+   * 2026-10-10 — only a *known* `?tab=overview` is preserved, see TC-MCH-080).
+   * The graceful-fallback intent is unchanged: list renders, no blank page, no
+   * console/page errors.
    */
   test(
-    'TC-MCH-081 — an unknown tab value is normalised back to overview without errors',
+    'TC-MCH-081 — an unknown tab value is stripped back to the bare route without errors',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ merchantsPage, page }) => {
       const pageErrors: string[] = [];
@@ -72,7 +80,7 @@ test.describe('Tham số URL & trạng thái (URL state) — Merchants', () => {
       await merchantsPage.gotoWithQuery({ tab: 'khong-ton-tai' });
       await merchantsPage.waitForReady();
 
-      await expect(page).toHaveURL(/\/pos\/merchants\?tab=overview$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/admin\/merchant$/);
       await expect(merchantsPage.pageTitle).toBeVisible();
       expect(await merchantsPage.table.rows.count()).toBeGreaterThan(0);
       expect(pageErrors).toEqual([]);

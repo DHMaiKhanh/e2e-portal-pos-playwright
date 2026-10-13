@@ -10,6 +10,7 @@
  */
 
 import { expect, type Page, type Route } from '@playwright/test';
+import { Timeouts } from '@configs/constants/timeouts';
 
 /**
  * Requests the Portal makes to fetch screen data.
@@ -122,7 +123,13 @@ export const restoreNetwork = async (page: Page): Promise<void> => {
  */
 export const landOnShell = async (page: Page, path: string): Promise<void> => {
   await page.goto(path, { waitUntil: 'domcontentloaded' });
-  await expect(page.locator('[data-sidebar="menu-button"]').first()).toBeVisible();
+  // Under a full-suite run (8 workers hitting the same remote Portal) the shell
+  // regularly needs more than the default 10s expect timeout to hydrate; the
+  // default makes session-expiry cases flaky on first attempt. Give it the same
+  // congestion margin the list screens use.
+  await expect(page.locator('[data-sidebar="menu-button"]').first()).toBeVisible({
+    timeout: Timeouts.MEDIUM,
+  });
 };
 
 /**

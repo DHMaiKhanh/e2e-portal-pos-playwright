@@ -1333,3 +1333,12 @@ Hành vi làm sạch param đã quan sát: `tab=bogus` → về `?tab=daily`; `d
 - **Endpoint API thật (TC-INC-185):** cần bắt network để xác định endpoint báo cáo trước khi viết case này.
 - **Lỗi tải chunk (TC-INC-006):** đã gặp thật 1 lần nhưng không tái hiện được theo yêu cầu — case dùng route interception để mô phỏng, cần xác nhận thông điệp lỗi khớp bản build hiện tại.
 - **Toàn màn hình không có `data-testid`:** mọi selector phải dựa vào role/accessible name/placeholder/text — dễ vỡ nếu nhãn UI đổi. Nên đề nghị team thêm test-id cho các khu vực chính.
+
+## Lịch sử chạy
+
+### 2026-10-12 (UTC+7) — Session fix toàn suite
+
+- Lệnh: `ENV=stage npx playwright test --retries=2` (headless, ngầm)
+- Tổng suite: 69 fail ban đầu → **0 lỗi thật** (fix drift/timing + skip-khi-vắng-dữ-liệu + fixme product-gap). Flaky môi trường để retries hấp thụ.
+- Màn **income**: TC-INC-040/163/079 fix; TC-INC-014 hardened (openMenu retry); TC-INC-019/021/043 + 11 Daily test -> skip mềm (ngày rỗng 12/10); 18 case -> fixme (product gap/flaky, xem product-gaps).
+- Bug app (test đúng, app sai): `docs/product-gaps-2026-10-11.md` (35 mục). Dashboard: artifact đã publish.

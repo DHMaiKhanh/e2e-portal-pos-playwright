@@ -2,24 +2,25 @@ import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
 
 /**
- * Sidebar hrefs on this screen, as served on 2026-08-18.
+ * Internal-group sidebar links, as served on 2026-10-10.
  *
- * Two things drive every locator below. First, labels repeat — "Settings"
- * appears in both Management and Internal, and "Orders" (store) sits next to
- * "All Orders" (admin) — so navigation goes by href, not by name. Second, the
- * Internal group's targets are a mix of `/pos/<name>` and `/pos/admin/<name>`,
- * which is why they are listed explicitly rather than derived.
+ * Navigation goes by href, not by name: labels repeat across groups and "Orders"
+ * (store) sits next to "All Orders" (admin). The Internal group was restructured
+ * since 2026-08-18 — every target now lives under the vertical segment at
+ * `/pos/nail/admin/<name>` (merchant is singular), and the former Monitor /
+ * Versions / Settings links are gone, replaced by the "System" and
+ * "Users & Roles" buttons (submenus, not links — see SYSTEM/USERS buttons below).
  */
 const INTERNAL_ITEMS = [
-  { label: 'Merchants', href: '/pos/merchants' },
-  { label: 'Onboarding', href: '/pos/onboarding' },
-  { label: 'Packages', href: '/pos/admin/packages' },
-  { label: 'All Orders', href: '/pos/admin/orders' },
-  { label: 'Devices', href: '/pos/admin/devices' },
-  { label: 'Monitor', href: '/pos/admin/monitor' },
-  { label: 'Versions', href: '/pos/admin/versions' },
-  { label: 'Settings', href: '/pos/admin/setting' },
+  { label: 'Merchants', href: '/pos/nail/admin/merchant' },
+  { label: 'Onboarding', href: '/pos/nail/admin/onboarding' },
+  { label: 'Packages', href: '/pos/nail/admin/packages' },
+  { label: 'All Orders', href: '/pos/nail/admin/orders' },
+  { label: 'Devices', href: '/pos/nail/admin/devices' },
 ] as const;
+
+/** Internal-group entries that are now buttons (submenu triggers), not links. */
+const INTERNAL_BUTTONS = ['System', 'Users & Roles'] as const;
 
 test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
   /**
@@ -35,9 +36,9 @@ test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage, merchantsPage, page }) => {
       await dashboardPage.goto();
-      await merchantsPage.sidebar.navigateToHref(/^\/pos\/merchants$/);
+      await merchantsPage.sidebar.navigateToHref(/^\/pos\/nail\/admin\/merchant$/);
 
-      await expect(page).toHaveURL(/\/pos\/merchants/);
+      await expect(page).toHaveURL(/\/pos\/nail\/admin\/merchant/);
       await merchantsPage.waitForReady();
       await expect(merchantsPage.pageTitle).toBeVisible();
     },
@@ -61,11 +62,11 @@ test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
       await merchantsPage.goto();
       await merchantsPage.waitForReady();
 
-      const merchantsLink = page.locator('a[href="/pos/merchants"]').first();
+      const merchantsLink = page.locator('a[href="/pos/nail/admin/merchant"]').first();
       await expect(merchantsLink).toHaveAttribute('aria-current', 'page');
       await expect(merchantsLink).toHaveAttribute('data-active', 'true');
 
-      for (const item of INTERNAL_ITEMS.filter((i) => i.href !== '/pos/merchants')) {
+      for (const item of INTERNAL_ITEMS.filter((i) => i.href !== '/pos/nail/admin/merchant')) {
         const link = page.locator(`a[href="${item.href}"]`).first();
         await expect(link, `${item.label} must not be active`).not.toHaveAttribute(
           'aria-current',
@@ -81,10 +82,11 @@ test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
    *  1. Quan sát toàn bộ sidebar.
    * Expected:
    *  Có 3 nhãn nhóm "Operations", "Management", "Internal"; nhóm Internal chứa
-   *  Merchants, Onboarding, Packages, All Orders, Devices, Monitor, Versions, Settings.
+   *  5 link (Merchants, Onboarding, Packages, All Orders, Devices) cùng 2 nút
+   *  submenu (System, Users & Roles). Monitor/Versions/Settings đã bị bỏ.
    */
   test(
-    'TC-MCH-012 — sidebar shows the three groups and all eight Internal items',
+    'TC-MCH-012 — sidebar shows the three groups, five Internal links and the submenu buttons',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ merchantsPage, page }) => {
       await merchantsPage.goto();
@@ -98,6 +100,13 @@ test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
         const link = page.locator(`a[href="${item.href}"]`).first();
         await expect(link, `${item.label} → ${item.href}`).toBeVisible();
         await expect(link).toContainText(item.label);
+      }
+
+      for (const label of INTERNAL_BUTTONS) {
+        await expect(
+          page.getByRole('button', { name: label, exact: true }).first(),
+          `${label} submenu button`,
+        ).toBeVisible();
       }
     },
   );
@@ -122,11 +131,11 @@ test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
       await merchantsPage.waitForReady();
       const rowsBefore = await merchantsPage.table.rows.count();
 
-      await merchantsPage.sidebar.navigateToHref(/^\/pos\/admin\/packages$/);
-      await expect(page).toHaveURL(/\/pos\/admin\/packages/);
+      await merchantsPage.sidebar.navigateToHref(/^\/pos\/nail\/admin\/packages$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/admin\/packages/);
 
-      await merchantsPage.sidebar.navigateToHref(/^\/pos\/merchants$/);
-      await expect(page).toHaveURL(/\/pos\/merchants/);
+      await merchantsPage.sidebar.navigateToHref(/^\/pos\/nail\/admin\/merchant$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/admin\/merchant/);
       await merchantsPage.waitForReady();
 
       await expect(merchantsPage.pageTitle).toBeVisible();
@@ -159,16 +168,16 @@ test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
       await merchantsPage.goto();
       await merchantsPage.waitForReady();
 
-      await merchantsPage.sidebar.navigateToHref(/^\/pos\/admin\/devices$/);
-      await expect(page).toHaveURL(/\/pos\/admin\/devices/);
+      await merchantsPage.sidebar.navigateToHref(/^\/pos\/nail\/admin\/devices$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/admin\/devices/);
 
       await page.goBack();
-      await expect(page).toHaveURL(/\/pos\/merchants/);
+      await expect(page).toHaveURL(/\/pos\/nail\/admin\/merchant/);
       await merchantsPage.waitForReady();
       await expect(merchantsPage.table.rows.first()).toBeVisible();
 
       await page.goForward();
-      await expect(page).toHaveURL(/\/pos\/admin\/devices/);
+      await expect(page).toHaveURL(/\/pos\/nail\/admin\/devices/);
       // Not a blank page: the shell is still mounted after the history moves.
       await expect(page.locator('[data-sidebar="menu-button"]').first()).toBeVisible();
       expect(pageErrors).toEqual([]);
@@ -201,7 +210,7 @@ test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
 
       await expect(merchantsPage.sidebar.toggle).toBeHidden();
       await expect(merchantsPage.sidebar.panel).toBeVisible();
-      await expect(page.locator('a[href="/pos/merchants"]').first()).toHaveAttribute(
+      await expect(page.locator('a[href="/pos/nail/admin/merchant"]').first()).toHaveAttribute(
         'aria-current',
         'page',
       );
@@ -213,7 +222,7 @@ test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
 
       // The active item survives the collapsed/drawer state.
       await expect(
-        merchantsPage.sidebar.mobileDrawer.locator('a[href="/pos/merchants"]').first(),
+        merchantsPage.sidebar.mobileDrawer.locator('a[href="/pos/nail/admin/merchant"]').first(),
       ).toHaveAttribute('aria-current', 'page');
     },
   );

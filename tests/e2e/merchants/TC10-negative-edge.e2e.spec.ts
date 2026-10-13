@@ -114,7 +114,7 @@ test.describe('Trường hợp tiêu cực & biên (Negative / Edge) — Merchan
       isolatedPage.on('pageerror', (error) => pageErrors.push(error.message));
 
       await failDataResponses(isolatedPage, 500, LIST_ENDPOINT);
-      await isolatedPage.goto('/pos/merchants', { waitUntil: 'domcontentloaded' });
+      await isolatedPage.goto('/pos/nail/admin/merchant', { waitUntil: 'domcontentloaded' });
 
       // Page frame survives: title, toolbar and headers all still there.
       await expect(merchantsPage.pageTitle).toBeVisible();
@@ -160,7 +160,7 @@ test.describe('Trường hợp tiêu cực & biên (Negative / Edge) — Merchan
 
       await test.step('delayed response', async () => {
         await delayDataResponses(isolatedPage, 5_000, LIST_ENDPOINT);
-        await isolatedPage.goto('/pos/merchants', { waitUntil: 'domcontentloaded' });
+        await isolatedPage.goto('/pos/nail/admin/merchant', { waitUntil: 'domcontentloaded' });
 
         // Mid-flight: the shell is up and no rows exist yet. A skeleton is the
         // app's loading affordance where it renders one; the invariant that
@@ -177,7 +177,7 @@ test.describe('Trường hợp tiêu cực & biên (Negative / Edge) — Merchan
 
       await test.step('aborted request', async () => {
         await abortDataResponses(isolatedPage, LIST_ENDPOINT);
-        await isolatedPage.goto('/pos/merchants', { waitUntil: 'domcontentloaded' });
+        await isolatedPage.goto('/pos/nail/admin/merchant', { waitUntil: 'domcontentloaded' });
 
         // The frame must survive a dropped connection.
         await expect(merchantsPage.pageTitle).toBeVisible();

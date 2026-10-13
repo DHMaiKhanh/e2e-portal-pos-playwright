@@ -164,11 +164,19 @@ export class PayrollPage extends BasePage {
     this.createCheckButton = page.getByRole('button', { name: /^create$/i });
 
     this.staffPayrollTable = new DataTable(page, tableWithHeader(/total income/i));
-    // Dynamic label showing the selected period's date range, e.g. "Jun 30,
-    // 2026 - Jun 30, 2026" — again the text, not an accessible name.
+    // Dynamic label showing the selected period's date range, e.g. "Oct 8, 2026
+    // - Oct 10, 2026 - Current Period (Unclosed)" — the visible text, not an
+    // accessible name.
+    //
+    // This trigger is NOT a Radix Select (role=combobox); it is a plain button,
+    // so the previous `getByRole('combobox')` resolved to nothing and every read
+    // of it timed out even though the dated label was on screen. Match a button
+    // or a combobox, then narrow by the date pattern ("Mon D, YYYY") so it can't
+    // collide with pagination or a staff-name cell that happens to hold digits.
     this.payPeriodCombobox = page
       .getByRole('combobox')
-      .filter({ hasText: /\d{4}/ })
+      .or(page.getByRole('button'))
+      .filter({ hasText: /\w{3,}\s+\d{1,2},\s*\d{4}/ })
       .filter({ visible: true })
       .first();
     this.createPayPeriodButton = page.getByRole('button', { name: /^create( new)?$/i });
@@ -224,9 +232,16 @@ export class PayrollPage extends BasePage {
     // later. Tests that counted rows right after this call read the empty table
     // and skipped themselves as "no staff rows available" on a store that has
     // 209. Settle on the rows here so no caller has to know that.
+    //
+    // The empty branch must key on the table's genuine no-data message ("No
+    // payroll periods available"). The previous `/no staff/` regex also matched
+    // the detail panel's ever-present "No staff selected" placeholder, so once
+    // the table had rows this `.or()` resolved to *both* a row and that
+    // placeholder and failed strict mode. "No payroll periods available" never
+    // coexists with rows, so the two branches stay mutually exclusive.
     const rowsOrEmpty = this.staffPayrollTable.rows
       .first()
-      .or(this.page.getByText(/no (staff|results|data)|not found/i).first());
+      .or(this.noPayrollPeriodsMessage.first());
     await expect(rowsOrEmpty).toBeVisible({ timeout: Timeouts.NAVIGATION });
   }
 

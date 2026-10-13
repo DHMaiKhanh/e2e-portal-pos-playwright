@@ -4,39 +4,45 @@ import { Tag } from '@/types/testTags';
 /**
  * Sidebar Navigation — Overview screen (lean core).
  *
- * Store-scoped routes are asserted with `\/pos\/\d+\/…` regexes so the numeric
- * store id is never hardcoded. Admin routes are genuinely store-independent
- * (`/pos/onboarding`, `/pos/merchants`, `/pos/admin/…`) and are matched as such.
- * The active nav item is expressed via the ARIA-standard `aria-current="page"`.
+ * Store-scoped routes are asserted with `\/pos\/nail\/\d+\/…` regexes so the
+ * numeric store id is never hardcoded (the app injects the `nail` vertical
+ * segment). Admin routes carry the same segment and live under
+ * `/pos/nail/admin/…`. The active nav item is expressed via `aria-current="page"`.
  */
 
-/** Store-scoped POS + Management links, keyed by expected href pattern. */
+/**
+ * Store-scoped POS + Management links, keyed by expected href pattern. The app
+ * injects a vertical segment before the store id: `/pos/nail/<id>/…`.
+ */
 const STORE_LINKS: RegExp[] = [
-  /^\/pos\/\d+\/overview$/,
-  /^\/pos\/\d+\/orders$/,
-  /^\/pos\/\d+\/payroll$/,
-  /^\/pos\/\d+\/batch$/,
-  /^\/pos\/\d+\/staffs$/,
-  /^\/pos\/\d+\/services$/,
-  /^\/pos\/\d+\/customers$/,
+  /^\/pos\/nail\/\d+\/overview$/,
+  /^\/pos\/nail\/\d+\/orders$/,
+  /^\/pos\/nail\/\d+\/payroll$/,
+  /^\/pos\/nail\/\d+\/batch$/,
+  /^\/pos\/nail\/\d+\/staffs$/,
+  /^\/pos\/nail\/\d+\/services$/,
+  /^\/pos\/nail\/\d+\/customers$/,
   // `/pos/<id>/customer-groups` is gone from the sidebar: Customer Groups became
   // a tab on the Customers screen (/customers?tab=groups). The old URL still
   // resolves, but only as a redirect onto that tab, so there is no nav link with
   // this href to assert on any more.
-  /^\/pos\/\d+\/income$/,
-  /^\/pos\/\d+\/report-config$/,
-  /^\/pos\/\d+\/setting$/,
+  /^\/pos\/nail\/\d+\/income$/,
+  // `report-config` is no longer a sidebar link — "Report Configuration" now
+  // renders as a <button>, so it exposes no href to match.
+  /^\/pos\/nail\/\d+\/setting$/,
 ];
 
-/** Admin links — store-independent, exact hrefs. */
+/**
+ * Admin links — store-independent, but still carry the vertical segment and now
+ * live under `/pos/nail/admin/…`. "System" and "Users & Roles" render as
+ * <button>s (no href), so `/admin/monitor` and `/admin/versions` are gone.
+ */
 const ADMIN_LINKS: string[] = [
-  '/pos/onboarding',
-  '/pos/merchants',
-  '/pos/admin/orders',
-  '/pos/admin/packages',
-  '/pos/admin/devices',
-  '/pos/admin/monitor',
-  '/pos/admin/versions',
+  '/pos/nail/admin/onboarding',
+  '/pos/nail/admin/merchant',
+  '/pos/nail/admin/orders',
+  '/pos/nail/admin/packages',
+  '/pos/nail/admin/devices',
 ];
 
 test.describe('Sidebar Navigation — Overview', () => {
@@ -52,7 +58,7 @@ test.describe('Sidebar Navigation — Overview', () => {
         .locator('a[href]')
         .evaluateAll((els) => els.map((el) => el.getAttribute('href') ?? ''));
 
-      // All 17 nav hrefs present and exact (store links by pattern, admin literal).
+      // All nav hrefs present and exact (store links by pattern, admin literal).
       expect(hrefs).toEqual(
         expect.arrayContaining([
           ...STORE_LINKS.map((re) => expect.stringMatching(re)),
@@ -71,10 +77,10 @@ test.describe('Sidebar Navigation — Overview', () => {
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage, page }) => {
       const routes: Array<[RegExp, RegExp]> = [
-        [/^\/pos\/\d+\/overview$/, /\/pos\/\d+\/overview/],
-        [/^\/pos\/\d+\/orders$/, /\/pos\/\d+\/orders/],
-        [/^\/pos\/\d+\/payroll$/, /\/pos\/\d+\/payroll/],
-        [/^\/pos\/\d+\/batch$/, /\/pos\/\d+\/batch/],
+        [/^\/pos\/nail\/\d+\/overview$/, /\/pos\/nail\/\d+\/overview/],
+        [/^\/pos\/nail\/\d+\/orders$/, /\/pos\/nail\/\d+\/orders/],
+        [/^\/pos\/nail\/\d+\/payroll$/, /\/pos\/nail\/\d+\/payroll/],
+        [/^\/pos\/nail\/\d+\/batch$/, /\/pos\/nail\/\d+\/batch/],
       ];
       for (const [hrefPattern, urlPattern] of routes) {
         await dashboardPage.goto();
@@ -89,12 +95,12 @@ test.describe('Sidebar Navigation — Overview', () => {
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage, page }) => {
       const routes: Array<[RegExp, RegExp]> = [
-        [/^\/pos\/\d+\/staffs$/, /\/pos\/\d+\/staffs/],
-        [/^\/pos\/\d+\/services$/, /\/pos\/\d+\/services/],
-        [/^\/pos\/\d+\/customers$/, /\/pos\/\d+\/customers/],
+        [/^\/pos\/nail\/\d+\/staffs$/, /\/pos\/nail\/\d+\/staffs/],
+        [/^\/pos\/nail\/\d+\/services$/, /\/pos\/nail\/\d+\/services/],
+        [/^\/pos\/nail\/\d+\/customers$/, /\/pos\/nail\/\d+\/customers/],
         // customer-groups dropped — now a tab on /customers, no sidebar link.
-        [/^\/pos\/\d+\/income$/, /\/pos\/\d+\/income/],
-        [/^\/pos\/\d+\/setting$/, /\/pos\/\d+\/setting/],
+        [/^\/pos\/nail\/\d+\/income$/, /\/pos\/nail\/\d+\/income/],
+        [/^\/pos\/nail\/\d+\/setting$/, /\/pos\/nail\/\d+\/setting/],
       ];
       for (const [hrefPattern, urlPattern] of routes) {
         await dashboardPage.goto();

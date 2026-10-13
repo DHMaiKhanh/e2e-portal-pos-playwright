@@ -12,7 +12,7 @@ test.describe('Điều hướng (Navigation) — Customers', () => {
       await customersPage.waitForReady();
       // Landing URL now leads with `tab=customers` (the screen gained tabs).
       await expect(page).toHaveURL(
-        /\/pos\/\d+\/customers\?tab=customers&page=1&orderCreatedAt=desc/,
+        /\/pos\/nail\/\d+\/customers\?tab=customers&page=1&orderCreatedAt=desc/,
       );
       await expect(customersPage.sidebar.item('Customers')).toHaveAttribute('aria-current', 'page');
     },
@@ -24,7 +24,7 @@ test.describe('Điều hướng (Navigation) — Customers', () => {
     async ({ customersPage }) => {
       await customersPage.goto();
       await expect(customersPage.sidebar.item('Customers')).toHaveAttribute('aria-current', 'page');
-      await expect(customersPage.sidebar.item('Staffs')).not.toHaveAttribute(
+      await expect(customersPage.sidebar.item('Staff Members')).not.toHaveAttribute(
         'aria-current',
         'page',
       );
@@ -46,14 +46,14 @@ test.describe('Điều hướng (Navigation) — Customers', () => {
       // a redirect to /pos/<id>/customers?tab=groups, so neither the sidebar link
       // nor the old URL pattern exists to assert on any more.
       await page.getByRole('tab', { name: /customer groups/i }).click();
-      await expect(page).toHaveURL(/\/pos\/\d+\/customers\?tab=groups/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/customers\?tab=groups/);
       await expect(page.getByRole('tab', { name: /customer groups/i })).toHaveAttribute(
         'data-state',
         'active',
       );
 
       await customersPage.sidebar.navigateTo('Services');
-      await expect(page).toHaveURL(/\/pos\/\d+\/services/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/services/);
       await expect(customersPage.sidebar.item('Customers')).not.toHaveAttribute(
         'aria-current',
         'page',

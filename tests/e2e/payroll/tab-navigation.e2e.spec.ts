@@ -18,7 +18,12 @@ test.describe('Tab navigation — Payroll', () => {
       await payrollPage.goToStaffPayrollTab();
       await expect(page).toHaveURL(/tab=staff-payroll/);
       await expect(payrollPage.staffPayrollTab).toHaveAttribute('aria-selected', 'true');
-      await expect(payrollPage.payPeriodCombobox.or(page.getByRole('table').first())).toBeVisible();
+      // payPeriodCombobox and the staff-payroll table are both present here, so the
+      // bare `.or()` resolved to two elements and tripped strict mode. Narrow the
+      // union to a single element — either one proves the tab's content rendered.
+      await expect(
+        payrollPage.payPeriodCombobox.or(page.getByRole('table').first()).first(),
+      ).toBeVisible();
 
       await payrollPage.goToBankAccountsTab();
       await expect(page).toHaveURL(/tab=bank-account/);
@@ -57,35 +62,49 @@ test.describe('Tab navigation — Payroll', () => {
     async ({ payrollPage, page }) => {
       const currentPage = (): string | null => new URL(page.url()).searchParams.get('page');
 
-      await test.step('Move the Checks tab to page 2', async () => {
+      // The store's check count varies: when it holds enough checks the Checks
+      // tab spans two pages, but the shared DEV store currently holds a single
+      // check (one page). Moving Checks to page 2 is only what makes the "keeps
+      // its own page" half observable — the cross-tab independence check below
+      // does not depend on it, so it is done conditionally. Check History is
+      // append-only and reliably spans several pages, so it carries the proof
+      // that one tab's page does not bleed into another's.
+      let checksHadSecondPage = false;
+
+      await test.step('Move the Checks tab to page 2 when it has one', async () => {
         await payrollPage.gotoTab('checks');
         await expect(payrollPage.checksTable.rows.first()).toBeVisible();
+        if (await payrollPage.nextPageButton.first().isEnabled()) {
+          await payrollPage.goToNextPage();
+          await expect.poll(currentPage).toBe('2');
+          checksHadSecondPage = true;
+        }
+      });
+
+      await test.step('Check History opens on its own page 1, then moves to page 2', async () => {
+        await payrollPage.goToCheckHistoryTab();
+        await expect(payrollPage.checkHistoryTable.rows.first()).toBeVisible();
+        expect(currentPage() ?? '1').toBe('1');
+
         await expect(payrollPage.nextPageButton.first()).toBeEnabled();
         await payrollPage.goToNextPage();
         await expect.poll(currentPage).toBe('2');
       });
 
-      await test.step('Check History opens on its own page 1, not on page 2', async () => {
-        await payrollPage.goToCheckHistoryTab();
-        await expect(payrollPage.checkHistoryTable.rows.first()).toBeVisible();
-        expect(currentPage()).toBe('1');
-
-        await payrollPage.goToNextPage();
-        await expect.poll(currentPage).toBe('2');
-      });
-
-      await test.step('Returning to Checks lands on a valid page with real rows', async () => {
+      await test.step("Returning to Checks lands on its own page, not Check History's page 2", async () => {
         await payrollPage.goToChecksTab();
         await expect(payrollPage.checksTable.rows.first()).toBeVisible();
 
-        // Measured live: the app resets to page 1 here rather than restoring
-        // the page the tab was left on. The case's wording expects it to be
-        // restored, so that half is a product gap — recorded, not asserted,
-        // because pinning either behaviour would freeze today's choice.
-        // What must hold, and is asserted, is that Check History's page 2 did
-        // not follow us into Checks.
-        const landed = currentPage();
-        expect(['1', '2']).toContain(landed);
+        // Measured live: the app resets to page 1 here rather than restoring the
+        // page the tab was left on. The case's wording expects restoration, so
+        // that half is a product gap — recorded, not asserted, because pinning
+        // either behaviour would freeze today's choice. What must hold, and is
+        // asserted, is that Check History's page 2 did not follow us into Checks:
+        // Checks shows its own page — the one it was left on, or a reset to 1 —
+        // never Check History's page 2.
+        const landed = currentPage() ?? '1';
+        const checksOwnPages = checksHadSecondPage ? ['1', '2'] : ['1'];
+        expect(checksOwnPages).toContain(landed);
         await expect(payrollPage.paginationSummary.first()).toContainText(
           /showing \d+ to \d+ of \d+ results/i,
         );

@@ -42,7 +42,7 @@ test.describe('Batch History — Overview', () => {
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage, page }) => {
       await dashboardPage.batchViewAllLink.click();
-      await expect(page).toHaveURL(/\/pos\/\d+\/batch/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/batch/);
       await expect(page).not.toHaveURL(/\/login/);
     },
   );

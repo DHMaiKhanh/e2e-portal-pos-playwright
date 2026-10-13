@@ -50,9 +50,11 @@ export class BatchHistoryPage extends BasePage {
   constructor(page: Page) {
     super(page);
     this.sidebar = new Sidebar(page);
-    this.heading = page.getByText(/^batch history$/i).first();
+    this.heading = page.getByText(/^batches$/i).first();
 
-    this.dateRangeButton = page.getByRole('button', { name: /\d{4}/ });
+    // Scope to the filter bar's own trigger: a bare `/\d{4}/` name also matches
+    // the header store switcher ("Test 100004 #100004"), a strict-mode clash.
+    this.dateRangeButton = page.locator('[data-slot="batch-filters-date"]');
     this.statusCombobox = page.getByRole('combobox');
     this.clearFiltersButton = page.getByRole('button', { name: /clear filters/i });
 
@@ -73,9 +75,18 @@ export class BatchHistoryPage extends BasePage {
   }
 
   async waitForReady(): Promise<void> {
-    await expect(this.heading).toBeVisible();
-    // The heading paints well before the ledger does, so the skeleton wait is the
-    // one that actually gates readiness — and under a full-suite run (8 workers
+    // The "Batches" page heading is NOT a reliable readiness signal: on direct
+    // deep-link navigations (gotoWithParams) the app shell/header can still be
+    // hydrating while the ledger itself — filter bar + table — is already
+    // painted. Gate on the filter bar + table, which render on every batch view.
+    // Under a full-suite run (8 workers against the same remote Portal) the
+    // filter bar can take longer than the default 10s expect timeout to paint —
+    // the same congestion the skeleton wait below already accounts for — so give
+    // these the same margin rather than letting the first attempt flake.
+    await expect(this.statusCombobox.first()).toBeVisible({ timeout: Timeouts.MEDIUM });
+    await expect(this.tableRoot).toBeVisible({ timeout: Timeouts.MEDIUM });
+    // The ledger paints after its chrome, so the skeleton wait is the one that
+    // actually gates data readiness — and under a full-suite run (8 workers
     // hitting the same remote Portal) it regularly needs more than the default
     // 10s expect timeout. Give it the same margin the other list screens use.
     await expect(this.page.locator('[data-slot="skeleton"]:visible')).toHaveCount(0, {

@@ -62,13 +62,16 @@ Khi session hết hạn, chỉ cần chạy lại `npm run auth`.
 
 ## Thiết lập lần đầu
 
-1. **Trỏ về Portal dev.** File [configs/env/.env.local](../configs/env/.env.local)
-   đã set sẵn (gitignored, không commit):
+1. **Chọn môi trường cần đăng nhập.** `ENV` quyết định file
+   `configs/env/.env.<ENV>` nào được nạp (đều gitignored, không commit):
 
-   ```dotenv
-   BASE_URL=https://dev.v2.fastboypay.com
-   STORAGE_STATE=src/data/dynamic/auth/admin.json
-   ```
+   | `ENV`   | File                                                | `BASE_URL`                               |
+   | ------- | --------------------------------------------------- | ---------------------------------------- |
+   | `stage` | [configs/env/.env.stage](../configs/env/.env.stage) | `https://v2.dev-fastboypay.com`          |
+   | `prod`  | [configs/env/.env.prod](../configs/env/.env.prod)   | `https://v2.fastboypay.com`              |
+   | `local` | [configs/env/.env.local](../configs/env/.env.local) | `http://localhost:3000` (app chạy local) |
+
+   Không set `ENV` thì mặc định là `local`.
 
 2. **Cài browser (nếu chưa):**
 
@@ -76,18 +79,36 @@ Khi session hết hạn, chỉ cần chạy lại `npm run auth`.
    npm run setup        # npm install + playwright install chromium
    ```
 
-3. **Đăng nhập & lưu session:**
+3. **Đăng nhập & lưu session** — nhắm đúng môi trường bằng `ENV`:
 
    ```bash
-   npm run auth
+   # Cách gọn (khuyên dùng) — có sẵn script tắt trong package.json
+   npm run auth:stage    # → https://v2.dev-fastboypay.com
+   # hoặc
+   npm run auth:prod     # → https://v2.fastboypay.com
    ```
 
-   - Một cửa sổ Chrome mở ra tại trang `/login`.
+   Hai lệnh trên tương đương với cách set `ENV` thủ công rồi chạy `npm run auth`:
+
+   ```powershell
+   # Stage — https://v2.dev-fastboypay.com/
+   $env:ENV="stage"; npm run auth
+
+   # Prod — https://v2.fastboypay.com/
+   $env:ENV="prod"; npm run auth
+   ```
+
+   - Một cửa sổ Chrome mở ra tại trang `/login` của đúng môi trường đã chọn.
    - Bấm **Continue with Google**, nhập email `@fastboy.net`, mật khẩu.
    - Ở bước **2-Step Verification**, mở điện thoại (Redmi Note 14 / 13C…) bấm
      **"Yes"**. 👉 Nên tick **"Don't ask again on this device"** để lần sau đỡ hỏi.
    - Khi Portal đã vào hẳn, quay lại terminal **bấm ENTER**.
    - Session được lưu vào `src/data/dynamic/auth/admin.json`.
+
+   > Lưu ý: `stage` và `prod` hiện dùng chung `STORAGE_STATE`
+   > (`src/data/dynamic/auth/admin.json`). Đổi `ENV` và chạy lại `npm run auth`
+   > sẽ **ghi đè** session của môi trường trước đó — chạy test ở môi trường nào
+   > thì `npm run auth` lại ở môi trường đó trước.
 
 ---
 
@@ -131,13 +152,15 @@ Xử lý: chạy lại `npm run auth` để đăng nhập & lưu session mới.
 
 ## Các file liên quan
 
-| File                                                    | Vai trò                                                      |
-| ------------------------------------------------------- | ------------------------------------------------------------ |
-| [scripts/capture-auth.mjs](../scripts/capture-auth.mjs) | Mở browser, cho login thủ công, lưu `storageState`           |
-| [tests/global.setup.ts](../tests/global.setup.ts)       | Kiểm tra session còn hợp lệ trước khi chạy UI tests          |
-| [playwright.config.ts](../playwright.config.ts)         | Nối `setup` → `chromium` qua `dependencies` + `storageState` |
-| [configs/env/.env.local](../configs/env/.env.local)     | `BASE_URL`, `STORAGE_STATE` (gitignored)                     |
-| `src/data/dynamic/auth/admin.json`                      | File session được sinh ra (gitignored)                       |
+| File                                                    | Vai trò                                                               |
+| ------------------------------------------------------- | --------------------------------------------------------------------- |
+| [scripts/capture-auth.mjs](../scripts/capture-auth.mjs) | Mở browser, cho login thủ công, lưu `storageState`                    |
+| [tests/global.setup.ts](../tests/global.setup.ts)       | Kiểm tra session còn hợp lệ trước khi chạy UI tests                   |
+| [playwright.config.ts](../playwright.config.ts)         | Nối `setup` → `chromium` qua `dependencies` + `storageState`          |
+| [configs/env/.env.local](../configs/env/.env.local)     | `BASE_URL`, `STORAGE_STATE` cho `ENV=local` (gitignored)              |
+| [configs/env/.env.stage](../configs/env/.env.stage)     | `BASE_URL=https://v2.dev-fastboypay.com` cho `ENV=stage` (gitignored) |
+| [configs/env/.env.prod](../configs/env/.env.prod)       | `BASE_URL=https://v2.fastboypay.com` cho `ENV=prod` (gitignored)      |
+| `src/data/dynamic/auth/admin.json`                      | File session được sinh ra (gitignored)                                |
 
 > ⚠️ `src/data/dynamic/auth/` nằm trong `.gitignore` — session **không bao giờ**
 > được commit lên repo.

@@ -61,17 +61,19 @@ giữa chừng và test fail rải rác không theo quy luật nào.
 Đi theo mục 0 thì bước này xong rồi — nhảy thẳng xuống mục 2. Phần dưới dành cho
 Jenkins dựng sẵn theo cách khác. Manage Jenkins → Plugins:
 
-| Plugin              | Dùng cho                                    |
-| ------------------- | ------------------------------------------- |
-| Docker Pipeline     | `agent { docker { ... } }`                  |
-| Credentials Binding | `withCredentials([file(...)])`              |
-| JUnit               | `junit` — biểu đồ pass/fail theo build      |
-| HTML Publisher      | Link "Playwright HTML Report" ở trang build |
-| Allure              | `allure(...)`                               |
-| AnsiColor           | `ansiColor('xterm')` — log có màu           |
-| Timestamper         | `timestamps()`                              |
-| GitHub              | `githubNotify(...)` — commit status trên PR |
-| Email Extension     | `emailext(...)` — báo kết quả qua email     |
+| Plugin                | Dùng cho                                    |
+| --------------------- | ------------------------------------------- |
+| Docker Pipeline       | `agent { docker { ... } }`                  |
+| Credentials Binding   | `withCredentials([file(...)])`              |
+| JUnit                 | `junit` — biểu đồ pass/fail theo build      |
+| HTML Publisher        | Link "Playwright HTML Report" ở trang build |
+| Allure                | `allure(...)`                               |
+| AnsiColor             | `ansiColor('xterm')` — log có màu           |
+| Timestamper           | `timestamps()`                              |
+| GitHub                | `githubNotify(...)` — commit status trên PR |
+| Configuration as Code | Đọc `ci/jenkins/casc.yaml` (xem mục 9)      |
+| Job DSL               | Backend cho block `jobs:` trong casc.yaml   |
+| Mailer                | Step `mail` gửi email thông báo             |
 
 Thiếu AnsiColor hoặc Timestamper thì pipeline **fail ngay ở bước parse**, không
 phải lúc chạy — nên cài đủ trước khi tạo job. Nếu không dùng Allure, xoá block
@@ -89,6 +91,16 @@ Suite này **không tự đăng nhập được**: Portal dùng Google OAuth + 2
 Verification, không drive headless được (chi tiết: [authentication.md](authentication.md)).
 Session phải chụp thủ công một lần rồi nạp vào Jenkins. Kèm theo đó, các file
 `configs/env/.env.*` bị gitignore nên cũng phải cấp qua credential.
+
+> **Cách nhanh — bỏ qua bấm tay:** có API token thì nạp cả 2 credential bằng 1 lệnh
+> ([ci/jenkins/push-credentials.mjs](../ci/jenkins/push-credentials.mjs), idempotent):
+>
+> ```powershell
+> $env:JENKINS_USER="admin"; $env:JENKINS_TOKEN="<api-token>"
+> npm run jenkins:creds stage
+> ```
+>
+> Phần dưới là cách thủ công qua UI, dùng khi không chạy được script.
 
 Manage Jenkins → Credentials → (global) → Add Credentials, tạo **2 credential cho
 mỗi môi trường**:
@@ -156,6 +168,11 @@ curl -sS -u "$JENKINS_USER:$JENKINS_TOKEN" "$JENKINS_URL/job/portal-pos-e2e/last
 
 ## 3. Tạo job
 
+> Dùng setup Docker ở [mục 0](#0-dựng-jenkins-bằng-docker) thì **2 job đã được
+> JCasC tạo sẵn** (`portal-pos-e2e` + `portal-pos-session-health`, xem
+> [mục 9](#9-tự-động-hoá-config-as-code-email-canh-session)) — bỏ qua mục này,
+> xuống thẳng mục 4. Phần dưới dành cho Jenkins dựng theo cách khác.
+
 New Item → **Pipeline** (hoặc Multibranch Pipeline nếu muốn build theo branch):
 
 - Definition: **Pipeline script from SCM**
@@ -176,14 +193,20 @@ job có `parameters`). Từ lần thứ hai trở đi dùng **Build with Paramet
 
 ## 4. Tham số khi build
 
-| Tham số       | Mặc định | Ghi chú                                                             |
-| ------------- | -------- | ------------------------------------------------------------------- |
-| `TARGET_ENV`  | `stage`  | Chọn cặp credential được nạp và giá trị `ENV` truyền cho Playwright |
-| `TEST_PATH`   | _(rỗng)_ | Thu hẹp phạm vi, vd `tests/e2e/customers`. Rỗng = chạy hết          |
-| `GREP`        | _(rỗng)_ | `--grep`, vd `@smoke`                                               |
-| `WORKERS`     | `8`      | Điểm bão hoà đã đo — xem chú thích trong `playwright.config.ts`     |
-| `TRACE`       | `off`    | Bật `retain-on-failure` khi cần điều tra; nó làm chậm ~25% cả suite |
-| `RUN_QUALITY` | `true`   | Chạy `lint` + `typecheck` trước                                     |
+| Tham số        | Mặc định               | Ghi chú                                                                              |
+| -------------- | ---------------------- | ------------------------------------------------------------------------------------ |
+| `TARGET_ENV`   | `stage`                | Chọn cặp credential được nạp và giá trị `ENV` truyền cho Playwright                  |
+| `SUITE`        | `full`                 | `smoke` = `--grep @smoke` (nhanh), `regression` = `--grep @regression`, `full` = hết |
+| `TEST_PATH`    | _(rỗng)_               | Thu hẹp phạm vi, vd `tests/e2e/customers`. Rỗng = chạy hết                           |
+| `GREP`         | _(rỗng)_               | Lọc thêm, kết hợp **AND** với `SUITE`, vd `@auth`                                    |
+| `NOTIFY_EMAIL` | `khanh_do@fastboy.net` | Email nhận thông báo khi fail/unstable/xanh-lại. Rỗng = không gửi                    |
+| `WORKERS`      | `8`                    | Điểm bão hoà đã đo — xem chú thích trong `playwright.config.ts`                      |
+| `TRACE`        | `off`                  | Bật `retain-on-failure` khi cần điều tra; nó làm chậm ~25% cả suite                  |
+| `RUN_QUALITY`  | `true`                 | Chạy `lint` + `typecheck` trước                                                      |
+
+`SUITE` dùng tag khai báo ở [src/types/testTags.ts](../src/types/testTags.ts)
+(`@smoke`, `@regression`). `SUITE=smoke` + `GREP=@auth` sẽ chạy test vừa có
+`@smoke` **vừa** có `@auth` (pipeline ghép thành một regex lookahead).
 
 ## 5. Đọc kết quả build
 
@@ -275,16 +298,85 @@ cũng được bọc `try/catch` để lỗi publish không nuốt mất JUnit +
 Vẫn lỗi thì kiểm tra Manage Jenkins → Tools → Allure Commandline: phải có một
 tool tên `allure`, bật **Install automatically** (bản 2.30.x).
 
-## 9. Trigger tự động, commit status & email
+> Dùng setup Docker ở [mục 0](#0-dựng-jenkins-bằng-docker) thì tool `allure` đã
+> được JCasC tạo sẵn (xem mục 9), không phải vào Tools khai báo tay.
 
-Ba thứ dưới đây không bắt buộc để build chạy được (build tay vẫn hoạt động bình
-thường nếu bỏ qua mục này), nhưng là chuẩn tối thiểu của một pipeline CI thật:
-tự động chạy khi có code mới, báo kết quả ngược lại nơi review code, và báo cho
-người phụ trách khi build đỏ mà không cần tự vào Jenkins xem.
+## 9. Tự động hoá: Config as Code, email, canh session
 
-### 9.1. Trigger — `pollSCM`, không phải webhook thật
+Phần này mô tả những gì đã được tự động hoá sẵn khi dựng Jenkins bằng
+[ci/jenkins/](../ci/jenkins/). Mục tiêu: dựng lại Jenkins từ con số 0 mà **không
+phải bấm tay** job/tool/email, và biết **trước** khi session chết thay vì để cả
+suite đỏ.
 
-Jenkinsfile khai báo:
+### 9.1. Config as Code (JCasC)
+
+[ci/jenkins/casc.yaml](../ci/jenkins/casc.yaml) là nguồn sự thật cho cấu hình
+Jenkins. Mỗi lần container `jenkins` khởi động, plugin `configuration-as-code`
+đọc file này (qua biến `CASC_JENKINS_CONFIG` set trong
+[Dockerfile](../ci/jenkins/Dockerfile)) và áp lại. Nó tạo sẵn:
+
+| Thành phần                      | Nội dung                                                            |
+| ------------------------------- | ------------------------------------------------------------------- |
+| Tool `allure`                   | Allure Commandline 2.30.0, tự tải — khỏi vào Manage Jenkins → Tools |
+| SMTP (Mailer)                   | Cấu hình từ biến môi trường (xem 9.3)                               |
+| Job `portal-pos-e2e`            | Pipeline from SCM, `Jenkinsfile`, poll SCM 15'/lần                  |
+| Job `portal-pos-session-health` | Nightly canh session (xem 9.2)                                      |
+
+> **Hệ quả:** sửa cấu hình thì sửa trong `casc.yaml` rồi
+> `docker compose -f ci/jenkins/docker-compose.yml restart jenkins`. Sửa trực
+> tiếp trên UI sẽ bị ghi đè ở lần restart sau — đó là chủ đích của "as code".
+
+Repo/branch mà 2 job build lấy từ biến `REPO_URL` / `GIT_BRANCH` (mặc định trỏ
+fork, xem [docker-compose.yml](../ci/jenkins/docker-compose.yml)). Repo private
+thì set thêm `GIT_CREDENTIALS_ID` = id credential GitHub (kind _Username with
+password_, password = PAT).
+
+Vì Jenkins chạy **local** (không IP public), job không nhận được webhook GitHub —
+nên trigger tự động là **poll SCM** 15 phút/lần. Vẫn Build with Parameters tay
+được. Có server public thì đổi `pollSCM` trong `casc.yaml` sang trigger webhook.
+
+### 9.2. Job canh session nightly
+
+Session Portal hết hạn theo thời gian và phải chụp tay (OAuth + 2FA). Job
+`portal-pos-session-health` ([ci/jenkins/Jenkinsfile.session-health](../ci/jenkins/Jenkinsfile.session-health))
+chạy **7h sáng T2–T6**, chỉ chạy [scripts/check-auth-session.mjs](../scripts/check-auth-session.mjs)
+kiểm tra `refreshToken` trong session còn sống bao lâu — **không chạy test**:
+
+| Trạng thái build | Nghĩa là                                    | Hành động                        |
+| ---------------- | ------------------------------------------- | -------------------------------- |
+| `SUCCESS`        | Session còn > `WARN_DAYS` ngày (mặc định 3) | —                                |
+| `UNSTABLE`       | Sắp hết hạn (trong `WARN_DAYS`) → gửi email | `npm run auth` + `jenkins:creds` |
+| `FAILURE`        | Đã hết hạn / không đọc được → gửi email     | `npm run auth` + `jenkins:creds` |
+
+Chạy tại chỗ trên máy dev: `npm run auth:check`. Điền `ALERT_EMAIL` cho job để
+nhận cảnh báo. Đây là lý do cron của job test chính vẫn tắt — ta canh session
+riêng, nhẹ nhàng, thay vì để nguyên suite đỏ.
+
+### 9.3. Email thông báo
+
+Job test chính gửi email khi build **UNSTABLE / FAILURE / FIXED** (xanh trở lại
+sau khi đỏ) — build xanh liên tục thì im lặng. Địa chỉ nhận lấy từ param
+`NOTIFY_EMAIL`. Email kèm link Build, HTML report, Test result.
+
+SMTP khai báo trong `casc.yaml`, giá trị truyền qua biến môi trường của container
+`jenkins` — **secret không hard-code trong repo**. Set trước khi
+`docker compose up` (hoặc dùng `--env-file`):
+
+```powershell
+$env:SMTP_HOST="smtp.gmail.com"; $env:SMTP_PORT="587"
+$env:SMTP_USER="bot@fastboy.net"; $env:SMTP_PASSWORD="<app-password>"
+$env:EMAIL_ADMIN="bot@fastboy.net"
+docker compose -f ci/jenkins/docker-compose.yml up -d --build
+```
+
+Để trống `SMTP_HOST` thì email tắt nhưng Jenkins vẫn chạy bình thường — việc gửi
+mail được bọc `try/catch`, không làm build đỏ theo.
+
+### 9.4. Trigger — `pollSCM`, không phải webhook thật
+
+Ngoài `pollSCM` 15' trong `casc.yaml` (mục 9.1), Jenkinsfile cũng khai báo
+trigger riêng — sau build đầu tiên, `triggers {}` của Jenkinsfile ghi đè cấu
+hình trigger của job, nên giá trị thực tế là của Jenkinsfile:
 
 ```groovy
 triggers { pollSCM('H/5 * * * *') }
@@ -306,7 +398,7 @@ và ở GitHub: repo → Settings → Webhooks → Add webhook → Payload URL
 `<jenkins-url>/github-webhook/`, content type `application/json`, event `Just
 the push event`.
 
-### 9.2. Commit status trên GitHub (PR check)
+### 9.5. Commit status trên GitHub (PR check)
 
 Jenkinsfile gọi `githubNotify(...)` ở stage `Notify: pending` (đầu build) và ở
 `post { success / unstable / failure }` — trạng thái hiện ra ở tab Checks của PR
@@ -324,24 +416,3 @@ GitHub → Settings → Developer settings → Personal access tokens.
 Thiếu credential này thì `notifyGithub()` trong Jenkinsfile bắt lỗi và chỉ
 `echo` ra log — build vẫn chạy và publish report bình thường, chỉ là PR không
 thấy status.
-
-### 9.3. Email khi build đỏ
-
-`post { unstable / failure }` gọi `notifyEmail(...)` (dùng bước `emailext` của
-plugin Email Extension); `post { fixed }` gửi thêm một email khi suite xanh trở
-lại sau lần đỏ trước đó, để không phải im lặng dò xem đã hết đỏ chưa nhưng cũng
-không spam mỗi build pass liên tiếp.
-
-Người nhận cấu hình ở biến `NOTIFY_EMAIL` trong Jenkinsfile (`environment` ở đầu
-file) — sửa thẳng ở đó nếu đổi người phụ trách, không cần đụng vào phần logic
-notify.
-
-SMTP là cấu hình global, không nằm trong Jenkinsfile: Manage Jenkins → System →
-**Extended E-mail Notification** — điền SMTP server, port, credential (nếu SMTP
-yêu cầu đăng nhập), và **Default user e-mail suffix** / **System Admin e-mail
-address** (địa chỉ gửi đi). Bấm **Test configuration** ở cuối trang để kiểm tra
-trước khi tin build thật gửi được.
-
-Chưa có SMTP thì `emailext` throw lỗi, `notifyEmail()` bắt lại và chỉ `echo` ra
-log — cùng kiểu graceful-degrade như commit status ở trên, build không vì thế
-mà đỏ oan.

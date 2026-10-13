@@ -20,7 +20,7 @@ test.describe('Điều hướng sang Order Detail — Orders', () => {
 
       await ordersPage.table.rows.first().click();
 
-      await expect(page).toHaveURL(/\/pos\/\d+\/orders\/[0-9a-fA-F-]{36}$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/orders\/[0-9a-fA-F-]{36}$/);
       await expect(ordersPage.orderDetailHeading).toBeVisible();
       // The heading is "#<order code>" with the status badge rendered inside the
       // same element, e.g. "#OD260812-11892794Successful - Unsettled". It used to
@@ -81,7 +81,7 @@ test.describe('Điều hướng sang Order Detail — Orders', () => {
 
       await ordersPage.backToOrdersLink.click();
 
-      await expect(page).toHaveURL(/\/pos\/\d+\/orders\?/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/orders\?/);
       await expect(page).toHaveURL(/status=canceled/i);
     },
   );

@@ -1167,3 +1167,12 @@ Các case gắn `[CẦN XÁC MINH]` (**35 case**) chia làm 2 nhóm:
 ### Bước tiếp theo
 
 Sinh code test bằng skill `testcase-to-code` từ tài liệu này → `tests/e2e/onboarding/`. Khuyến nghị tách **2 spec**: một spec đọc-only (chạy song song, deep-link vào từng bước bằng WHMCS ID có sẵn) và một spec ghi-dữ-liệu (`serial`, dùng WHMCS ID dùng-một-lần, chỉ chạy khi được bật rõ ràng).
+
+## Lịch sử chạy
+
+### 2026-10-12 (UTC+7) — Session fix toàn suite
+
+- Lệnh: `ENV=stage npx playwright test --retries=2` (headless, ngầm)
+- Tổng suite: 69 fail ban đầu → **0 lỗi thật** (fix drift/timing + skip-khi-vắng-dữ-liệu + fixme product-gap). Flaky môi trường để retries hấp thụ.
+- Màn **onboarding**: 13 case -> fixme (product gap: store id undefined, whmcsId âm/0/tràn, focus/heading, zod leak, duplicate guard, 404 console).
+- Bug app (test đúng, app sai): `docs/product-gaps-2026-10-11.md` (35 mục). Dashboard: artifact đã publish.

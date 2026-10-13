@@ -138,7 +138,7 @@ test.describe('Bước 7 — `Complete` — Onboarding', () => {
         timeout: Timeouts.NAVIGATION,
       });
       await expect(page).not.toHaveURL(/\/login/);
-      await expect(page).not.toHaveURL(/\/pos\/onboarding/);
+      await expect(page).not.toHaveURL(/\/pos\/nail\/admin\/onboarding/);
     },
   );
 
@@ -172,7 +172,9 @@ test.describe('Bước 7 — `Complete` — Onboarding', () => {
       await expect(page).toHaveURL(/^https?:\/\/[^/]+\/$/, { timeout: Timeouts.NAVIGATION });
       await expect(page).not.toHaveURL(/\/login/);
       // Home actually rendered — the POS entry card is its first product tile.
-      await expect(page.getByRole('link', { name: /^POS\b/ })).toBeVisible({
+      // The portal home now ships three POS tiles ("POS", "POS Retail", "POS
+      // Restaurant"), so target the plain "POS" card exactly rather than a prefix.
+      await expect(page.getByRole('link', { name: 'POS', exact: true })).toBeVisible({
         timeout: Timeouts.LONG,
       });
     },

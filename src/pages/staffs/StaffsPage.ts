@@ -28,7 +28,9 @@ export class StaffsPage extends BasePage {
     this.pagination = new Pagination(page);
     this.searchInput = page.getByPlaceholder(/search by nick name, staff code, phone/i);
     this.statusFilter = page.getByRole('combobox').filter({ hasText: /^active$|^inactive$/i });
-    this.sortFilter = page.getByRole('combobox').filter({ hasText: /newest first|oldest first/i });
+    // The sort combobox no longer shows "Newest/Oldest first" as its resting
+    // value (default is now "POS order"), so match its stable accessible name.
+    this.sortFilter = page.getByRole('combobox', { name: /sort staff/i });
     this.exportButton = page.getByRole('button', { name: /^export$/i });
     this.createButton = page.getByRole('button', { name: /^create$/i });
     this.resultsFooter = page.getByText(/showing \d+ to \d+ of \d+ results/i);
@@ -93,7 +95,8 @@ export class StaffsPage extends BasePage {
   }
 
   get pageTitle(): Locator {
-    return this.page.locator('[data-slot="page-title"]').getByText(/^staffs$/i);
+    // The list header text changed from "Staffs" to "Staff Members".
+    return this.page.locator('[data-slot="page-title"]').getByText(/^staff members$/i);
   }
 
   /**
@@ -126,6 +129,49 @@ export class StaffsPage extends BasePage {
       await this.page.waitForTimeout(2_000);
       if ((await statusToggle.getAttribute('aria-checked')) === 'false') break;
     }
+  }
+
+  /**
+   * Remove a staff a test created, straight through the data API.
+   *
+   * This is what unblocks the "create staff" happy path. The Portal surfaces no
+   * delete control and its detail-page status toggle is dead (see
+   * `deactivateStaffIfPresent`), so UI cleanup is impossible — but the staff is
+   * an API-Platform (JSON-LD) resource, and those expose `DELETE /staffs/<id>`
+   * by default even when nothing in the UI calls it. `page.request` reuses the
+   * signed-in context's cookie jar, so the `token` cookie that authorises every
+   * other data call rides along automatically.
+   *
+   * Order of attempts, each tried cookie-only first then with a bearer lifted
+   * off the session cookie (in case the API wants the header, not the cookie):
+   *   1. DELETE — a hard delete (204/200), or 404 if it is already gone.
+   *   2. merge-patch status→inactive — a soft fallback if DELETE is refused, so
+   *      the record at least drops off the default Active list.
+   *
+   * Returns true only once the record is provably removed or deactivated, so the
+   * caller can assert cleanup happened rather than trusting a fire-and-forget
+   * request and silently leaking an Active staff into the shared store.
+   */
+  async removeStaffViaApi(staffApiUrl: string): Promise<boolean> {
+    const tryRemove = async (headers: Record<string, string>): Promise<boolean> => {
+      const del = await this.page.request.delete(staffApiUrl, { headers, failOnStatusCode: false });
+      if (del.ok() || del.status() === 404) return true;
+
+      // API Platform requires this exact content type for a partial update.
+      const patch = await this.page.request.patch(staffApiUrl, {
+        headers: { ...headers, 'Content-Type': 'application/merge-patch+json' },
+        data: { status: 'inactive' },
+        failOnStatusCode: false,
+      });
+      return patch.ok();
+    };
+
+    // Cookie auth is carried by page.request for free; only reach for the bearer
+    // if cookie-only is rejected, so a malformed header can't break what works.
+    if (await tryRemove({})) return true;
+    const token = (await this.page.context().cookies()).find((c) => c.name === 'token')?.value;
+    if (!token) return false;
+    return tryRemove({ Authorization: `Bearer ${token}` });
   }
 }
 
@@ -460,6 +506,16 @@ export class StaffDetailPage extends BasePage {
 
   get rolePermissionsTab(): Locator {
     return this.page.getByRole('tab', { name: /role\s*&\s*permissions/i });
+  }
+
+  /**
+   * The Role combobox on the Role & Permissions tab. The permission groups (and
+   * their Expand All / Collapse All control) only render once a role is
+   * assigned — a staff with no role shows just this combobox reading
+   * "Select a role".
+   */
+  get roleSelect(): Locator {
+    return this.page.getByRole('combobox', { name: /^role$/i });
   }
 
   get compensationTab(): Locator {

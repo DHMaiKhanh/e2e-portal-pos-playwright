@@ -2,10 +2,10 @@ import { type Locator, type Page, expect } from '@playwright/test';
 import { BasePage } from '@pages/BasePage';
 import { Sidebar } from '@components/sidebar/Sidebar';
 import { Urls } from '@constants/urls';
+import { Timeouts } from '@configs/constants/timeouts';
 
-/** The six metric tiles rendered in the "Today's Summary" section, by label. */
-export type MetricLabel =
-  'Total Order' | 'Sale' | 'Appointments' | 'Total Tip' | 'Total Payment' | 'Gross Sale';
+/** The five metric tiles rendered in the "Today's Summary" section, by label. */
+export type MetricLabel = 'Total Order' | 'Sale' | 'Appointments' | 'Total Tip' | 'Total Payment';
 
 /**
  * Portal landing page after login — the store "Overview" (`/pos/<id>/overview`).
@@ -126,9 +126,13 @@ export class DashboardPage extends BasePage {
 
     // Today's Summary
     this.todaysSummarySection = page.getByText(/Today's Summary/);
+    // Today's Summary "View All" now points at the new income-summary report page
+    // (`/pos/<seg>/<id>/report-pages/income-summary`), not the legacy `/income`
+    // route. Both "View All" links (Summary + Batch History) share the same label,
+    // so narrow by the summary link's distinct href suffix.
     this.summaryViewAllLink = page
       .getByRole('link', { name: /^view all$/i })
-      .and(page.locator('a[href$="/income"]'));
+      .and(page.locator('a[href$="/income-summary"]'));
 
     // Merchant Information
     this.merchantInfoSection = page.getByText(/Merchant Information/);
@@ -137,11 +141,12 @@ export class DashboardPage extends BasePage {
     // (/,\s*[A-Z]{2},?\s*\d{5}/) assumed a two-letter state before a 5-digit ZIP
     // and stopped matching once the seeded merchant moved to a non-US address:
     //   "56A Le Khoi, Phu Thanh War, HCM, B, 70111, AR"
-    // What actually identifies the line is that it is comma-separated and
-    // carries a postal code, so key off that instead of a country's convention.
-    this.merchantAddress = page.getByText(
-      /^(?:[^,\n]+,\s*){2,}[^,\n]*\d{4,6}[^,\n]*(?:,[^,\n]+)*$/,
-    );
+    //   "No.269, Wujiang Road F2, Huangpuhui, test123, NSW, 22222, AU"
+    // What identifies the line is a comma-separated address ending in
+    // "<postal>, <country>". The earlier, looser pattern also matched the Batch
+    // History <tbody> (comma-bearing dates + 4-digit years), tripping strict
+    // mode, so anchor on the trailing postal+country and forbid currency ($).
+    this.merchantAddress = page.getByText(/^(?:[^,$\n]+,\s*){2,}\d{4,6},\s*[A-Za-z]{2,4}$/);
     this.merchantTimezone = page.getByText(/Timezone:\s*\S+/);
     this.merchantWhmcs = page.getByText(/WHMCS:\s*\d+/);
     this.merchantPackage = page.getByText(/Package:\s*\S/);
@@ -182,15 +187,21 @@ export class DashboardPage extends BasePage {
   }
 
   async waitForReady(): Promise<void> {
-    await expect(this.heading).toBeVisible();
+    // The store Overview boots the app rail first, then shows a "Loading…"
+    // placeholder while it fetches store context + the (large) device fleet, and
+    // only then renders the sidebar nav that holds the "Overview" entry. On a
+    // cold load that fetch routinely runs past the default 10s expect timeout,
+    // so the genuinely-correct ready signal needs the full navigation budget.
+    await expect(this.heading).toBeVisible({ timeout: Timeouts.NAVIGATION });
   }
 
   // Today's Summary helpers
 
   /**
    * The label element of a Today's Summary metric tile, matched by exact text
-   * (so "Sale" does not also match "Gross Sale"). The tile's value and % delta
-   * render adjacent to this label within the same card container.
+   * (so "Sale" matches only the Sale tile, never a longer label containing it).
+   * The tile's value and % delta render adjacent to this label within the same
+   * card container.
    */
   metric(label: MetricLabel): Locator {
     return this.page.getByText(label, { exact: true });

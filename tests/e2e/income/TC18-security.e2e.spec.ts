@@ -91,7 +91,7 @@ test.describe('Bảo mật — Income Reports', () => {
     'TC-INC-181 — a store the account cannot see serves no income figures',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage, page }) => {
-      await expectCrossStoreBlocked(page, (storeId) => `/pos/${storeId}/income`);
+      await expectCrossStoreBlocked(page, (storeId) => `/pos/nail/${storeId}/income`);
 
       // None of the screen's own furniture rendered: no tab strip, no table,
       // no Order Details card.
@@ -325,11 +325,23 @@ test.describe('Bảo mật — Income Reports', () => {
       const unique = [...new Map(calls.map((call) => [call.url, call])).values()];
       expect(unique.length, 'the screen made no data call to probe').toBeGreaterThan(0);
 
+      // The screen also polls the app shell's own public config (`/version.json`
+      // and friends) over XHR. Those are unauthenticated-by-design — a 200 there
+      // is correct, not a leak — so they are not "report endpoints" and must be
+      // kept out of the probe. This case is about the data/report calls only.
+      const PUBLIC_ENDPOINT =
+        /\/(?:version|config|build-manifest|asset-manifest)\.json(?:$|\?)|\/manifest\.webmanifest|\/favicon\.|\/robots\.txt/i;
+      const reportCalls = unique.filter((call) => !PUBLIC_ENDPOINT.test(call.url));
+      expect(
+        reportCalls.length,
+        'no report endpoint to probe (only public assets seen)',
+      ).toBeGreaterThan(0);
+
       const context = await browser.newContext({ storageState: undefined });
       const observed: string[] = [];
       try {
         // A handful is enough: the ones the Daily tab fires first are its data.
-        for (const call of unique.slice(0, 5)) {
+        for (const call of reportCalls.slice(0, 5)) {
           const response = await context.request.fetch(call.url, {
             method: call.method,
             failOnStatusCode: false,

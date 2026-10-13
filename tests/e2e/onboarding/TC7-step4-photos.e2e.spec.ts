@@ -197,7 +197,7 @@ test.describe('Bước 4 — `Photos` — Onboarding', () => {
       await expect(onboardingPage.skipButton).toBeEnabled();
       await onboardingPage.skipButton.click();
 
-      await expect(page).toHaveURL(/\/pos\/onboarding/, { timeout: Timeouts.MEDIUM });
+      await expect(page).toHaveURL(/\/pos\/nail\/admin\/onboarding/, { timeout: Timeouts.MEDIUM });
       await expect(page).toHaveURL(/[?&]step=pos-package/, { timeout: Timeouts.MEDIUM });
       expect(onboardingPage.currentStep()).toBe(OnboardingStep.POS_PACKAGE);
       expect(onboardingPage.currentWhmcsId()).toBe(WHMCS_ID);

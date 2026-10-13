@@ -161,23 +161,27 @@ export const ONBOARDING_SAMPLE_IDS = {
   NOT_ONBOARDED: '12345678',
 } as const;
 
-/** Sidebar `Internal` group: label + the href the scan recorded (TC-ONB-008). */
+/**
+ * Sidebar `Internal` group: label + the href the scan recorded (TC-ONB-008).
+ *
+ * Admin routes carry the vertical segment now: `/pos/nail/admin/...`. The group
+ * holds five links; the former Monitor / Versions / Settings entries are no
+ * longer direct links — they are collapsible `System` and `Users & Roles`
+ * buttons (confirmed live 2026-10-10), so they are not listed here.
+ */
 export const INTERNAL_NAV_LINKS = [
-  { label: 'Merchants', href: '/pos/merchants' },
-  { label: 'Onboarding', href: '/pos/onboarding' },
-  { label: 'Packages', href: '/pos/admin/packages' },
-  { label: 'All Orders', href: '/pos/admin/orders' },
-  { label: 'Devices', href: '/pos/admin/devices' },
-  { label: 'Monitor', href: '/pos/admin/monitor' },
-  { label: 'Versions', href: '/pos/admin/versions' },
-  { label: 'Settings', href: '/pos/admin/setting' },
+  { label: 'Merchants', href: '/pos/nail/admin/merchant' },
+  { label: 'Onboarding', href: '/pos/nail/admin/onboarding' },
+  { label: 'Packages', href: '/pos/nail/admin/packages' },
+  { label: 'All Orders', href: '/pos/nail/admin/orders' },
+  { label: 'Devices', href: '/pos/nail/admin/devices' },
 ] as const;
 
 /**
  * Path tails of the store-scoped Operations/Management links.
  *
- * On this admin route they render as `/pos/undefined/<tail>` because the layout
- * has no store id to interpolate — the bug TC-ONB-009 reports.
+ * On this admin route they render as `/pos/nail/undefined/<tail>` because the
+ * layout has no store id to interpolate — the bug TC-ONB-009 reports.
  */
 export const STORE_SCOPED_NAV_TAILS = [
   'overview',
@@ -272,7 +276,7 @@ export const COMPLETE_CREATED_PATTERN =
 
 /** Step 6 percentage fields: HTML id + visible label, in render order. */
 export const TAX_PRICING_FIELDS = [
-  { id: 'taxPercentage', label: 'Tax Rate (%)' },
+  { id: 'taxPercentage', label: 'Product Tax Rate (%)' },
   { id: 'cashDiscountPercentage', label: 'Cash Discount (%)' },
   { id: 'serviceFeePercentage', label: 'Service Fee (%)' },
 ] as const;
@@ -298,11 +302,11 @@ export const INTEGRATION_BADGE_PATTERN = new RegExp(
 
 /**
  * Step 7's merchant-scoped action links: visible label + the path tail each
- * points at, i.e. `/pos/<whmcsId>/<tail>`.
+ * points at, i.e. `/pos/nail/<whmcsId>/<tail>`.
  *
- * This is the ONE place the screen carries a `/pos/<id>/` segment, and the id
- * is the WHMCS id from the query string — never `env.STORE_ID`. Build the
- * matcher with {@link merchantPathPattern}.
+ * This is the ONE place the screen carries a store-scoped `/pos/nail/<id>/`
+ * segment, and the id is the WHMCS id from the query string — never
+ * `env.STORE_ID`. Build the matcher with {@link merchantPathPattern}.
  */
 export const COMPLETE_ACTION_LINKS = [
   { label: 'View Merchant', tail: 'setting' },
@@ -358,8 +362,14 @@ export const ONBOARDING_VIEWPORTS = {
 /** Where an unauthenticated visit lands. */
 export const LOGIN_URL_PATTERN = /\/login(?:[/?#]|$)/;
 
-/** The return path `/login` is expected to carry back (TC-ONB-163). */
-export const LOGIN_REDIRECT_PATTERN = /redirect=%2Fpos%2Fonboarding/i;
+/**
+ * The return path `/login` is expected to carry back (TC-ONB-163).
+ *
+ * The admin route is URL-encoded into the `redirect` param, e.g.
+ * `redirect=%2Fpos%2Fnail%2Fadmin%2Fonboarding%3Fstep%3Dvalidate` (verified
+ * logged-out, 2026-10-10).
+ */
+export const LOGIN_REDIRECT_PATTERN = /redirect=%2Fpos%2Fnail%2Fadmin%2Fonboarding/i;
 
 /**
  * Payloads the security cases push through `whmcsId` and the text fields.
@@ -386,31 +396,32 @@ export const SENSITIVE_TEXT_PATTERNS = [
 
 /**
  * A merchant-scoped path, e.g. `merchantPathPattern('setting', 3660)` →
- * `/\/pos\/3660\/setting(?:[/?#]|$)/`.
+ * `/\/pos\/nail\/3660\/setting(?:[/?#]|$)/`.
  *
  * Only step 7's links are scoped this way, and they are scoped by the WHMCS id
- * on the URL. Nothing else on this screen may assert a `/pos/<id>/` segment.
+ * on the URL. Store-scoped routes carry the vertical segment: `/pos/nail/<id>/`.
  */
 export function merchantPathPattern(tail: string, whmcsId: string | number): RegExp {
-  return new RegExp(`/pos/${escapeRegExp(String(whmcsId))}/${escapeRegExp(tail)}(?:[/?#]|$)`);
+  return new RegExp(`/pos/nail/${escapeRegExp(String(whmcsId))}/${escapeRegExp(tail)}(?:[/?#]|$)`);
 }
 
 /**
  * URL matcher for one wizard step, e.g.
  * `stepUrlPattern(OnboardingStep.PHOTOS, 3660)` →
- * `/\/pos\/onboarding\?[^#]*step=photos[^#]*whmcsId=3660/`.
+ * `/\/pos\/nail\/admin\/onboarding\?[^#]*step=photos[^#]*whmcsId=3660/`.
  *
- * Never store-scoped: this route carries no `/pos/<id>/` segment.
+ * The admin route carries the vertical segment: `/pos/nail/admin/onboarding`.
  */
 export function stepUrlPattern(step: string, whmcsId?: string | number): RegExp {
   const tail = whmcsId === undefined ? '' : `[^#]*whmcsId=${escapeRegExp(String(whmcsId))}`;
-  return new RegExp(`/pos/onboarding\\?[^#]*step=${escapeRegExp(step)}${tail}`);
+  return new RegExp(`/pos/nail/admin/onboarding\\?[^#]*step=${escapeRegExp(step)}${tail}`);
 }
 
 /**
- * Merchant Onboarding (Internal) — the 7-step wizard at `/pos/onboarding`.
+ * Merchant Onboarding (Internal) — the 7-step wizard at
+ * `/pos/nail/admin/onboarding`.
  *
- * An admin route, NOT store-scoped: there is no `/pos/<id>/` segment and
+ * An admin route, NOT store-scoped: there is no `/pos/nail/<id>/` segment and
  * `env.STORE_ID` plays no part, so nothing here may assert a store id. Landing
  * on the bare path normalises the URL to `?step=validate`.
  *
@@ -471,9 +482,14 @@ export class OnboardingPage extends BasePage {
     await expect(this.pageTitle).toBeVisible({ timeout: Timeouts.LONG });
   }
 
-  /** Page header — the string "Merchant Onboarding". */
+  /**
+   * Page header — the `[data-slot="page-title"]` element, whose text is
+   * "Onboarding" on every step (verified live 2026-10-10). It is the page-chrome
+   * title, outside the sidebar, so it survives at mobile widths where the nav
+   * collapses; the sidebar's own "Onboarding" nav link is not matched here.
+   */
   get pageTitle(): Locator {
-    return this.page.getByText('Merchant Onboarding', { exact: true }).first();
+    return this.page.locator('[data-slot="page-title"]');
   }
 
   // ---- chrome: icon rail + sidebar ---------------------------------------
@@ -1322,7 +1338,7 @@ export class OnboardingPage extends BasePage {
     return this.page.locator(`#${id}`);
   }
 
-  /** A Tax & Pricing field's visible label, e.g. `Tax Rate (%)`. */
+  /** A Tax & Pricing field's visible label, e.g. `Product Tax Rate (%)`. */
   taxPricingLabel(label: string): Locator {
     return this.page.getByText(label, { exact: true });
   }

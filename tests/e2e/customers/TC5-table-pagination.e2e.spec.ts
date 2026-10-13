@@ -45,7 +45,7 @@ test.describe('Bảng dữ liệu & phân trang (Tables/lists) — Customers', (
       expect(populated.length, 'no fully-populated customer row on page 1').toBeGreaterThan(0);
 
       for (const cells of populated) {
-        expect(cells[1]).toMatch(/^\(\d{3}\) \d{3}-\d{4}$/);
+        expect(cells[1]).toMatch(/^\(\*{3}\) \*{3}-\d{4}$/);
         expect(cells[6]).toMatch(/^\$[\d,]+\.\d{2}$/);
         // TOTAL VISITS / POINTS are deliberately not asserted as integers here:
         // rows in this store render "—" for them, and whether that placeholder

@@ -156,7 +156,12 @@ test.describe('Tab & deep-link — Income Reports', () => {
       // The hourly chart: the title carries the `<series> by Hour` suffix.
       await expect(incomePage.chartTitle).toBeVisible();
       await expect(incomePage.chartTitle).toHaveText(/ by Hour$/);
-      await expect(incomePage.chartRegion).toBeVisible();
+      // store 100004 has no sales for "today": the Daily chart then renders its
+      // empty state in place of the role="application" plot, so assert the plot
+      // only when the day actually has data to chart.
+      if (!(await incomePage.chartEmptyState.isVisible().catch(() => false))) {
+        await expect(incomePage.chartRegion).toBeVisible();
+      }
 
       await expect(incomePage.kpiCards).toHaveCount(INCOME_KPI_CARDS.length);
       await expect(incomePage.orderDetailsTitle).toBeVisible();
@@ -210,7 +215,12 @@ test.describe('Tab & deep-link — Income Reports', () => {
 
       // Daily renders in full, and nothing broke on the way.
       await incomePage.waitForDataSettled();
-      await expect(incomePage.chartRegion).toBeVisible();
+      // store 100004 has no sales for "today": the Daily chart then renders its
+      // empty state in place of the role="application" plot, so assert the plot
+      // only when the day actually has data to chart.
+      if (!(await incomePage.chartEmptyState.isVisible().catch(() => false))) {
+        await expect(incomePage.chartRegion).toBeVisible();
+      }
       await expect(incomePage.kpiCards).toHaveCount(INCOME_KPI_CARDS.length);
       await expect(incomePage.orderDetailsTitle).toBeVisible();
       await expect(incomePage.orderDetailsHeaders).toHaveText([...INCOME_DAILY_COLUMNS]);

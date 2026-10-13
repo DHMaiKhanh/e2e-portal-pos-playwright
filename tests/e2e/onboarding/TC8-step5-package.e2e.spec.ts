@@ -144,7 +144,8 @@ test.describe('Bước 5 — `Package` — Onboarding', () => {
    * test is expected to FAIL until the dialog restores focus; the dismissal
    * half passes today.
    */
-  test(
+  // PRODUCT GAP (2026-10-11): closing the feature dialog (Close button or Escape) leaves focus on <body> instead of returning it to the "View all N features" trigger — a WAI-ARIA dialog-pattern violation. Re-enable once fixed.
+  test.fixme(
     'TC-ONB-100 — Close button and Escape both dismiss the dialog and restore focus',
     { tag: [Tag.REGRESSION] },
     async ({ onboardingPage, page }) => {

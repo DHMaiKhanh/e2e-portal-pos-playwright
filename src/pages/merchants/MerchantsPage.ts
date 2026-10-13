@@ -38,9 +38,13 @@ export const MERCHANT_STATUS_OPTIONS = ['All statuses', 'Active', 'Inactive'] as
 /**
  * Merchants (Quản lý Merchant — Internal) list screen.
  *
- * An admin route, NOT store-scoped: it lists every merchant in the system, so
- * the path is a bare `/pos/merchants` with no `/pos/<id>/` segment. Landing on
- * it normalises the URL to `?tab=overview`.
+ * An admin route, NOT store-scoped: it lists every merchant in the system. The
+ * app injects the vertical segment and the route lives under `/admin/`, so the
+ * path is `/pos/nail/admin/merchant` (singular) with no `/pos/<id>/` store
+ * segment. The bare route is served unqueried — it no longer self-normalises to
+ * `?tab=overview` (behaviour changed since 2026-08-18; an explicit
+ * `?tab=overview` is preserved, and an unknown tab value is stripped back to the
+ * bare route).
  *
  * Selecting a row does not navigate to a separate page — it swaps the table for
  * an in-place merchant detail view and records the choice as a `merchantId`
@@ -78,9 +82,10 @@ export class MerchantsPage extends BasePage {
     await expect(this.table.rows.first().or(this.emptyState)).toBeVisible();
   }
 
-  /** The page header. Rendered as a `data-slot="page-title"` div, not a heading. */
+  /** The page header. Rendered as a `data-slot="page-title"` div, not a heading.
+   *  Renamed from "Merchant Management" to "Merchants" (verified 2026-10-10). */
   get pageTitle(): Locator {
-    return this.page.locator('[data-slot="page-title"]').filter({ hasText: 'Merchant Management' });
+    return this.page.locator('[data-slot="page-title"]').filter({ hasText: 'Merchants' });
   }
 
   get pageHeader(): Locator {
