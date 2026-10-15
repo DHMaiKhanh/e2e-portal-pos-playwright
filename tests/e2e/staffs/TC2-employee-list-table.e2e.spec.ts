@@ -105,11 +105,15 @@ test.describe('Bảng danh sách nhân viên (Table) — Staffs', () => {
         }
 
         if (record.createdAt) {
-          // The table renders JOINED AT in the store's local timezone, which is
-          // US Central — the cells carry a "(UTC-5)"/"(UTC-6)" suffix (CDT/CST),
-          // not "+7". Compute the expected date in that same zone so they agree.
-          const expectedDate = new Date(record.createdAt as string).toLocaleDateString('en-US', {
-            timeZone: 'America/Chicago',
+          // The table renders JOINED AT in the store's timezone, which is a store
+          // setting (it has been US Central and Asia/Ho_Chi_Minh). Each cell carries
+          // its offset as a "(UTC+7)"/"(UTC-5)" suffix, so shift by that offset.
+          const offset = /\(UTC([+-]\d+(?:\.\d+)?)\)/.exec(joinedAt);
+          expect(offset, `row ${index} JOINED AT has no (UTC±N) suffix`).toBeTruthy();
+          const offsetMs = Number(offset![1]) * 60 * 60 * 1000;
+          const local = new Date(new Date(record.createdAt as string).getTime() + offsetMs);
+          const expectedDate = local.toLocaleDateString('en-US', {
+            timeZone: 'UTC',
             month: 'short',
             day: 'numeric',
             year: 'numeric',

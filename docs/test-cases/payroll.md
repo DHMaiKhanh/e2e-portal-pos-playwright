@@ -590,3 +590,18 @@ Bảng hiển thị `****1111`, nhưng giá trị đầy đủ đọc được t
 - Tổng suite: 69 fail ban đầu → **0 lỗi thật** (fix drift/timing + skip-khi-vắng-dữ-liệu + fixme product-gap). Flaky môi trường để retries hấp thụ.
 - Màn **payroll**: TC-PAY-010 fix (strict-mode .or() -> .first()).
 - Bug app (test đúng, app sai): `docs/product-gaps-2026-10-11.md` (35 mục). Dashboard: artifact đã publish.
+
+### 2026-10-13 10:11 (UTC+7)
+
+- Lệnh: `npx cross-env ENV=local playwright test tests/e2e` (full suite, headless, 8 workers)
+- Kết quả: 0 passed, 52 failed, 7 skipped (tổng 59)
+- Fail: toàn bộ 52 case fail cùng một nguyên nhân — session đăng nhập (`src/data/dynamic/auth/admin.json`) đã hết hạn (refreshToken expired 2026-08-28), mọi trang bị redirect về `/login`. Không phải lỗi test/locator. Cần `npm run auth` rồi chạy lại.
+- Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`
+
+### 2026-10-13 (UTC+7) — ENV=stage
+
+- Lệnh: `ENV=stage npm run test:report` (full suite, headless, 8 workers, `https://v2.dev-fastboypay.com`)
+- Kết quả: 53 passed, 0 failed, 6 skipped (tổng 59) — toàn suite 705 passed, 0 failed, 130 skipped
+- Đã sửa test (fail ở các lần chạy trước trong ngày, đều do test chứ không phải bug app):
+  - TC-PAY-065 · search "1001" còn trả về "Lam" (backend match field khác ngoài tên) → yêu cầu staff được tìm còn và danh sách bị lọc bớt
+- Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`

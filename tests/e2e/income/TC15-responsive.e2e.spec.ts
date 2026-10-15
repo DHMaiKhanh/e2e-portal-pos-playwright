@@ -305,7 +305,8 @@ test.describe('Responsive — Income Reports', () => {
         ['chart title', incomePage.chartTitle],
         ['chart surface', chartSurface],
         ['Order Details title', incomePage.orderDetailsTitle],
-        ['Order Details table', dailyTable],
+        // The table itself is excluded: once it is wider than the column it
+        // scrolls inside its own card, checked by the fit-or-scroll assertion below.
         ['INCOME DETAIL rail', incomeRail],
         ['PAYMENT DETAIL rail', paymentRail],
       ];
@@ -337,7 +338,7 @@ test.describe('Responsive — Income Reports', () => {
         `Order Details neither fits (${Math.round(tableBox.width)}px) nor scrolls in its own container`,
       ).toBe(true);
       await expect(
-        incomePage.orderDetailsTable.rows.first().or(incomePage.resultsFooter),
+        incomePage.orderDetailsTable.rows.first().or(incomePage.resultsFooter).first(),
       ).toBeVisible();
     },
   );
@@ -386,7 +387,6 @@ test.describe('Responsive — Income Reports', () => {
         ['chart title', incomePage.chartTitle],
         ['chart surface', incomePage.chartRegion.or(incomePage.chartEmptyState)],
         ['Order Details title', incomePage.orderDetailsTitle],
-        ['Order Details table', incomePage.tableElement(INCOME_TABLE_ANCHORS.daily)],
       ];
       for (const [what, locator] of reachable) {
         await expect(locator, `${what} is not visible at 390px`).toBeVisible();
@@ -395,6 +395,19 @@ test.describe('Responsive — Income Reports', () => {
           `${what} spills past 390px`,
         ).toBe(true);
       }
+
+      // The table's columns can't fit 390px; it must take the sideways scroll in
+      // its own container (the document never does — asserted above).
+      const dailyTable = incomePage.tableElement(INCOME_TABLE_ANCHORS.daily);
+      await expect(dailyTable, 'Order Details table is not visible at 390px').toBeVisible();
+      const tableBox = await boxOf(dailyTable, 'Order Details table');
+      const scrollsOwnContainer = await incomePage.tableScrollsHorizontally(
+        INCOME_TABLE_ANCHORS.daily,
+      );
+      expect(
+        scrollsOwnContainer || fitsHorizontally(tableBox, width),
+        `Order Details neither fits (${Math.round(tableBox.width)}px) nor scrolls in its own container`,
+      ).toBe(true);
       await expect(incomePage.dateTrigger).toBeEnabled();
     },
   );

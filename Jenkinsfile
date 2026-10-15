@@ -5,14 +5,14 @@
 // HTML + Allure report.
 //
 // Plugin cần có: Docker Pipeline, Credentials Binding, JUnit, HTML Publisher,
-// Allure, AnsiColor, Timestamper, GitHub, Mailer. Xem docs/jenkins.md để biết
-// cách tạo credentials và job.
+// Allure, AnsiColor, Timestamper, GitHub, Mailer, Slack Notification. Xem
+// docs/jenkins.md để biết cách tạo credentials và job.
 
 // --- Helpers dùng chung giữa các stage / post condition ---
 //
 // Bọc try/catch vì đây là bước phụ (report ra ngoài), không phải bước test:
-// thiếu credential 'github-token' không được phép làm hỏng cả build đã chạy
-// xong. Email dùng notifyByEmail() ở cuối file.
+// thiếu credential 'github-token' hay Slack chưa cấu hình không được phép làm
+// hỏng cả build đã chạy xong. Email dùng notifyByEmail() ở cuối file.
 
 def notifyGithub(String status, String description) {
   try {
@@ -24,6 +24,14 @@ def notifyGithub(String status, String description) {
     )
   } catch (err) {
     echo "Bỏ qua GitHub commit status (${status}): ${err}"
+  }
+}
+
+def notifySlack(String color, String message) {
+  try {
+    slackSend(color: color, message: message)
+  } catch (err) {
+    echo "Bỏ qua Slack notify: ${err}"
   }
 }
 
@@ -105,10 +113,13 @@ pipeline {
     // webhook trên GitHub trỏ về <jenkins-url>/github-webhook/, xem
     // docs/jenkins.md mục 9.
     //
-    // KHÔNG dùng cron theo giờ cố định: session đăng nhập Portal hết hạn bất kỳ
-    // lúc nào (Google OAuth + 2FA, không tự động hoá được — xem
-    // docs/authentication.md), build theo lịch cố định sẽ đỏ hàng loạt ngay khi
-    // đó xảy ra mà không ai theo dõi (mục 6).
+    // cron: quét toàn bộ suite 1 lần/ngày lúc 2h sáng (giờ server Jenkins) để
+    // không phụ thuộc vào có commit mới hay không. Trước đây tránh cron vì
+    // session Portal hết hạn bất kỳ lúc nào (Google OAuth + 2FA, không tự động
+    // hoá được — xem docs/authentication.md) sẽ khiến build đỏ hàng loạt mà
+    // không ai theo dõi; giờ notifySlack()/notifyByEmail() ở post{} đã báo ngay
+    // khi failure nên bật lại (xem docs/jenkins.md mục 6).
+    cron('0 2 * * *')
     pollSCM('H/5 * * * *')
   }
 
@@ -183,7 +194,7 @@ pipeline {
             // không nạp thì loadEnv rơi về .env.example → trỏ localhost và cả
             // suite fail một cách vô nghĩa.
             //
-            // Session đăng nhập chụp sẵn bằng `npm run auth` trên máy dev rồi
+            // Session đăng nhập chụp sẵn bằng `npm run auth:stage (hoặc auth:prod)` trên máy dev rồi
             // upload lên Jenkins dạng Secret file.
             script {
               def envCred = "portal-pos-env-${params.TARGET_ENV}"
@@ -208,7 +219,7 @@ pipeline {
                   "  ${envCred}\n" +
                   "      nội dung = file configs/env/.env.${params.TARGET_ENV} trên máy dev\n" +
                   "  ${stateCred}\n" +
-                  "      nội dung = file src/data/dynamic/auth/admin.json (sinh bằng: npm run auth)\n" +
+                  "      nội dung = file src/data/dynamic/auth/admin.json (sinh bằng: npm run auth:stage (hoặc auth:prod))\n" +
                   "\n" +
                   "Chưa có .env.${params.TARGET_ENV} thì build lại với TARGET_ENV=local.\n" +
                   "Chi tiết: docs/jenkins.md mục 2."
@@ -231,7 +242,7 @@ pipeline {
               if (status != 0) {
                 error(
                   "Session đăng nhập không dùng được.\n" +
-                  "Trên máy dev chạy: npm run auth\n" +
+                  "Trên máy dev chạy: npm run auth:stage (hoặc auth:prod)\n" +
                   "rồi upload lại src/data/dynamic/auth/admin.json vào credential " +
                   "'portal-pos-storage-state-${params.TARGET_ENV}' (Secret file)."
                 )
@@ -334,15 +345,24 @@ pipeline {
     unstable {
       script { notifyGithub('FAILURE', 'Có test fail — xem Playwright/Allure report') }
       script { notifyByEmail('UNSTABLE — có test fail') }
+      script {
+        notifySlack('warning', "⚠️ portal-pos-e2e #${env.BUILD_NUMBER} UNSTABLE (${params.TARGET_ENV}) — có test fail. ${env.BUILD_URL}")
+      }
     }
 
     failure {
       script { notifyGithub('FAILURE', 'Pipeline lỗi trước khi test chạy xong') }
       script { notifyByEmail('FAILURE — pipeline hỏng trước khi test xong') }
+      script {
+        notifySlack('danger', "🔴 portal-pos-e2e #${env.BUILD_NUMBER} FAILURE (${params.TARGET_ENV}) — lỗi trước khi ra test result. ${env.BUILD_URL}console")
+      }
     }
 
     fixed {
       script { notifyByEmail('FIXED — build đã xanh trở lại') }
+      script {
+        notifySlack('good', "✅ portal-pos-e2e #${env.BUILD_NUMBER} back to green (${params.TARGET_ENV}). ${env.BUILD_URL}")
+      }
     }
   }
 }

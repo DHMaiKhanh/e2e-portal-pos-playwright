@@ -178,7 +178,10 @@ test.describe('Sidebar / điều hướng chính — Batch History', () => {
         await expect(batchHistoryPage.sidebar.mobileDrawer).toBeHidden();
 
         // The ledger underneath survived the round trip.
-        await expect(batchHistoryPage.tableRoot.or(batchHistoryPage.emptyState)).toBeVisible();
+        // The empty state renders inside the table, so .or() can match both.
+        await expect(
+          batchHistoryPage.tableRoot.or(batchHistoryPage.emptyState).first(),
+        ).toBeVisible();
         await expect(batchHistoryPage.sidebar.toggle).toBeVisible();
       },
     );

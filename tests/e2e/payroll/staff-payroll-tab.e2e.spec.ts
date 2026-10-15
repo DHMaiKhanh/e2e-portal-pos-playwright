@@ -127,34 +127,33 @@ test.describe('Staff Payroll tab — Payroll', () => {
       const nameOf = (cellText: string): string =>
         cellText.split('\n').pop()?.replace(/\s+/g, ' ').trim() ?? '';
 
-      const fullName = nameOf(await rows.first().getByRole('cell').first().innerText());
+      const before = (await rows.locator('td:first-child').allInnerTexts()).map(nameOf);
+      const fullName = before[0];
       const partial = fullName.slice(0, Math.min(4, fullName.length));
       expect(partial.length).toBeGreaterThan(0);
+      // Staff whose display name does not contain the term — the search must drop
+      // at least these unless the backend matches them on another field.
+      const nonMatching = before.filter((n) => !n.toLowerCase().includes(partial.toLowerCase()));
 
       await payrollPage.searchStaffName(partial);
 
       // The search is debounced and refetches, so the unfiltered rows stay up
-      // briefly; poll until the rendered set actually reflects the term.
+      // briefly; poll until the rendered set actually reflects the term. The
+      // backend also matches fields other than the display name (searching
+      // "1001" also returns "Lam"), so don't require every row to contain the
+      // term — require the searched staff to stay and the list to narrow.
       await expect
         .poll(
           async () => {
             const names = (
               await payrollPage.staffPayrollTable.rows.locator('td:first-child').allInnerTexts()
             ).map(nameOf);
-            const matching = names.filter((n) =>
-              n.toLowerCase().includes(partial.toLowerCase()),
-            ).length;
-            return names.length > 0 && matching === names.length;
+            const dropped = nonMatching.filter((n) => !names.includes(n)).length;
+            return names.includes(fullName) && (nonMatching.length === 0 || dropped > 0);
           },
           { timeout: Timeouts.MEDIUM },
         )
         .toBe(true);
-
-      const names = (
-        await payrollPage.staffPayrollTable.rows.locator('td:first-child').allInnerTexts()
-      ).map(nameOf);
-      expect(names.length).toBeGreaterThan(0);
-      expect(names).toContain(fullName);
     },
   );
 

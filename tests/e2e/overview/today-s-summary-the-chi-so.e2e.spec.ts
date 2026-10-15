@@ -24,16 +24,16 @@ test.describe("Today's Summary (Thẻ chỉ số) — Overview", () => {
   test(
     'TC-OVW-066 — currency metrics render as USD with $, thousands separator, two decimals',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ dashboardPage, page }) => {
-      // The metric label ("Sale", "Total Tip", ...) is its own text node — the
-      // "$<amount>.<2dp>" value renders as a SIBLING node inside the card, not a
-      // descendant of the label, so `metric(label).toContainText(...)` can never
-      // match. Assert the currency format itself renders (>= 4 times, across the
-      // currency cards — Sale, Total Tip, Total Payment — and the Batch amounts).
+    async ({ dashboardPage }) => {
       await expect(dashboardPage.todaysSummarySection).toBeVisible();
-      const currency = page.getByText(/\$[\d,]+\.\d{2}/);
-      await expect(currency.first()).toBeVisible();
-      await expect.poll(() => currency.count()).toBeGreaterThanOrEqual(4);
+      // The "$<amount>.<2dp>" value renders as a SIBLING of the metric label, so
+      // assert on the card (the label's parent). Batch History amounts are not
+      // counted: that panel is often empty ("No batches in the last 7 days").
+      for (const label of ['Sale', 'Total Tip', 'Total Payment'] as const) {
+        await expect(dashboardPage.metric(label).locator('..')).toContainText(
+          /\$\d{1,3}(,\d{3})*\.\d{2}/,
+        );
+      }
     },
   );
 

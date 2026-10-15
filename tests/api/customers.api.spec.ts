@@ -25,7 +25,7 @@
 //   const token = state.cookies?.find((cookie) => cookie.name === 'token')?.value;
 //   if (!token) {
 //     throw new Error(
-//       `No "token" cookie in ${env.STORAGE_STATE}; refresh the saved session with: npm run auth`,
+//       `No "token" cookie in ${env.STORAGE_STATE}; refresh the saved session with: npm run auth:stage`,
 //     );
 //   }
 //   return token;

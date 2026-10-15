@@ -60,60 +60,49 @@ export class OrdersPage extends BasePage {
   constructor(page: Page) {
     super(page);
     this.table = new DataTable(page, page.getByRole('table'));
-    this.searchInput = page.getByPlaceholder(/search by order id, customer name, phone/i);
+    // Placeholder became "Search orders..." in the 2026-10 `pos-*` redesign.
+    this.searchInput = page.getByPlaceholder(/search orders/i);
     this.createButton = page.getByRole('button', { name: /new order|create/i });
-    // Custom Radix `Select` triggers — not native `<select>`, and expose no accessible
-    // name matching their current value.
+    // Filter bar after the 2026-10 `pos-*` redesign (`data-slot="pos-filter-bar"`),
+    // in DOM order — each opens a popover with a `role="option"` list, and picking
+    // an option applies it immediately and closes the popover (no Apply needed):
+    //   order-filters-date    date preset + calendar ("Last 7 days")
+    //   order-filters-staff   staff picker ("Staff")
+    //   pos-filter-chip       payment method — aria-label "Payment method"
+    //   pos-filter-chip       status — aria-label "Status"
     //
-    // The app used to give each one its own `data-slot` (order-filters-status,
-    // -payment-method, -date-preset); those were dropped when the filter bar was
-    // reworked and all three now share `data-slot="filter-select-trigger"`. Only
-    // the date and staff filters kept a dedicated slot. Other screens hang an
-    // `aria-label` on this shared slot (see StaffsPage / ServicesPage), but the
-    // Orders bar does not, so position within the bar is the only stable key.
-    //
-    // Filter bar, in DOM order:
-    //   filter-select-trigger  [0]  date preset ("Last 7 Days")
-    //   order-filters-date          the resolved range ("Aug 6, 2026 - Aug 12, 2026")
-    //   order-filters-staff         staff picker ("All staff")
-    //   filter-select-trigger  [1]  payment method ("All methods")
-    //   filter-select-trigger  [2]  status ("All statuses")
-    //
-    // Keyed by index rather than current text on purpose: the label changes to
-    // the selected value once a filter is applied, so `hasText` would stop
-    // matching exactly when a test needs it most.
-    const filterSelect = (index: number) =>
-      page.locator('[data-slot="filter-select-trigger"]').nth(index);
+    // The two chips' accessible name grows the selected value once applied
+    // ("Status: Partial refunded"), so match on the prefix. The anchor keeps out
+    // the "Clear status filter" button that appears beside an applied chip.
+    this.statusFilter = page.getByRole('button', { name: /^Status(:|$)/ });
 
-    this.statusFilter = filterSelect(2);
+    this.pageHeading = page.locator('[data-slot="pos-page-heading"]');
 
-    this.pageHeading = page.locator('[data-slot="page-title"]');
-
-    this.quickFilterCombobox = filterSelect(0);
-    // Resolved date-range button; its label is dynamic (the current range, e.g.
-    // "Oct 4, 2026 - Oct 10, 2026"). It used to be matched by
-    // `getByRole('button', { name: /\d{4}/ })`, but that now also matches the
-    // store-switcher button in the header ("Test 100004 #100004"), which trips
-    // strict mode. Key off the dedicated `data-slot` the filter bar gives this
-    // control (confirmed in the failure ARIA snapshots) so it resolves uniquely.
-    this.dateRangeButton = page.locator('[data-slot="order-filters-date"]');
+    // The preset picker and the date-range calendar are now one control: the
+    // button shows the preset name ("Last 7 days") and its popover holds both.
+    this.quickFilterCombobox = page.locator('[data-slot="order-filters-date"]');
+    this.dateRangeButton = this.quickFilterCombobox;
     this.datePickerDialog = page.getByRole('dialog');
 
-    this.staffFilterButton = page.getByRole('button', { name: /all staff/i });
+    this.staffFilterButton = page.locator('[data-slot="order-filters-staff"]');
     this.staffFilterPanel = page.getByRole('menu').or(page.getByRole('dialog'));
     this.allStaffOption = page.getByRole('option', { name: /^all staff$/i });
 
-    this.paymentMethodCombobox = filterSelect(1);
+    this.paymentMethodCombobox = page.getByRole('button', { name: /^Payment method(:|$)/ });
 
-    this.previousPageButton = page.getByRole('button', { name: /previous/i });
-    this.nextPageButton = page.getByRole('button', { name: /^next$/i });
-    this.paginationSummary = page.getByText(/showing \d+ to \d+ of \d+ results/i);
-    this.pageIndicator = page.getByText(/^\s*\d+\s*\/\s*\d+\s*$/);
+    // Icon-only buttons labelled "Previous page" / "Next page".
+    this.previousPageButton = page.getByRole('button', { name: /^previous( page)?$/i });
+    this.nextPageButton = page.getByRole('button', { name: /^next( page)?$/i });
+    /** Text like "1–30 of 4,196". */
+    this.paginationSummary = page.locator('[data-slot="pos-pagination-range"]');
+    this.pageIndicator = page.locator('[data-slot="pos-pagination-page"]');
 
     this.emptyStateMessage = page.getByText(/no orders found/i);
 
     // Order detail heading label is dynamic ("Order #OD260707-...").
-    this.orderDetailHeading = page.locator('[data-slot="page-title"]');
+    this.orderDetailHeading = page
+      .locator('[data-slot="pos-page-heading"]')
+      .filter({ hasText: /OD\d+/ });
     this.backToOrdersLink = page.getByRole('link', { name: /back to orders/i });
     this.receiptButton = page.getByRole('button', { name: 'Receipt', exact: true });
     this.reOpenOrderButton = page.getByRole('button', { name: /re-open order/i });
@@ -124,7 +113,7 @@ export class OrdersPage extends BasePage {
     // "Service Details" lost its "& Tip" suffix as of 2026-08-12 — the tip
     // breakdown moved out into its own "Tip Breakdown" card.
     const cardTitle = (name: RegExp) =>
-      page.locator('[data-slot="card-title"]').filter({ hasText: name });
+      page.locator('[data-slot="pos-card-title"]').filter({ hasText: name });
 
     this.orderInformationSection = cardTitle(/order information/i);
     this.serviceDetailsSection = cardTitle(/service details/i);
@@ -159,7 +148,10 @@ export class OrdersPage extends BasePage {
     const responsePromise = this.page
       .waitForResponse((res) => res.url().includes('/orders?'), { timeout: 3_000 })
       .catch(() => undefined);
-    await this.page.getByRole('option', { name: option, exact: true }).click();
+    // Case-insensitive: the redesign lower-cased option labels ("Last 30 days",
+    // "Gift card", "Partial refunded") while callers keep the older casing.
+    const escaped = option.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await this.page.getByRole('option', { name: new RegExp(`^${escaped}$`, 'i') }).click();
     await responsePromise;
     await this.waitForReady();
   }
@@ -360,11 +352,23 @@ export class OrdersPage extends BasePage {
   // --- Pagination ---
 
   async goToNextPage(): Promise<void> {
-    await this.nextPageButton.click();
+    await this.turnPage(this.nextPageButton);
   }
 
   async goToPreviousPage(): Promise<void> {
-    await this.previousPageButton.click();
+    await this.turnPage(this.previousPageButton);
+  }
+
+  /**
+   * Since the 2026-10 redesign the table keeps the previous page's rows on screen
+   * (no skeleton) while the next page loads, so `waitForReady()` alone returns
+   * on stale data. Wait for the first row's order id to change instead.
+   */
+  private async turnPage(button: Locator): Promise<void> {
+    const firstId = this.odIdCell(0);
+    const before = (await firstId.count()) ? (await firstId.innerText()).trim() : '';
+    await button.click();
+    if (before) await expect(firstId).not.toHaveText(before);
   }
 
   // --- Table cell helpers ---

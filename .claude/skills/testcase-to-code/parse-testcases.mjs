@@ -91,7 +91,7 @@ const normalizeType = (raw) => TYPE_MAP[raw.trim().toLowerCase()] ?? raw.trim();
 const meta = {};
 const assignMeta = (rawKey, rawVal) => {
   const key = rawKey.trim().toLowerCase();
-  const val = rawVal.trim().replace(/`/g, '');
+  const val = rawVal.trim().replace(/`/g, '').replace(/\*\*/g, '');
   if (key === 'screen' || key === 'màn hình')
     // `Income Reports (Báo cáo doanh thu)` → `Income Reports`
     meta.screen ??= val.replace(/\s*\([^()]*\)\s*$/, '').trim();
@@ -442,12 +442,72 @@ function parseBulletFormat(lines) {
   return areas;
 }
 
+/**
+ * Table format (ticket-driven docs — docs/test-cases/edit-order.md):
+ *   ### B1. <Area>
+ *   | ID | Tiêu đề | Các bước & Kết quả mong đợi | Ưu tiên | Nguồn | Scan |
+ *   | TC-EO-001 | <title> | <step> → <step> → <expected> | Cao | 2591-TC01 | ✅ |
+ * The "Scan" column records what a read-only DOM scan confirmed: ✅ matches spec,
+ * ⚠️ observed but deviates from spec, 🔍 not verifiable read-only.
+ */
+function parseTableFormat(lines) {
+  const areas = [];
+  let area = null;
+  for (const line of lines) {
+    if (/^##(?!#)\s+/.test(line)) {
+      area = null;
+      continue;
+    }
+    const areaM = line.match(/^###\s+(?:([A-Z]\d*)\.\s*)?(.+?)\s*$/);
+    if (areaM) {
+      const name = areaM[2].trim();
+      area = { name, slug: slugify(name) || 'area', letter: areaM[1] ?? '', cases: [] };
+      areas.push(area);
+      continue;
+    }
+    const row = line.match(/^\|\s*(TC-[A-Z0-9]+-\d+)\s*\|(.*)\|\s*$/);
+    if (!row || !area) continue;
+    const [title = '', body = '', priority = '', source = '', scan = ''] = row[2]
+      .split('|')
+      .map((c) => c.trim());
+    // "a → b → expected": everything before the last arrow is steps.
+    const parts = body.split(/\s*→\s*/).filter(Boolean);
+    const expected = parts.length > 1 ? parts.pop() : body;
+    const steps = parts.length ? parts : [];
+    const scanStatus = scan.includes('⚠')
+      ? 'deviates'
+      : scan.includes('✅')
+        ? scan.includes('🔍')
+          ? 'partial'
+          : 'verified'
+        : 'unverified';
+    area.cases.push({
+      id: row[1],
+      title: title.replace(/\*\*/g, ''),
+      area: area.name,
+      priority: normalizePriority(priority),
+      type: '',
+      typeEn: 'Functional',
+      preconditions: '',
+      steps,
+      expected,
+      source,
+      scan,
+      scanStatus,
+      needsVerification: scanStatus !== 'verified',
+    });
+  }
+  return areas;
+}
+
 const isBulletFormat = /^\*\*TC-[A-Z0-9]+-\d+\s*[·:—-]/m.test(md);
-const format = isBulletFormat ? 'bullet' : 'heading';
+const isTableFormat = !isBulletFormat && /^\|\s*TC-[A-Z0-9]+-\d+\s*\|/m.test(md);
+const format = isBulletFormat ? 'bullet' : isTableFormat ? 'table' : 'heading';
+const parser = { bullet: parseBulletFormat, table: parseTableFormat, heading: parseHeadingFormat }[
+  format
+];
 // Areas with no cases are prose sections (feature inventory, coverage summary).
-const areas = (isBulletFormat ? parseBulletFormat : parseHeadingFormat)(lines).filter(
-  (a) => a.cases.length > 0,
-);
+const areas = parser(lines).filter((a) => a.cases.length > 0);
 
 const allCases = areas.flatMap((a) => a.cases);
 const abbr = allCases[0]?.id.match(/^TC-([A-Z0-9]+)-/)?.[1] ?? 'XXX';
@@ -500,7 +560,8 @@ console.error(`  priority: ${fmt(byPriority)}`);
 console.error(`  type:     ${fmt(byType)}`);
 const needsVerify = allCases.filter((c) => c.needsVerification).length;
 if (needsVerify) console.error(`  needsVerification: ${needsVerify}`);
-for (const a of result.areas) console.error(`  - [${a.index}] ${a.name} (${a.count}) → ${a.specFile}`);
+for (const a of result.areas)
+  console.error(`  - [${a.index}] ${a.name} (${a.count}) → ${a.specFile}`);
 
 // echo output path to stdout for scripting
 console.log(outPath);

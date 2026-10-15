@@ -29,14 +29,16 @@ test.describe("Today's Summary (Metric Cards) — Overview", () => {
   test(
     'TC-OVW-066 — currency metrics render as USD with $ and two decimals',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ dashboardPage, page }) => {
+    async ({ dashboardPage }) => {
       await expect(dashboardPage.todaysSummarySection).toBeVisible();
-      // The currency cards (Sale, Total Tip, Total Payment) plus the Batch History
-      // amounts each render "$<amount>.<2dp>". Wait for the values to load (count()
-      // does not auto-wait), then assert the format appears for >= 4 values.
-      const currency = page.getByText(/\$[\d,]+\.\d{2}/);
-      await expect(currency.first()).toBeVisible();
-      await expect.poll(() => currency.count()).toBeGreaterThanOrEqual(4);
+      // The "$<amount>.<2dp>" value renders as a SIBLING of the metric label, so
+      // assert on the card (the label's parent). Batch History amounts are not
+      // counted: that panel is often empty ("No batches in the last 7 days").
+      for (const label of ['Sale', 'Total Tip', 'Total Payment'] as const) {
+        await expect(dashboardPage.metric(label).locator('..')).toContainText(
+          /\$\d{1,3}(,\d{3})*\.\d{2}/,
+        );
+      }
     },
   );
 

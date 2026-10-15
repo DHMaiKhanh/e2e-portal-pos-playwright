@@ -243,9 +243,12 @@ npm run auth    # trên máy dev, đăng nhập lại
 rồi upload lại `src/data/dynamic/auth/admin.json` vào credential
 `portal-pos-storage-state-<env>` và build lại.
 
-Đây cũng là lý do `triggers { cron(...) }` bị comment sẵn trong Jenkinsfile: build
-theo lịch sẽ đỏ hàng loạt ngay khi session hết hạn. Chỉ bật khi đã có cách làm mới
-session tự động (service account bỏ được 2FA, hoặc refresh token dài hạn).
+`triggers { cron('0 2 * * *') }` trong Jenkinsfile quét toàn bộ suite lúc 2h sáng
+mỗi ngày kể cả khi không có commit mới. Trước đây cron bị comment vì lo build đỏ
+hàng loạt mà không ai theo dõi khi session hết hạn; giờ `notifySlack()` /
+`notifyByEmail()` ở `post { unstable / failure }` báo ngay khi việc đó xảy ra,
+nên chỉ cần xử lý theo hướng dẫn ở trên khi nhận được thông báo, không cần tắt
+cron.
 
 ## 7. Khi nâng version Playwright
 
@@ -349,8 +352,8 @@ kiểm tra `refreshToken` trong session còn sống bao lâu — **không chạy
 | `FAILURE`        | Đã hết hạn / không đọc được → gửi email     | `npm run auth` + `jenkins:creds` |
 
 Chạy tại chỗ trên máy dev: `npm run auth:check`. Điền `ALERT_EMAIL` cho job để
-nhận cảnh báo. Đây là lý do cron của job test chính vẫn tắt — ta canh session
-riêng, nhẹ nhàng, thay vì để nguyên suite đỏ.
+nhận cảnh báo. Job này báo trước khi session chết, còn cron 2h sáng của job test chính
+(mục 6) báo khi suite đã đỏ — hai lớp, không thay thế nhau.
 
 ### 9.3. Email thông báo
 
@@ -416,3 +419,33 @@ GitHub → Settings → Developer settings → Personal access tokens.
 Thiếu credential này thì `notifyGithub()` trong Jenkinsfile bắt lỗi và chỉ
 `echo` ra log — build vẫn chạy và publish report bình thường, chỉ là PR không
 thấy status.
+
+### 9.6. Slack khi build đỏ / xanh lại
+
+`post { unstable / failure / fixed }` gọi thêm `notifySlack(...)` — cùng ba thời
+điểm với email ở trên, không thêm case mới. Plugin **Slack Notification** đã
+được cài (Manage Jenkins → Plugins → Installed → lọc `slack`).
+
+Bản plugin hiện tại (795.v4b_9705b_e6d47) dùng **Slack App + Bot Token**, không
+phải Incoming Webhook cũ. Các bước:
+
+1. Trong Slack, vào https://api.slack.com/apps → **Create New App** → **From
+   scratch** → đặt tên (vd. `Jenkins CI`), chọn đúng workspace.
+2. Trong app vừa tạo: **OAuth & Permissions** → mục **Scopes → Bot Token
+   Scopes** → **Add an OAuth Scope** → thêm `chat:write` (và `chat:write.public`
+   nếu muốn gửi vào channel chưa invite bot).
+3. Vẫn ở trang **OAuth & Permissions** → **Install to Workspace** (hoặc
+   **Install App**) → Allow. Copy **Bot User OAuth Token**, dạng `xoxb-...`.
+4. Trong Slack, invite bot vào channel muốn nhận tin: mở channel (vd.
+   `#ci-portal-pos`) → gõ `/invite @Jenkins CI`.
+5. Jenkins → **Manage Jenkins → Credentials → System → Global** → thêm
+   credential kind **Secret text**, ID `slack-bot-token`, giá trị là token
+   `xoxb-...` vừa copy.
+6. **Manage Jenkins → System → Slack** (mục global config, không phải trong
+   Jenkinsfile): điền **Workspace** (subdomain Slack, phần trước `.slack.com`),
+   **Credential** chọn `slack-bot-token`, **Default channel / member id** điền
+   `#ci-portal-pos`. Bấm **Test Connection** trước khi tin.
+
+Thiếu credential hoặc chưa cấu hình mục Slack ở trên thì `slackSend` throw lỗi,
+`notifySlack()` bắt lại và chỉ `echo` ra log — build không vì thế mà đỏ oan,
+giống hệt cách email/commit status graceful-degrade ở trên.

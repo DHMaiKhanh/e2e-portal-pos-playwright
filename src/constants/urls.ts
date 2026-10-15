@@ -33,9 +33,35 @@ export const Urls = {
   PAYROLL: `${posStoreBase}/payroll`,
   BATCH_HISTORY: `${posStoreBase}/batch`,
   STAFFS: `${posStoreBase}/staffs`,
+  // Report Configuration (report-builder admin) — sidebar group under Management.
+  REPORT_CONFIG: `${posStoreBase}/report-config`,
+  REPORT_CONFIG_PAGES: `${posStoreBase}/report-config/pages`,
+  REPORT_CONFIG_BLOCKS: `${posStoreBase}/report-config/blocks`,
+  REPORT_CONFIG_SOURCES: `${posStoreBase}/report-config/sources`,
+  REPORT_CONFIG_COLUMNS: `${posStoreBase}/report-config/columns`,
+  // Reports (configurable report pages) — sidebar accordion "Reports" under
+  // Management. One route per slug: see `reportPageUrl()` below.
+  REPORT_PAGES: `${posStoreBase}/report-pages`,
   // Internal/admin routes — not store-scoped, but carry the vertical segment and
   // live under `/admin/`. `/pos/<seg>/admin/merchant` self-normalises to
   // `?tab=overview`.
   MERCHANTS: `${posAdminBase}/merchant`,
   ONBOARDING: `${posAdminBase}/onboarding`,
 } as const;
+
+/** Slugs of the report pages under `Urls.REPORT_PAGES` (Reports sidebar group). */
+export const ReportPageSlug = {
+  DAILY_SALE: 'daily-sale-report',
+  DEMO_DS: 'demo-ds-report',
+  INCOME_SUMMARY: 'income-summary',
+  STAFF_INCOME: 'staff-income',
+  STAFF_PAYROLL: 'staff-payroll',
+} as const;
+
+export type ReportPageSlugValue = (typeof ReportPageSlug)[keyof typeof ReportPageSlug];
+
+/** `/pos/<seg>/<id>/report-pages/<slug>` — `slug` may be any string (bad-slug cases). */
+export const reportPageUrl = (
+  slug: ReportPageSlugValue | string,
+  storeBase = posStoreBase,
+): string => `${storeBase}/report-pages/${slug}`;

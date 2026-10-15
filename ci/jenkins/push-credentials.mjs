@@ -94,7 +94,7 @@ for (const c of CREDENTIALS) {
   if (!fs.existsSync(c.file)) {
     const hint =
       c.fileName === 'admin.json'
-        ? 'Chụp session: npm run auth (đăng nhập Google + 2FA bằng tay)'
+        ? 'Chụp session: npm run auth:stage (hoặc auth:prod) (đăng nhập Google + 2FA bằng tay)'
         : `Tạo file: copy configs/env/.env.example → ${path.relative(repoRoot, c.file)} rồi điền giá trị thật`;
     die(`Không tìm thấy ${path.relative(repoRoot, c.file)}\n  → ${hint}`);
   }
@@ -120,7 +120,7 @@ console.log(`\n${C.g('✓')} Xong. 2 credential đã sẵn sàng cho build với
 for (const c of CREDENTIALS) console.log(`    ${c.id}`);
 console.log(
   `\n  Bước tiếp: Jenkins → job portal-pos-e2e → Build with Parameters → TARGET_ENV=${ENV}.` +
-    `\n  ${C.dim('Stage "Provision env" giờ sẽ xanh. Nếu session đã hết hạn, Preflight sẽ báo chạy lại npm run auth.')}\n`,
+    `\n  ${C.dim('Stage "Provision env" giờ sẽ xanh. Nếu session đã hết hạn, Preflight sẽ báo chạy lại npm run auth:stage (hoặc auth:prod).')}\n`,
 );
 
 // ── Hàm phụ ─────────────────────────────────────────────────────────────────
@@ -257,7 +257,7 @@ function warnIfSessionExpired() {
       console.log(
         C.y(
           `\n⚠ Cảnh báo: session trong admin.json đã HẾT HẠN (refreshToken expired ${when}).\n` +
-            '  Vẫn push được, nhưng stage Preflight sẽ đỏ. Chạy lại `npm run auth` rồi push lại để build xanh.',
+            '  Vẫn push được, nhưng stage Preflight sẽ đỏ. Chạy lại `npm run auth:stage (hoặc auth:prod)` rồi push lại để build xanh.',
         ),
       );
     }

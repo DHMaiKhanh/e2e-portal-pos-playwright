@@ -22,6 +22,7 @@ const {
   pageObject, // { path, className, fixtureName, exists }
   areas: rawAreas, // [{ name, slug, count }]
   onlyAreas, // optional string[] of area names/slugs to limit scope
+  notes, // optional string — screen-specific rules appended to CONVENTIONS (they win on conflict)
 } = input;
 
 if (!Array.isArray(rawAreas)) {
@@ -84,7 +85,14 @@ EXECUTABLE vs SCAFFOLD — decide per case:
 - Assert BEHAVIOR & FORMAT, never fixed live numbers (data is store-scoped and time-based). E.g. match currency with /\\$[\\d,]+\\.\\d{2}/, percent with /[+-]?\\d+%/.
 - Keep tests independent and parallel-safe: no test depends on another's side effects.
 - Output must be valid TypeScript under "strict": true. No unused imports. No 'any' without reason.
-`.trim();
+${
+  notes
+    ? `
+SCREEN-SPECIFIC RULES (these OVERRIDE anything above on conflict):
+${notes}
+`
+    : ''
+}`.trim();
 
 // =====================================================================
 // Phase 1 — Page Object

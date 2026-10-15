@@ -10,14 +10,21 @@ test.describe('Ô tìm kiếm (Search input) — Customers', () => {
     'TC-CUS-027 — search by full name returns matching rows',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ customersPage, page }) => {
-      // "Hung Vo" is a real full name in this store; the term this replaces
-      // ("test checkin") no longer matches any customer, so the search returned
-      // "No customers found" and the old count-then-branch logic raced the
-      // debounce. Assert the matching row directly so the check auto-retries
-      // until the search settles.
-      await customersPage.search('Hung Vo');
-      await expect(page).toHaveURL(/search=Hung(\+|%20)Vo/i);
-      await expect(customersPage.table.rows.first()).toContainText(/Hung Vo/i);
+      // Read a real full name off page 1 instead of hard-coding one: store data
+      // churns, and both "test checkin" and later "Hung Vo" vanished from it.
+      // The NAME cell may stack an avatar initial above the name, so take the
+      // last line. Assert the matching row directly so the check auto-retries
+      // until the debounced search settles.
+      const nameCell = customersPage.table.rows.first().getByRole('cell').first();
+      await expect(nameCell).not.toBeEmpty();
+      const fullName =
+        (await nameCell.innerText()).split('\n').pop()?.replace(/\s+/g, ' ').trim() ?? '';
+      expect(fullName.length, 'first customer row has no name').toBeGreaterThan(0);
+
+      await customersPage.search(fullName);
+      await expect(page).toHaveURL(/search=/);
+      const escaped = fullName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      await expect(customersPage.table.rows.first()).toContainText(new RegExp(escaped, 'i'));
     },
   );
 

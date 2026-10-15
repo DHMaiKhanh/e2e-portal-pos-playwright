@@ -52,6 +52,10 @@ const CONSOLE_NOISE =
 
 /** Hosts whose traffic belongs to the app; third-party beacons are not this case's business. */
 const APP_HOSTS = [new URL(env.BASE_URL).host, new URL(env.API_URL).host];
+// Report data is served from a subdomain of the Portal host (e.g.
+// volt-pos.v2.dev-fastboypay.com under v2.dev-fastboypay.com), so match those too.
+const isAppHost = (host: string): boolean =>
+  APP_HOSTS.includes(host) || host.endsWith(`.${new URL(env.BASE_URL).host}`);
 
 /**
  * Bảo mật — the access-control and injection cases of the Income Reports screen.
@@ -313,7 +317,7 @@ test.describe('Bảo mật — Income Reports', () => {
         const type = request.resourceType();
         if (type !== 'xhr' && type !== 'fetch') return;
         if (request.method() !== 'GET') return;
-        if (!APP_HOSTS.includes(new URL(request.url()).host)) return;
+        if (!isAppHost(new URL(request.url()).host)) return;
         calls.push({ url: request.url(), method: request.method() });
       });
 

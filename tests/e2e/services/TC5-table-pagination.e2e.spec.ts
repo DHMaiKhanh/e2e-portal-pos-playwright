@@ -225,10 +225,20 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
 
       const pageSize = 30;
       const from = (lastPage - 1) * pageSize + 1;
+      // Other specs (TC-SVC-050) add a service mid-run, so the total can move
+      // between the first-page read and now. Take the last page's own footer as
+      // the truth: it must end at its total ("to N of N").
       await expect(productsPage.paginationFooter.first()).toHaveText(
-        new RegExp(`Showing ${from} to ${total} of ${total} results`, 'i'),
+        new RegExp(`Showing ${from} to (\\d+) of \\1 results`, 'i'),
       );
-      await expect(productsPage.table.rows).toHaveCount(total - from + 1);
+      const lastTotal = Number(
+        (await productsPage.paginationFooterText()).match(/of (\d+) results/i)?.[1],
+      );
+      expect(
+        Math.abs(lastTotal - total),
+        'total drifted by more than a stray add',
+      ).toBeLessThanOrEqual(2);
+      await expect(productsPage.table.rows).toHaveCount(lastTotal - from + 1);
       await expect(productsPage.nextPageButton).toBeDisabled();
       await expect(productsPage.previousPageButton).toBeEnabled();
 

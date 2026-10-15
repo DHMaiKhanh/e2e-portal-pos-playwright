@@ -1,7 +1,7 @@
 /**
  * Kiểm tra session đăng nhập Portal (storageState) còn sống được bao lâu nữa,
  * KHÔNG chạy test. Dùng cho job nightly `portal-pos-session-health` trên Jenkins
- * để báo sớm "cần npm run auth" thay vì để cả suite đỏ hàng loạt khi session chết
+ * để báo sớm "cần npm run auth:stage" thay vì để cả suite đỏ hàng loạt khi session chết
  * (xem docs/auth-session-expiry-issue.md — đã từng 112 fail chỉ vì lý do này).
  *
  * Dùng:
@@ -40,14 +40,14 @@ function exit(code, msg) {
 }
 
 if (!fs.existsSync(stateFile)) {
-  exit(1, `Không thấy file session: ${stateFile}\n  → Chụp lại: npm run auth`);
+  exit(1, `Không thấy file session: ${stateFile}\n  → Chụp lại: npm run auth:stage (hoặc auth:prod)`);
 }
 
 let state;
 try {
   state = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
 } catch (err) {
-  exit(1, `File session hỏng, không parse được JSON (${stateFile}): ${err.message}\n  → Chụp lại: npm run auth`);
+  exit(1, `File session hỏng, không parse được JSON (${stateFile}): ${err.message}\n  → Chụp lại: npm run auth:stage (hoặc auth:prod)`);
 }
 
 // Session lưu dạng Playwright storageState: cookies[] có `expires` (giây epoch;
@@ -69,12 +69,12 @@ const msLeft = expiresMs - now;
 
 if (msLeft <= 0) {
   const agoDays = Math.ceil(-msLeft / DAY);
-  exit(1, `Session ĐÃ HẾT HẠN (refreshToken expired ${when}, ~${agoDays} ngày trước).\n  → Chạy: npm run auth  rồi: npm run jenkins:creds <env>`);
+  exit(1, `Session ĐÃ HẾT HẠN (refreshToken expired ${when}, ~${agoDays} ngày trước).\n  → Chạy: npm run auth:stage (hoặc auth:prod)  rồi: npm run jenkins:creds <env>`);
 }
 
 const daysLeft = Math.floor(msLeft / DAY);
 if (daysLeft <= WARN_DAYS) {
-  exit(2, `Session SẮP HẾT HẠN: còn ~${daysLeft} ngày (hết hạn ${when}).\n  → Nên auth lại sớm: npm run auth  rồi: npm run jenkins:creds <env>`);
+  exit(2, `Session SẮP HẾT HẠN: còn ~${daysLeft} ngày (hết hạn ${when}).\n  → Nên auth lại sớm: npm run auth:stage (hoặc auth:prod)  rồi: npm run jenkins:creds <env>`);
 }
 
 exit(0, `Session còn hiệu lực ~${daysLeft} ngày (hết hạn ${when}). ${C.dim('Ngưỡng cảnh báo: ' + WARN_DAYS + ' ngày.')}`);

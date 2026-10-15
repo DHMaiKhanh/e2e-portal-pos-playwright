@@ -1176,3 +1176,16 @@ Sinh code test bằng skill `testcase-to-code` từ tài liệu này → `tests/
 - Tổng suite: 69 fail ban đầu → **0 lỗi thật** (fix drift/timing + skip-khi-vắng-dữ-liệu + fixme product-gap). Flaky môi trường để retries hấp thụ.
 - Màn **onboarding**: 13 case -> fixme (product gap: store id undefined, whmcsId âm/0/tràn, focus/heading, zod leak, duplicate guard, 404 console).
 - Bug app (test đúng, app sai): `docs/product-gaps-2026-10-11.md` (35 mục). Dashboard: artifact đã publish.
+
+### 2026-10-13 10:11 (UTC+7)
+
+- Lệnh: `npx cross-env ENV=local playwright test tests/e2e` (full suite, headless, 8 workers)
+- Kết quả: 1 passed, 117 failed, 51 skipped (tổng 169)
+- Fail: toàn bộ 117 case fail cùng một nguyên nhân — session đăng nhập (`src/data/dynamic/auth/admin.json`) đã hết hạn (refreshToken expired 2026-08-28), mọi trang bị redirect về `/login`. Không phải lỗi test/locator. Cần `npm run auth` rồi chạy lại.
+- Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`
+
+### 2026-10-13 (UTC+7) — ENV=stage
+
+- Lệnh: `ENV=stage npm run test:report` (full suite, headless, 8 workers, `https://v2.dev-fastboypay.com`)
+- Kết quả: 118 passed, 0 failed, 51 skipped (tổng 169) — toàn suite 705 passed, 0 failed, 130 skipped
+- Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`

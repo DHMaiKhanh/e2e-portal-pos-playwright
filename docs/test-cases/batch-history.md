@@ -420,3 +420,18 @@
 - Tổng suite: 69 fail ban đầu → **0 lỗi thật** (fix drift/timing + skip-khi-vắng-dữ-liệu + fixme product-gap). Flaky môi trường để retries hấp thụ.
 - Màn **batch-history**: TC-BH-008, TC-BH-038 fix (routing/skeleton-gate); TC-BH-039 -> fixme (product gap: status ngoài enum hard-error cả trang).
 - Bug app (test đúng, app sai): `docs/product-gaps-2026-10-11.md` (35 mục). Dashboard: artifact đã publish.
+
+### 2026-10-13 10:11 (UTC+7)
+
+- Lệnh: `npx cross-env ENV=local playwright test tests/e2e` (full suite, headless, 8 workers)
+- Kết quả: 1 passed, 52 failed, 3 skipped (tổng 56)
+- Fail: toàn bộ 52 case fail cùng một nguyên nhân — session đăng nhập (`src/data/dynamic/auth/admin.json`) đã hết hạn (refreshToken expired 2026-08-28), mọi trang bị redirect về `/login`. Không phải lỗi test/locator. Cần `npm run auth` rồi chạy lại.
+- Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`
+
+### 2026-10-13 (UTC+7) — ENV=stage
+
+- Lệnh: `ENV=stage npm run test:report` (full suite, headless, 8 workers, `https://v2.dev-fastboypay.com`)
+- Kết quả: 53 passed, 0 failed, 3 skipped (tổng 56) — toàn suite 705 passed, 0 failed, 130 skipped
+- Đã sửa test (fail ở các lần chạy trước trong ngày, đều do test chứ không phải bug app):
+  - TC-BH-009b · `tableRoot.or(emptyState)` khớp 2 phần tử (empty state nằm trong table) → thêm `.first()`
+- Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`

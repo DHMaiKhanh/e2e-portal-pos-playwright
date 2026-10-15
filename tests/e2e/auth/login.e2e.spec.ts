@@ -9,7 +9,7 @@ test.use({ storageState: { cookies: [], origins: [] } });
 /**
  * These two cases were parked as `test.skip` describing a username/password
  * form. The Portal has never had one: sign-in is federated (GCI Business or
- * Google), which is why `npm run auth` captures a session by hand. Asserting
+ * Google), which is why `npm run auth:stage` / `auth:prod` captures a session by hand. Asserting
  * against a form that does not exist is not coverage, so the cases now pin the
  * behaviour the screen actually has — the provider choices it offers, and the
  * fact that a deep link survives the bounce through /login.
