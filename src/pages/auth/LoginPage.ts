@@ -16,7 +16,7 @@ export class LoginPage extends BasePage {
    * The Portal authenticates through federated identity only — there is no
    * credential form to drive. The screen offers two providers: GCI Business (a
    * button, handled in-app) and Google (a plain link out to the SSO host).
-   * `npm run auth` captures a real session manually; the suite reuses it.
+   * `npm run auth:stage` / `auth:prod` captures a real session manually; the suite reuses it.
    */
   readonly gciSignInButton: Locator;
   readonly googleSignInLink: Locator;

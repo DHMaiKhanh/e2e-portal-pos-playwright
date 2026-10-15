@@ -39,7 +39,7 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Services', () =
       await dashboardPage.goto();
       await dashboardPage.sidebar.navigateTo('Services');
 
-      await expect(page).toHaveURL(/\/pos\/\d+\/services/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/services/);
       await productsPage.waitForReady();
       await expect(productsPage.pageTitle).toBeVisible();
       await expect(productsPage.tableHeading).toBeVisible();
@@ -95,7 +95,15 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Services', () =
         await page.setViewportSize({ width, height: 900 });
         await productsPage.waitForReady();
 
-        await expect(productsPage.pageTitle).toBeVisible();
+        // The "All Services" <h2> lives in the table header row, which the app
+        // only renders from the `xl` (1280px) breakpoint up; below it the heading
+        // is hidden (the "Services" title in the top bar still shows). Confirmed
+        // from the failure snapshot: at 1024px the <h2> is in the DOM but hidden,
+        // while 1920px and 1366px keep it visible. Assert it only where the design
+        // shows it — the layout/overflow checks below still run at every width.
+        if (width >= 1280) {
+          await expect(productsPage.pageTitle).toBeVisible();
+        }
         await expect(productsPage.tableHeading).toBeVisible();
         await expect(productsPage.paginationFooter).toBeVisible();
 

@@ -463,28 +463,58 @@ node -e "const s=require('./src/data/dynamic/auth/admin.json');for(const n of ['
 
 ## D3. Tạo credential trên Jenkins
 
-**Manage Jenkins → Credentials → System → Global credentials → Add Credentials**
-
-Tạo **2 credential**, cả hai đều **Kind: Secret file**. Bảng dưới là cặp cho lần
-chạy đầu bằng `TARGET_ENV=local`:
+Cần **2 credential** cho mỗi môi trường, cả hai **Kind: Secret file**:
 
 | ID                               | Upload file                        |
 | -------------------------------- | ---------------------------------- |
-| `portal-pos-env-local`           | `configs/env/.env.local`           |
-| `portal-pos-storage-state-local` | `src/data/dynamic/auth/admin.json` |
+| `portal-pos-env-<env>`           | `configs/env/.env.<env>`           |
+| `portal-pos-storage-state-<env>` | `src/data/dynamic/auth/admin.json` |
 
 ID phải gõ **chính xác** — Jenkinsfile ghép chuỗi theo tham số `TARGET_ENV`:
-`portal-pos-env-${TARGET_ENV}`. Mỗi môi trường cần một cặp riêng đặt tên theo đúng
-mẫu đó, ví dụ `portal-pos-env-stage` + `portal-pos-storage-state-stage`. Build với
-một `TARGET_ENV` chưa có cặp credential sẽ fail ngay ở stage **Provision env** với
-lỗi credential not found.
+`portal-pos-env-${TARGET_ENV}`. Build với một `TARGET_ENV` chưa có cặp credential
+sẽ fail ngay ở stage **Provision env** với lỗi credential not found.
 
 Đóng gói **cả file** thay vì tách từng biến thành credential riêng là có chủ ý:
 sau này thêm biến mới chỉ cần sửa file trên Jenkins, không phải đụng vào Jenkinsfile.
 
+### D3a. Cách nhanh — 1 lệnh (khuyên dùng)
+
+[ci/jenkins/push-credentials.mjs](../ci/jenkins/push-credentials.mjs) tạo/ghi đè
+cả 2 credential qua REST API, thay cho việc bấm tay ở UI. Idempotent — credential
+đã tồn tại thì xoá rồi tạo lại, nên **refresh session xong chỉ cần chạy lại đúng
+lệnh này**.
+
+Trước tiên lấy **API token**: Jenkins → góc phải (tên user) → **Configure** →
+mục _API Token_ → **Add new Token** → copy chuỗi hiện ra (chỉ hiện 1 lần).
+
+```powershell
+$env:JENKINS_USER="admin"          # user admin đã tạo ở mục C4
+$env:JENKINS_TOKEN="<api-token>"   # token vừa copy, KHÔNG phải mật khẩu login
+npm run jenkins:creds stage        # đổi stage → prod/local tuỳ môi trường
+```
+
+Hiện ra 2 dòng `✓ portal-pos-env-stage` / `✓ portal-pos-storage-state-stage` là
+xong. Script tự kiểm tra file tồn tại, cảnh báo nếu `refreshToken` trong
+`admin.json` đã hết hạn, và báo lỗi rõ ràng nếu Jenkins chưa chạy hay sai token.
+
+> `JENKINS_URL` mặc định `http://localhost:8090`. Đổi port thì set thêm
+> `$env:JENKINS_URL="http://localhost:8091"`.
+
+### D3b. Cách thủ công qua UI (khi không chạy được script)
+
+**Manage Jenkins → Credentials → System → Global credentials → Add Credentials**
+→ Kind **Secret file** → upload file, đặt ID đúng theo bảng trên. Làm 2 lần cho 2
+credential.
+
 ---
 
 # PHẦN E — Tạo job
+
+> **Theo đúng PHẦN A–C (dựng bằng Docker)?** Job `portal-pos-e2e` và
+> `portal-pos-session-health` đã được tạo tự động bằng Config as Code
+> (`ci/jenkins/casc.yaml`) — bỏ qua PHẦN E này, nạp credential ở PHẦN D xong là
+> vào thẳng **Build with Parameters**. Chi tiết automation: [jenkins.md mục 9](jenkins.md#9-tự-động-hoá-config-as-code-email-canh-session).
+> PHẦN E dưới đây dành cho ai muốn tự tạo job bằng tay.
 
 ## E1. New Item
 
@@ -636,7 +666,7 @@ Tick hết là xong:
 - [ ] Manage Jenkins → Tools có Allure Commandline tên `allure`
 - [ ] Có `configs/env/.env.<env>` với `BASE_URL` thật (`.env.local` là đủ cho lần đầu)
 - [ ] Vừa chạy `npm run auth`, `refreshToken` trong `admin.json` còn sống
-- [ ] 2 credential Secret file đúng tên: `portal-pos-env-<env>`, `portal-pos-storage-state-<env>`
+- [ ] 2 credential Secret file đúng tên: `portal-pos-env-<env>`, `portal-pos-storage-state-<env>` (nhanh nhất: `npm run jenkins:creds <env>` — xem [mục D3a](#d3a-cách-nhanh--1-lệnh-khuyên-dùng))
 - [ ] Job `portal-pos-e2e` kiểu Pipeline, from SCM, Script Path = `Jenkinsfile`
 - [ ] Build with Parameters chạy xanh với `TARGET_ENV` đúng, `TEST_PATH` nhỏ, `WORKERS=2`
 - [ ] Trang build có link Playwright HTML Report

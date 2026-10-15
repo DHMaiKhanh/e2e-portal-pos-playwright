@@ -71,7 +71,9 @@ test.describe('Tổng quan thiết bị (Device Summary) — Overview', () => {
       await expect(card.getByText(/Device ID:\s*[0-9a-f-]{36}/i)).toBeVisible();
       await expect(card.getByText(/OS:\s*\S+/i)).toBeVisible();
       await expect(card.getByText(/App Version:\s*\S+/i)).toBeVisible();
-      await expect(card.getByText(/terminal/i)).toBeVisible();
+      // The terminal slot reads "No terminal", or the paired terminal's serial
+      // (e.g. "B5552E9") — which card is POS #1 varies between runs.
+      await expect(card.getByText(/^(No terminal|(?=[A-Z]*\d)[A-Z0-9]{5,12})$/)).toBeVisible();
       await expect(card.getByText(/printer/i)).toBeVisible();
 
       await expect(dashboardPage.deviceCard(1)).toHaveAccessibleName(/Open POS #1 details/i);

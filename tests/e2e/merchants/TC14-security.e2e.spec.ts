@@ -34,7 +34,7 @@ test.describe('Bảo mật & phân quyền (Security) — Merchants (chưa đăn
         page.locator('tbody tr'),
       ]);
 
-      await expect(page).toHaveURL(/redirect=%2Fpos%2Fmerchants/);
+      await expect(page).toHaveURL(/redirect=%2Fpos%2Fnail%2Fadmin%2Fmerchant/);
       // The login page offers "Continue with GCI Business" (a button) and
       // "Continue with Google" (a link). `.first()` goes on the union, not on
       // each side, or the composed locator still matches both.
@@ -46,10 +46,12 @@ test.describe('Bảo mật & phân quyền (Security) — Merchants (chưa đăn
       ).toBeVisible();
 
       // Nothing of the cross-tenant list reaches the HTML: no owner emails, no
-      // phone numbers, no merchant names.
+      // phone numbers, no merchant table. Key off a merchants-table-specific
+      // column header ("OWNER EMAIL") rather than the generic word "Merchants",
+      // which is too common to be a reliable leak signal.
       const html = await page.content();
       expect(html).not.toMatch(/\(\d{3}\) \d{3}-\d{4}/);
-      expect(html).not.toMatch(/Merchant Management/);
+      expect(html).not.toMatch(/OWNER EMAIL/i);
     },
   );
 });

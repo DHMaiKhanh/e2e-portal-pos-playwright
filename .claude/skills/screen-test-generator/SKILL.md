@@ -11,7 +11,7 @@ Works against the live DEV portal using the captured login session (`storageStat
 
 ## Prerequisites
 
-- Dependencies installed (`npm install`) and a valid session captured (`npm run auth`). If the scan lands on `/login`, the session expired → run `npm run auth` again.
+- Dependencies installed (`npm install`) and a valid session captured (`npm run auth:stage`). If the scan lands on `/login`, the session expired → run `npm run auth:stage` again.
 - `BASE_URL` and `STORE_ID` set in `configs/env/.env.local` (already configured for the DEV portal).
 
 ## Workflow

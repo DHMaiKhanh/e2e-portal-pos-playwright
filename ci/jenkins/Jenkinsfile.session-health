@@ -1,0 +1,120 @@
+// Portal POS — canh session đăng nhập (nightly), KHÔNG chạy test.
+//
+// Session Portal hết hạn theo thời gian và phải chụp lại tay (Google OAuth + 2FA
+// — xem docs/authentication.md). Job này chạy sáng sớm các ngày làm việc, chỉ
+// kiểm tra storageState còn sống bao lâu nữa rồi email cảnh báo — để biết TRƯỚC
+// khi cả suite đỏ hàng loạt vì session chết.
+//
+// Job được tạo bằng JCasC (ci/jenkins/casc.yaml → 'portal-pos-session-health').
+// Script kiểm tra: scripts/check-auth-session.mjs (mã thoát 0 OK / 2 WARN / 1 EXPIRED).
+
+pipeline {
+  // Giống Jenkinsfile chính: agent any ở cấp pipeline để post{} (mail) chạy trên
+  // controller; node chạy script khai báo trong stage với reuseNode.
+  agent any
+
+  parameters {
+    choice(
+      name: 'TARGET_ENV',
+      choices: ['stage', 'prod', 'local'],
+      description: 'Môi trường của session cần kiểm tra. Quyết định credential storage-state nào được nạp.'
+    )
+    string(
+      name: 'ALERT_EMAIL',
+      defaultValue: '',
+      description: 'Email nhận cảnh báo. Nhiều địa chỉ cách nhau bằng dấu phẩy. Để trống = chỉ hiện trên build, không gửi.'
+    )
+    string(
+      name: 'WARN_DAYS',
+      defaultValue: '3',
+      description: 'Còn ít hơn số ngày này thì build UNSTABLE và gửi cảnh báo "sắp hết hạn".'
+    )
+  }
+
+  options {
+    timeout(time: 10, unit: 'MINUTES')
+    timestamps()
+    ansiColor('xterm')
+    disableConcurrentBuilds()
+    buildDiscarder(logRotator(numToKeepStr: '30'))
+  }
+
+  // Session hết hạn là lỗi theo-thời-gian, không phụ thuộc có ai push code hay
+  // không — nên job NÀY bật cron (khác job test chính vẫn tắt cron). 7h sáng T2–T6:
+  // kịp báo trước giờ mọi người bắt đầu chạy test trong ngày.
+  triggers { cron('H 7 * * 1-5') }
+
+  stages {
+    stage('Check session') {
+      // node:20-alpine đủ để chạy script kiểm tra (chỉ dùng fs của Node). Không
+      // cần cả image Playwright nặng 2GB ở đây.
+      agent {
+        docker {
+          image 'node:20-alpine'
+          reuseNode true
+        }
+      }
+      environment {
+        AUTH_WARN_DAYS = "${params.WARN_DAYS}"
+      }
+      steps {
+        script {
+          def cred = "portal-pos-storage-state-${params.TARGET_ENV}"
+          int status
+          try {
+            withCredentials([file(credentialsId: cred, variable: 'STATE_FILE')]) {
+              status = sh(script: 'node scripts/check-auth-session.mjs "$STATE_FILE"', returnStatus: true)
+            }
+          } catch (err) {
+            error(
+              "Không nạp được credential '${cred}': ${err}\n" +
+              "Tạo credential kind 'Secret file' đó (nội dung = admin.json), " +
+              "hoặc nhanh nhất: npm run jenkins:creds ${params.TARGET_ENV}"
+            )
+          }
+
+          // 2 = sắp hết hạn → UNSTABLE (vàng, vẫn gửi cảnh báo).
+          // khác 0 và khác 2 = đã hết hạn / không đọc được → FAILURE (đỏ).
+          if (status == 2) {
+            unstable('Session sắp hết hạn — nên chạy lại npm run auth sớm.')
+          } else if (status != 0) {
+            error('Session đã hết hạn hoặc không đọc được — phải chạy lại npm run auth.')
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    unstable { script { alert('Session Portal SẮP HẾT HẠN') } }
+    failure  { script { alert('Session Portal ĐÃ HẾT HẠN') } }
+  }
+}
+
+void alert(String headline) {
+  def to = params.ALERT_EMAIL?.trim()
+  if (!to) {
+    echo "ALERT_EMAIL trống — bỏ qua gửi email (${headline})."
+    return
+  }
+  try {
+    mail(
+      to: to,
+      subject: "[Jenkins] Session ${params.TARGET_ENV} — ${headline}",
+      body: """\
+${headline}
+
+Môi trường : ${params.TARGET_ENV}
+Kết quả    : ${currentBuild.currentResult}
+
+Cách xử lý:
+  1. Trên máy dev:  npm run auth${params.TARGET_ENV == 'local' ? '' : ':' + params.TARGET_ENV}
+  2. Nạp lại lên Jenkins:  npm run jenkins:creds ${params.TARGET_ENV}
+
+Chi tiết log: ${env.BUILD_URL}console
+"""
+    )
+  } catch (err) {
+    echo "Gửi email thất bại (bỏ qua): ${err}"
+  }
+}

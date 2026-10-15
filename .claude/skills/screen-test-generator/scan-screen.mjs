@@ -39,6 +39,8 @@ const context = await browser.newContext({
 const page = await context.newPage();
 
 await page.goto(new URL(route, BASE_URL).toString(), { waitUntil: 'networkidle' }).catch(() => {});
+// The SPA can stay blank well past networkidle — wait for the sidebar nav to render.
+await page.locator('a[href*="/overview"]').first().waitFor({ timeout: 60000 }).catch(() => {});
 await page.waitForTimeout(2500);
 
 const dom = await page.evaluate(() => {

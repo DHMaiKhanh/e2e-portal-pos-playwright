@@ -65,8 +65,21 @@ export class CustomersPage extends BasePage {
   }
 
   async search(term: string): Promise<void> {
+    // Typing debounces a GET to the data host (the debounce is longer than the
+    // old fixed 400ms sleep, so callers were reading the rows from *before* the
+    // search). Wait for that response and then for the table to re-render, so
+    // every caller observes the results for THIS term, not a stale page or a
+    // mid-flight loading skeleton.
+    const settled = this.page
+      .waitForResponse(
+        (res) =>
+          new URL(res.url()).pathname.endsWith('/customers') && res.request().method() === 'GET',
+        { timeout: Timeouts.MEDIUM },
+      )
+      .catch(() => undefined);
     await this.searchInput.fill(term);
-    await this.page.waitForTimeout(400);
+    await settled;
+    await this.waitForReady();
   }
 
   async clearSearch(): Promise<void> {

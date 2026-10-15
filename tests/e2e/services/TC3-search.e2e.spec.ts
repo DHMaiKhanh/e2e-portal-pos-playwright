@@ -48,13 +48,18 @@ test.describe('Tìm kiếm (Search) — Services', () => {
       const total = Number(unfilteredFooter.match(/of (\d+) results/i)?.[1]);
       expect(total).toBeGreaterThan(0);
 
+      // search() gives up waiting for the refetch after 5s, and under a loaded
+      // run the footer can still show the unfiltered count — poll instead.
       await productsPage.search('Diamond Pedicure');
-      const filtered = await productsPage.paginationFooterText();
-      expect(Number(filtered.match(/of (\d+) results/i)?.[1])).toBeLessThan(total);
+      await expect
+        .poll(async () =>
+          Number((await productsPage.paginationFooterText()).match(/of (\d+) results/i)?.[1]),
+        )
+        .toBeLessThan(total);
 
       await productsPage.search('');
-      expect(await productsPage.paginationFooterText()).toBe(unfilteredFooter);
-      expect(await productsPage.pageIndicatorText()).toBe(unfilteredPager);
+      await expect.poll(() => productsPage.paginationFooterText()).toBe(unfilteredFooter);
+      await expect.poll(() => productsPage.pageIndicatorText()).toBe(unfilteredPager);
     },
   );
 

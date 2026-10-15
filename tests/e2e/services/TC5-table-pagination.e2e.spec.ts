@@ -42,10 +42,14 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
    * Dòng không đặt duration hiển thị "—"; dòng có đặt hiển thị đúng chuỗi thời gian dạng "N minutes".
    */
   /**
-   * The note asked which rows have a duration; the answer is that the catalogue
-   * holds both kinds (133 with, 126 without, of 259), so neither state has to be
-   * guessed — search reaches a known example of each, and the whole first page
-   * is checked to make sure nothing renders a third, malformed shape.
+   * The specific sample services this case used to name ("Dipping Ombre" /
+   * "Diamond Pedicure") have since been removed from the shared store, so a
+   * hard-coded search no longer reaches either shape. The two examples are
+   * discovered from live data instead: the DURATION column may only ever render
+   * one of two shapes — an em dash when no time is set, or an "N minutes/hours"
+   * string when it is — and both shapes must actually occur. Pages are scanned
+   * until each has been seen, and every cell visited is checked so nothing
+   * renders a third, malformed shape.
    */
   test(
     'TC-SVC-042 — cột DURATION hiển thị "—" khi không đặt thời gian',
@@ -53,33 +57,41 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
       tag: [Tag.REGRESSION, Tag.UI],
     },
     async ({ productsPage }) => {
-      const durationOf = async (serviceName: string): Promise<string> => {
-        await productsPage.search(serviceName);
-        const row = productsPage.table.rowContaining(serviceName);
-        await expect(row.first()).toBeVisible();
-        return (await row.first().getByRole('cell').nth(2).innerText()).trim();
-      };
+      const emDash = '—';
+      const validShape = /^(—|\d+ (minutes?|hours?)( \d+ (minutes?))?)$/;
 
-      await test.step('A service with a duration shows it', async () => {
-        expect(await durationOf('Dipping Ombre')).toMatch(/^\d+ (minutes?|hours?)/);
-      });
+      const totalPages =
+        Number((await productsPage.pageIndicatorText()).split('/')[1]?.trim()) || 1;
 
-      await test.step('A service without one shows the em dash', async () => {
-        expect(await durationOf('Diamond Pedicure')).toBe('—');
-      });
+      let sawDuration = false;
+      let sawEmDash = false;
 
-      await test.step('Every row uses one of those two shapes', async () => {
-        await productsPage.search('');
-        const rows = productsPage.table.rows;
-        const count = await rows.count();
-        expect(count).toBeGreaterThan(0);
-        for (let index = 0; index < count; index++) {
-          const duration = (await rows.nth(index).getByRole('cell').nth(2).innerText()).trim();
-          expect(duration, `row ${index} DURATION`).toMatch(
-            /^(—|\d+ (minutes?|hours?)( \d+ (minutes?))?)$/,
-          );
+      for (let pageNo = 1; pageNo <= totalPages; pageNo++) {
+        const durations = (
+          await productsPage.table.rows.locator('td:nth-child(3)').allInnerTexts()
+        ).map((text) => text.trim());
+        expect(durations.length, `page ${pageNo} has no service rows`).toBeGreaterThan(0);
+
+        durations.forEach((duration, index) => {
+          expect(duration, `page ${pageNo} row ${index} DURATION`).toMatch(validShape);
+          if (duration === emDash) sawEmDash = true;
+          else sawDuration = true;
+        });
+
+        if (sawDuration && sawEmDash) break;
+        if (pageNo < totalPages) {
+          await productsPage.goToNextPage();
+          await expect(productsPage.pageIndicator).toHaveText(new RegExp(`^${pageNo + 1} / \\d+$`));
+          await productsPage.waitForReady();
         }
-      });
+      }
+
+      expect(sawDuration, 'no service in the catalogue shows a duration (e.g. "30 minutes")').toBe(
+        true,
+      );
+      expect(sawEmDash, 'no service in the catalogue shows the em dash for an unset duration').toBe(
+        true,
+      );
     },
   );
 
@@ -90,9 +102,12 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
    * Dòng có mô tả hiển thị tên chính + đoạn mô tả nhỏ bên dưới; dòng không có mô tả chỉ hiển thị tên, không có khoảng trắng thừa/dòng trống bất thường.
    */
   /**
-   * Both shapes exist in the catalogue — "Gel Manicure product 2" carries the
-   * description "Gel nail polish", most rows carry none — so each half is
-   * reachable by search rather than dependent on what lands on page 1.
+   * The sample services this case used to name ("Gel Manicure product 2" /
+   * "Diamond Pedicure") have since been removed from the shared store, so both
+   * shapes are discovered from live data: a described row shows a name line
+   * followed by a description line, an undescribed one shows the name alone, and
+   * no cell ever stringifies an empty value as "null"/"undefined". Pages are
+   * scanned until each shape has been seen.
    */
   test(
     'TC-SVC-043 — NAME & DESCRIPTION hiển thị mô tả phụ khi có',
@@ -100,34 +115,51 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
       tag: [Tag.REGRESSION, Tag.UI],
     },
     async ({ productsPage }) => {
-      const nameCellOf = async (serviceName: string): Promise<string> => {
-        await productsPage.search(serviceName);
-        const row = productsPage.table.rowContaining(serviceName);
-        await expect(row.first()).toBeVisible();
-        return (await row.first().getByRole('cell').first().innerText()).trim();
-      };
-
-      // The cell stacks a <span> name over a <p> description, which innerText
-      // renders with a blank line between them — drop the empties rather than
-      // indexing straight into the split.
+      // The cell stacks a <span> name over an optional <p> description, which
+      // innerText renders with a blank line between them — drop the empties
+      // rather than indexing straight into the split.
       const linesOf = (cell: string): string[] =>
         cell
           .split('\n')
           .map((line) => line.trim())
           .filter((line) => line.length > 0);
 
-      await test.step('A described service shows name then description', async () => {
-        const lines = linesOf(await nameCellOf('Gel Manicure product 2'));
-        expect(lines).toEqual(['Gel Manicure product 2', 'Gel nail polish']);
-      });
+      const totalPages =
+        Number((await productsPage.pageIndicatorText()).split('/')[1]?.trim()) || 1;
 
-      await test.step('An undescribed service shows the name alone', async () => {
-        const cell = await nameCellOf('Diamond Pedicure');
-        // Never a stringified empty value — "no description" must render as
-        // nothing at all, not as "null".
-        expect(linesOf(cell)).toEqual(['Diamond Pedicure']);
-        expect(cell).not.toMatch(/null|undefined/i);
-      });
+      let described = false;
+      let undescribed = false;
+
+      for (let pageNo = 1; pageNo <= totalPages; pageNo++) {
+        const nameCells = await productsPage.table.rows.locator('td:nth-child(1)').allInnerTexts();
+        expect(nameCells.length, `page ${pageNo} has no service rows`).toBeGreaterThan(0);
+
+        nameCells.forEach((cell, index) => {
+          // "No description" must render as nothing at all — never a stringified
+          // empty value.
+          expect(cell, `page ${pageNo} row ${index} NAME`).not.toMatch(/null|undefined/i);
+          const lines = linesOf(cell);
+          expect(lines.length, `page ${pageNo} row ${index} NAME cell is empty`).toBeGreaterThan(0);
+          // A name line plus a description line is the "described" shape; the
+          // name line on its own is the "undescribed" shape.
+          if (lines.length >= 2) described = true;
+          else undescribed = true;
+        });
+
+        if (described && undescribed) break;
+        if (pageNo < totalPages) {
+          await productsPage.goToNextPage();
+          await expect(productsPage.pageIndicator).toHaveText(new RegExp(`^${pageNo + 1} / \\d+$`));
+          await productsPage.waitForReady();
+        }
+      }
+
+      expect(described, 'no service in the catalogue renders a secondary description line').toBe(
+        true,
+      );
+      expect(undescribed, 'no service in the catalogue renders a name with no description').toBe(
+        true,
+      );
     },
   );
 
@@ -193,10 +225,20 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
 
       const pageSize = 30;
       const from = (lastPage - 1) * pageSize + 1;
+      // Other specs (TC-SVC-050) add a service mid-run, so the total can move
+      // between the first-page read and now. Take the last page's own footer as
+      // the truth: it must end at its total ("to N of N").
       await expect(productsPage.paginationFooter.first()).toHaveText(
-        new RegExp(`Showing ${from} to ${total} of ${total} results`, 'i'),
+        new RegExp(`Showing ${from} to (\\d+) of \\1 results`, 'i'),
       );
-      await expect(productsPage.table.rows).toHaveCount(total - from + 1);
+      const lastTotal = Number(
+        (await productsPage.paginationFooterText()).match(/of (\d+) results/i)?.[1],
+      );
+      expect(
+        Math.abs(lastTotal - total),
+        'total drifted by more than a stray add',
+      ).toBeLessThanOrEqual(2);
+      await expect(productsPage.table.rows).toHaveCount(lastTotal - from + 1);
       await expect(productsPage.nextPageButton).toBeDisabled();
       await expect(productsPage.previousPageButton).toBeEnabled();
 

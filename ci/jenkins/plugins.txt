@@ -9,6 +9,15 @@ htmlpublisher
 allure-jenkins-plugin
 ansicolor
 timestamper
+github
 
 # Không bắt buộc, nhưng đọc kết quả dễ hơn nhiều
 pipeline-stage-view
+
+# Config as Code: job + tool + email cấu hình bằng ci/jenkins/casc.yaml thay vì
+# bấm tay trên UI. job-dsl là backend cho block `jobs:` trong casc.yaml.
+configuration-as-code
+job-dsl
+
+# Gửi email kết quả build (step `mail` trong Jenkinsfile). SMTP khai báo ở casc.yaml.
+mailer

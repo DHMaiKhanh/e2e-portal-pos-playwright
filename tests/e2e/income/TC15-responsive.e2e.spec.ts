@@ -136,8 +136,19 @@ test.describe('Responsive — Income Reports', () => {
     'TC-INC-156 — at 1920×1080 the nav is left, the report middle and the detail rail right',
     { tag: [Tag.REGRESSION, Tag.SLOW] },
     async ({ incomePage, page }) => {
+      // Pin a data-bearing day so the INCOME DETAIL / PAYMENT DETAIL rail renders.
+      await incomePage.gotoWithQuery({ tab: IncomeTab.DAILY, date: DATA_BEARING_DATE });
       await applyViewport(page, INCOME_VIEWPORTS.desktop);
       await incomePage.waitForDataSettled();
+
+      // Data-gated: the detail rail this case measures is absent on a day the
+      // store has not traded — the rail shows "No income data for this day yet."
+      // instead of the INCOME DETAIL / PAYMENT DETAIL headings. Skip softly then.
+      const emptyIncome = await incomePage.incomeDetailEmptyState.count();
+      test.skip(
+        emptyIncome > 0,
+        'store has no income today; the detail rail is absent, nothing to position',
+      );
 
       const width = INCOME_VIEWPORTS.desktop.width;
 
@@ -204,8 +215,16 @@ test.describe('Responsive — Income Reports', () => {
     'TC-INC-157 — at 1280×800 every region is still present with no sideways scroll',
     { tag: [Tag.REGRESSION, Tag.SLOW] },
     async ({ incomePage, page }) => {
+      // Pin a data-bearing day so the INCOME DETAIL / PAYMENT DETAIL rail renders.
+      await incomePage.gotoWithQuery({ tab: IncomeTab.DAILY, date: DATA_BEARING_DATE });
       await incomePage.waitForDataSettled();
       await applyViewport(page, INCOME_VIEWPORTS.laptop);
+
+      // Data-gated: the "every region present" check includes the INCOME DETAIL /
+      // PAYMENT DETAIL rail, which is absent on a day the store has not traded
+      // (it shows "No income data for this day yet." instead). Skip softly then.
+      const emptyIncome = await incomePage.incomeDetailEmptyState.count();
+      test.skip(emptyIncome > 0, 'store has no income today; the detail rail region is absent');
 
       const width = INCOME_VIEWPORTS.laptop.width;
 
@@ -275,15 +294,21 @@ test.describe('Responsive — Income Reports', () => {
 
       const chartSurface = incomePage.chartRegion.or(incomePage.chartEmptyState);
       const dailyTable = incomePage.tableElement(INCOME_TABLE_ANCHORS.daily);
+      // The right rail shows its `INCOME DETAIL` / `PAYMENT DETAIL` breakdown, or
+      // its empty state on a day the store did not trade (today is not guaranteed
+      // to have figures); either way the region must still relayout in-bounds.
+      const incomeRail = incomePage.incomeDetailHeading.or(incomePage.incomeDetailEmptyState);
+      const paymentRail = incomePage.paymentDetailHeading.or(incomePage.paymentDetailEmptyState);
       const regions: ReadonlyArray<readonly [string, Locator]> = [
         ['tab strip', incomePage.tabList],
         ['date trigger', incomePage.dateTrigger],
         ['chart title', incomePage.chartTitle],
         ['chart surface', chartSurface],
         ['Order Details title', incomePage.orderDetailsTitle],
-        ['Order Details table', dailyTable],
-        ['INCOME DETAIL rail', incomePage.incomeDetailHeading],
-        ['PAYMENT DETAIL rail', incomePage.paymentDetailHeading],
+        // The table itself is excluded: once it is wider than the column it
+        // scrolls inside its own card, checked by the fit-or-scroll assertion below.
+        ['INCOME DETAIL rail', incomeRail],
+        ['PAYMENT DETAIL rail', paymentRail],
       ];
       for (const [what, locator] of regions) {
         await expect(locator, `${what} is not visible at 768px`).toBeVisible();
@@ -296,7 +321,7 @@ test.describe('Responsive — Income Reports', () => {
       // "Stacked sensibly" = whichever way the columns fold, the chart card and
       // the detail rail do not end up on top of each other.
       const chartBox = await boxOf(chartSurface, 'chart surface');
-      const railBox = await boxOf(incomePage.incomeDetailHeading, 'INCOME DETAIL rail');
+      const railBox = await boxOf(incomeRail, 'INCOME DETAIL rail');
       expect(overlaps(chartBox, railBox), 'the detail rail overlaps the chart at 768px').toBe(
         false,
       );
@@ -313,7 +338,7 @@ test.describe('Responsive — Income Reports', () => {
         `Order Details neither fits (${Math.round(tableBox.width)}px) nor scrolls in its own container`,
       ).toBe(true);
       await expect(
-        incomePage.orderDetailsTable.rows.first().or(incomePage.resultsFooter),
+        incomePage.orderDetailsTable.rows.first().or(incomePage.resultsFooter).first(),
       ).toBeVisible();
     },
   );
@@ -362,7 +387,6 @@ test.describe('Responsive — Income Reports', () => {
         ['chart title', incomePage.chartTitle],
         ['chart surface', incomePage.chartRegion.or(incomePage.chartEmptyState)],
         ['Order Details title', incomePage.orderDetailsTitle],
-        ['Order Details table', incomePage.tableElement(INCOME_TABLE_ANCHORS.daily)],
       ];
       for (const [what, locator] of reachable) {
         await expect(locator, `${what} is not visible at 390px`).toBeVisible();
@@ -371,6 +395,19 @@ test.describe('Responsive — Income Reports', () => {
           `${what} spills past 390px`,
         ).toBe(true);
       }
+
+      // The table's columns can't fit 390px; it must take the sideways scroll in
+      // its own container (the document never does — asserted above).
+      const dailyTable = incomePage.tableElement(INCOME_TABLE_ANCHORS.daily);
+      await expect(dailyTable, 'Order Details table is not visible at 390px').toBeVisible();
+      const tableBox = await boxOf(dailyTable, 'Order Details table');
+      const scrollsOwnContainer = await incomePage.tableScrollsHorizontally(
+        INCOME_TABLE_ANCHORS.daily,
+      );
+      expect(
+        scrollsOwnContainer || fitsHorizontally(tableBox, width),
+        `Order Details neither fits (${Math.round(tableBox.width)}px) nor scrolls in its own container`,
+      ).toBe(true);
       await expect(incomePage.dateTrigger).toBeEnabled();
     },
   );
@@ -396,10 +433,22 @@ test.describe('Responsive — Income Reports', () => {
       await incomePage.sidebar.toggle.click();
       const drawer = incomePage.sidebar.mobileDrawer;
       await expect(drawer).toBeVisible();
-      expect(
-        fitsHorizontally(await boxOf(drawer, 'nav drawer'), INCOME_VIEWPORTS.mobile.width),
-        'the drawer spills past 390px',
-      ).toBe(true);
+
+      // The sheet slides in from the left edge: its transform animates from
+      // translateX(-100%) to 0, so `toBeVisible` resolves (opacity/size are set)
+      // while x is still negative. A single boundingBox() taken on that frame
+      // reads as "spilling past the left" — the mid-animation state, not the
+      // resting drawer this case is about. Poll until the slide settles inside
+      // the viewport; this is why it "passes when watched" a beat later.
+      await expect
+        .poll(
+          async () => {
+            const box = await drawer.boundingBox();
+            return box ? fitsHorizontally(box, INCOME_VIEWPORTS.mobile.width) : false;
+          },
+          { timeout: Timeouts.MEDIUM, message: 'the drawer spills past 390px' },
+        )
+        .toBe(true);
 
       // "Đủ menu điều hướng": every sidebar destination is in the sheet, keyed
       // by href because `Settings` appears twice (store vs admin).
@@ -421,9 +470,13 @@ test.describe('Responsive — Income Reports', () => {
       await expect(drawer.locator('a[aria-current="page"]')).toHaveCount(1);
 
       // Closing by the same button: the open sheet is painted over its own
-      // trigger, so the click needs `force` — Escape is not a documented way
-      // out of this drawer and is deliberately not asserted either way.
-      await incomePage.sidebar.toggle.click({ force: true });
+      // trigger, and the sheet's own "FastboyPay home" link sits exactly where
+      // the trigger is — a positional `force` click lands on that link and
+      // navigates away instead of toggling. Dispatching the click on the trigger
+      // element itself fires its handler (openMobile → false) without hit-testing
+      // through the overlay. Escape is not a documented way out of this drawer and
+      // is deliberately not asserted either way.
+      await incomePage.sidebar.toggle.dispatchEvent('click');
       await expect(drawer).toBeHidden();
 
       // The report underneath survived the round trip.

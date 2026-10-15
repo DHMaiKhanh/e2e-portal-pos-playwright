@@ -7,7 +7,8 @@
  * Every UI test project reuses that snapshot via `storageState`, so you only run
  * this again when the session is missing or has expired.
  *
- *     npm run auth
+ *     npm run auth:stage    # → https://v2.dev-fastboypay.com
+ *     npm run auth:prod     # → https://v2.fastboypay.com
  */
 import { chromium } from '@playwright/test';
 import dotenv from 'dotenv';
@@ -16,8 +17,14 @@ import * as path from 'node:path';
 import * as readline from 'node:readline';
 
 // Mirror loadEnv.ts precedence: real OS env wins, then .env.<ENV>, then .env.example.
-const ENV = process.env.ENV ?? 'local';
+const ENV = process.env.ENV;
 const envDir = path.resolve('configs/env');
+if (!ENV || !fs.existsSync(path.join(envDir, `.env.${ENV}`))) {
+  console.error(
+    `\x1b[31mUnknown ENV "${ENV ?? ''}". Use:  npm run auth:stage  or  npm run auth:prod\x1b[0m`,
+  );
+  process.exit(1);
+}
 for (const file of [`.env.${ENV}`, '.env.example']) {
   const full = path.join(envDir, file);
   if (fs.existsSync(full)) dotenv.config({ path: full, override: false });
@@ -89,6 +96,21 @@ console.log(
       `(${saved.cookies?.length ?? 0} cookies, ${saved.origins?.length ?? 0} origins).`,
   ),
 );
+// Envs that point at the same Portal (e.g. local + stage → dev Portal) share one
+// login, so mirror the session to their STORAGE_STATE too. Otherwise picking a
+// different ENV in the runner silently reuses a stale, expired snapshot.
+for (const file of fs.readdirSync(envDir)) {
+  if (!/^\.env\.\w+$/.test(file) || file === `.env.${ENV}` || file === '.env.example') continue;
+  const other = dotenv.parse(fs.readFileSync(path.join(envDir, file)));
+  if (!other.BASE_URL || !other.STORAGE_STATE) continue;
+  if (new URL(other.BASE_URL).origin !== new URL(BASE_URL).origin) continue;
+  const otherPath = path.resolve(other.STORAGE_STATE);
+  if (otherPath === statePath) continue;
+  fs.mkdirSync(path.dirname(otherPath), { recursive: true });
+  fs.copyFileSync(statePath, otherPath);
+  console.log(green(`  Also copied to ${other.STORAGE_STATE} (${file.slice(5)} uses the same Portal).`));
+}
+
 console.log(green('  UI tests will now reuse it — run: npm test\n'));
 
 await context.close();

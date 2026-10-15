@@ -23,7 +23,7 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Customers', () 
       // `tab=customers` before the paging params:
       //   /pos/14/customers?tab=customers&page=1&orderCreatedAt=desc
       await expect(page).toHaveURL(
-        /\/pos\/\d+\/customers\?tab=customers&page=1&orderCreatedAt=desc/,
+        /\/pos\/nail\/\d+\/customers\?tab=customers&page=1&orderCreatedAt=desc/,
       );
       await expect(customersPage.pageTitle).toBeVisible();
       await expect(page.getByRole('table')).toBeVisible();

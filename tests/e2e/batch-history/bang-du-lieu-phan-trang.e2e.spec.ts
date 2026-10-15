@@ -97,8 +97,21 @@ test.describe('Bảng dữ liệu & phân trang — Batch History', () => {
         if (record.status === 'open') {
           expect(batchDate).toMatch(/not closed yet/i);
         } else {
-          const expected = new Date(record.batchDate as string).toLocaleDateString('en-US', {
-            timeZone: 'Asia/Ho_Chi_Minh',
+          // The ledger renders the close date in the STORE's own timezone and
+          // labels the offset inline, e.g. "Oct 8, 2026 (UTC-5)". That offset is
+          // the store's, not the browser's (the project runs in Asia/Ho_Chi_Minh),
+          // so derive the expected calendar date from the offset the cell actually
+          // shows rather than assuming a fixed zone — otherwise a timestamp near
+          // midnight UTC lands on the wrong day.
+          const offsetMatch = batchDate.match(/\(UTC([+-])(\d{1,2})(?::?(\d{2}))?\)/i);
+          expect(offsetMatch, `row ${index} BATCH DATE should carry a UTC offset`).not.toBeNull();
+          const sign = offsetMatch![1] === '-' ? -1 : 1;
+          const offsetHours = Number(offsetMatch![2]);
+          const offsetExtraMinutes = Number(offsetMatch![3] ?? '0');
+          const offsetMs = sign * (offsetHours * 60 + offsetExtraMinutes) * 60_000;
+          const shifted = new Date(new Date(record.batchDate as string).getTime() + offsetMs);
+          const expected = shifted.toLocaleDateString('en-US', {
+            timeZone: 'UTC',
             month: 'short',
             day: 'numeric',
             year: 'numeric',

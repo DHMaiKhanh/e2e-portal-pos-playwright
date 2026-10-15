@@ -6,7 +6,7 @@ import { Tag } from '@/types/testTags';
  *
  * Relies on the reused authenticated storageState (global.setup.ts) and the
  * default 1920x1080 desktop viewport from playwright.config. Store-scoped routes
- * are asserted by regex (/\/pos\/\d+\/overview/) — never a hardcoded store id.
+ * are asserted by regex (/\/pos\/nail\/\d+\/overview/) — never a hardcoded store id.
  */
 test.describe('Page Load & Layout — Overview', () => {
   test.beforeEach(async ({ dashboardPage }) => {
@@ -17,8 +17,9 @@ test.describe('Page Load & Layout — Overview', () => {
     'TC-OVW-001 — lands on the store-scoped /pos/<id>/overview route',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage, page }) => {
-      // URL is the store Overview with no bounce to /login.
-      await expect(page).toHaveURL(/\/pos\/\d+\/overview/);
+      // URL is the store Overview with no bounce to /login. The app injects a
+      // vertical segment: `/pos/nail/<id>/overview`.
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/overview/);
       await expect(page).not.toHaveURL(/\/login/);
       // Sidebar "Overview" entry proves the authenticated app shell rendered.
       await expect(dashboardPage.heading).toBeVisible();
@@ -56,10 +57,13 @@ test.describe('Page Load & Layout — Overview', () => {
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage, page }) => {
       await expect(dashboardPage.todaysSummarySection).toBeVisible();
-      // Metric labels are present (exact-text; "Sale" won't match "Gross Sale").
+      // Metric labels are present (exact-text per tile). The summary renders five
+      // metrics — Gross Sale was removed from this section.
       await expect(dashboardPage.metric('Total Payment')).toBeVisible();
       await expect(dashboardPage.metric('Total Order')).toBeVisible();
-      await expect(dashboardPage.metric('Gross Sale')).toBeVisible();
+      await expect(dashboardPage.metric('Sale')).toBeVisible();
+      await expect(dashboardPage.metric('Total Tip')).toBeVisible();
+      await expect(dashboardPage.metric('Appointments')).toBeVisible();
       // At least one currency value is rendered (format, not a fixed amount).
       await expect(page.getByText(/\$[\d,]+\.\d{2}/).first()).toBeVisible();
       // No metric shows a literal "undefined" placeholder value.

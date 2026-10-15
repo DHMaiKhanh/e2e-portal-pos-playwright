@@ -21,8 +21,15 @@ export interface AppEnv {
   /** Path to the persisted storageState (logged-in session) for UI projects. */
   STORAGE_STATE: string;
 
-  /** Store id the account operates on; routes are store-scoped: /pos/<id>/... */
+  /** Store id the account operates on; routes are store-scoped: /pos/<seg>/<id>/... */
   STORE_ID: string;
+
+  /**
+   * Product/vertical segment the Portal injects between `/pos/` and the store id,
+   * e.g. `/pos/nail/<id>/...`. Admin routes are `/pos/<seg>/admin/...`. Defaults
+   * to `nail` (the only vertical this deployment serves today).
+   */
+  POS_SEGMENT: string;
 
   LOG_LEVEL: 'debug' | 'info' | 'warn' | 'error';
 }
@@ -74,6 +81,8 @@ export const loadEnv = (): AppEnv => {
     STORAGE_STATE: process.env.STORAGE_STATE ?? 'src/data/dynamic/auth/admin.json',
 
     STORE_ID: process.env.STORE_ID ?? '14',
+
+    POS_SEGMENT: process.env.POS_SEGMENT ?? 'nail',
 
     LOG_LEVEL: (process.env.LOG_LEVEL as AppEnv['LOG_LEVEL']) ?? 'info',
   };

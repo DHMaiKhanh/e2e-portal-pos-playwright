@@ -21,10 +21,10 @@ test.describe('Tải trang & bố cục — Batch History', () => {
       await batchHistoryPage.waitForReady();
 
       await expect(page).not.toHaveURL(/\/login/);
-      await batchHistoryPage.expectUrlContains('/pos/\\d+/batch');
+      await batchHistoryPage.expectUrlContains('/pos/nail/\\d+/batch');
 
       await expect(batchHistoryPage.heading).toBeVisible();
-      await expect(batchHistoryPage.heading).toContainText(/Batch History/i);
+      await expect(batchHistoryPage.heading).toContainText(/Batches/i);
 
       await expect(batchHistoryPage.dateRangeButton).toBeVisible();
       await expect(batchHistoryPage.statusCombobox).toBeVisible();
@@ -75,7 +75,7 @@ test.describe('Tải trang & bố cục — Batch History', () => {
       // list never crosses the browser where page.route could delay it.
       await landOnShell(page, Urls.DASHBOARD);
       await delayDataResponses(page, 6000);
-      await clientSideNavigate(page, /^Batch History$/i);
+      await clientSideNavigate(page, /^Batches$/i);
 
       await test.step('Skeletons stand in for the ledger, layout intact', async () => {
         await expect(skeletons(page).first()).toBeVisible({ timeout: 15_000 });
@@ -124,7 +124,7 @@ test.describe('Tải trang & bố cục — Batch History', () => {
     async ({ page, batchHistoryPage }) => {
       await landOnShell(page, Urls.DASHBOARD);
       await failDataResponses(page, 500);
-      await clientSideNavigate(page, /^Batch History$/i);
+      await clientSideNavigate(page, /^Batches$/i);
 
       await test.step('A clear error replaces the table area', async () => {
         await expect(page.getByText(/error loading batches/i)).toBeVisible({ timeout: 30_000 });

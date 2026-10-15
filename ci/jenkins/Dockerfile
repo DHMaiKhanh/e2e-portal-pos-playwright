@@ -26,3 +26,9 @@ USER jenkins
 
 COPY plugins.txt /usr/share/jenkins/ref/plugins.txt
 RUN jenkins-plugin-cli --plugin-file /usr/share/jenkins/ref/plugins.txt
+
+# Config as Code. ĐẶT NGOÀI /var/jenkins_home: thư mục đó bị volume jenkins-data
+# mount đè lúc chạy, file COPY vào đấy sẽ biến mất. /var/jenkins_conf không bị
+# mount nên casc.yaml luôn còn. CASC_JENKINS_CONFIG trỏ plugin tới đây lúc boot.
+COPY casc.yaml /var/jenkins_conf/jenkins.yaml
+ENV CASC_JENKINS_CONFIG=/var/jenkins_conf/jenkins.yaml

@@ -27,6 +27,8 @@ npm run test:e2e         # tests/e2e
 npm run test:api         # api project (no browser)
 npm run test:headed      # headed browser
 npm run test:ui          # Playwright UI mode
+npm run gui              # Test Runner GUI: pick features, run, watch live (http://localhost:4782)
+npm run gui:shortcut     # add a "Portal POS Test Runner" desktop + Start Menu shortcut (Windows)
 npm run test:debug       # PWDEBUG inspector
 
 npm run test:stage       # ENV=stage

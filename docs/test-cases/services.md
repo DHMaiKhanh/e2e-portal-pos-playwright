@@ -335,3 +335,19 @@
 **Còn skip (1)**: TC-SVC-072 · role hạn chế — cần capture thêm storageState của tài khoản không có quyền quản lý dịch vụ.
 
 **Lưu ý dữ liệu**: Portal **không có nút xoá category/service**. TC-SVC-016 tạo category thật (prefix `E2E-CAT-`) và chỉ có thể dọn bằng cách set Inactive; mỗi lần chạy sẽ để lại 1 dòng inactive. Muốn sạch hẳn cần API delete.
+
+### 2026-10-13 10:11 (UTC+7)
+
+- Lệnh: `npx cross-env ENV=local playwright test tests/e2e` (full suite, headless, 8 workers)
+- Kết quả: 1 passed, 36 failed, 5 skipped (tổng 42)
+- Fail: toàn bộ 36 case fail cùng một nguyên nhân — session đăng nhập (`src/data/dynamic/auth/admin.json`) đã hết hạn (refreshToken expired 2026-08-28), mọi trang bị redirect về `/login`. Không phải lỗi test/locator. Cần `npm run auth` rồi chạy lại.
+- Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`
+
+### 2026-10-13 (UTC+7) — ENV=stage
+
+- Lệnh: `ENV=stage npm run test:report` (full suite, headless, 8 workers, `https://v2.dev-fastboypay.com`)
+- Kết quả: 41 passed, 0 failed, 1 skipped (tổng 42) — toàn suite 705 passed, 0 failed, 130 skipped
+- Đã sửa test (fail ở các lần chạy trước trong ngày, đều do test chứ không phải bug app):
+  - TC-SVC-022 · đọc footer trước khi refetch xong (race) → `expect.poll`
+  - TC-SVC-046 · tổng thay đổi 302→303 giữa chừng do TC-SVC-050 thêm service → lấy tổng từ footer trang cuối
+- Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`

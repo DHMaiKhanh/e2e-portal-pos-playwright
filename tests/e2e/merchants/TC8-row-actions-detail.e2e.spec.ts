@@ -46,7 +46,7 @@ test.describe('Hành động trên dòng & chi tiết merchant (Row actions / De
       const detail = await merchantsPage.openMerchantRow(0);
 
       // Same route, new param — not a separate page and not a dialog.
-      await expect(isolatedPage).toHaveURL(/\/pos\/merchants\?/);
+      await expect(isolatedPage).toHaveURL(/\/pos\/nail\/admin\/merchant\?/);
       await expect(isolatedPage).toHaveURL(new RegExp(`merchantId=%22${whmcsId}%22`));
       await expect(isolatedPage.getByRole('dialog')).toHaveCount(0);
 
@@ -158,13 +158,19 @@ test.describe('Hành động trên dòng & chi tiết merchant (Row actions / De
       // Scoped to the nav column on purpose: the detail view adds a store-scoped
       // link of its own ("Open in portal"), and sweeping the whole document would
       // read that as the sidebar having changed.
+      //
+      // Sidebar hrefs carry the vertical segment now, so a nav link is four
+      // segments — `/pos/<vertical>/<storeId>/<screen>` (e.g.
+      // `/pos/nail/undefined/overview`, `/pos/nail/admin/merchant`) — not three.
       const sidebarStoreLinks = async (): Promise<string[]> =>
         isolatedPage
           .locator('[data-slot="sidebar"] a[href^="/pos/"]')
           .evaluateAll((links) =>
             links
               .map((link) => link.getAttribute('href'))
-              .filter((href): href is string => !!href && /^\/pos\/[^/]+\/[a-z]+$/.test(href)),
+              .filter(
+                (href): href is string => !!href && /^\/pos\/[^/]+\/[^/]+\/[a-z]+$/.test(href),
+              ),
           );
 
       const before = await sidebarStoreLinks();
@@ -176,13 +182,14 @@ test.describe('Hành động trên dòng & chi tiết merchant (Row actions / De
       expect(after, 'the sidebar store context must not silently change').toEqual(before);
 
       // The context switch exists, but only as an explicit opt-out of the admin
-      // screen: "Open in portal" points at that merchant's own store route.
+      // screen: "Open in portal" points at that merchant's own store route. The
+      // href now carries the vertical segment too — `/pos/<vertical>/<whmcsId>/…`.
       await expect(detail.openInPortalLink).toHaveAttribute(
         'href',
-        new RegExp(`^/pos/${whmcsId}/`),
+        new RegExp(`^/pos/[^/]+/${whmcsId}/`),
       );
 
-      const brokenLinks = after.filter((href) => href?.startsWith('/pos/undefined/'));
+      const brokenLinks = after.filter((href) => href?.startsWith('/pos/nail/undefined/'));
       if (brokenLinks.length > 0) {
         test.info().annotations.push({
           type: 'defect',

@@ -58,7 +58,7 @@ test.describe('Bước 2 — `Business Information` — Onboarding', () => {
     'TC-ONB-059 — renders both blocks and all 10 controls',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ onboardingPage, page }) => {
-      await expect(page).toHaveURL(/\/pos\/onboarding/);
+      await expect(page).toHaveURL(/\/pos\/nail\/admin\/onboarding/);
       await expect(page).toHaveURL(/[?&]step=merchant-info/);
 
       await expect(onboardingPage.businessInformationHeading).toBeVisible();

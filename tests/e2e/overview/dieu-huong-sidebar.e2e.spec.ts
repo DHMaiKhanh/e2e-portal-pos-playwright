@@ -11,28 +11,28 @@ test.describe('Điều hướng Sidebar — Overview', () => {
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ page }) => {
       const expectedHrefs = [
-        // POS
-        /\/pos\/\d+\/overview$/,
-        /\/pos\/\d+\/orders$/,
-        /\/pos\/\d+\/payroll$/,
-        /\/pos\/\d+\/batch$/,
+        // POS — app chèn segment vertical `nail`: /pos/nail/<id>/…
+        /\/pos\/nail\/\d+\/overview$/,
+        /\/pos\/nail\/\d+\/orders$/,
+        /\/pos\/nail\/\d+\/payroll$/,
+        /\/pos\/nail\/\d+\/batch$/,
         // Management
-        /\/pos\/\d+\/staffs$/,
-        /\/pos\/\d+\/services$/,
-        /\/pos\/\d+\/customers$/,
+        /\/pos\/nail\/\d+\/staffs$/,
+        /\/pos\/nail\/\d+\/services$/,
+        /\/pos\/nail\/\d+\/customers$/,
         // customer-groups không còn là link sidebar — nó thành tab trên màn
         // Customers (/customers?tab=groups). URL cũ vẫn resolve nhưng chỉ dưới
         // dạng redirect sang tab đó.
-        /\/pos\/\d+\/income$/,
-        /\/pos\/\d+\/setting$/,
-        // Admin
-        /\/pos\/onboarding$/,
-        /\/pos\/merchants$/,
-        /\/pos\/admin\/orders$/,
-        /\/pos\/admin\/packages$/,
-        /\/pos\/admin\/devices$/,
-        /\/pos\/admin\/monitor$/,
-        /\/pos\/admin\/versions$/,
+        /\/pos\/nail\/\d+\/income$/,
+        /\/pos\/nail\/\d+\/setting$/,
+        // Admin — cũng mang segment `nail` và nằm dưới /pos/nail/admin/…
+        // ("System" và "Users & Roles" giờ là <button>, không còn link
+        // /admin/monitor, /admin/versions).
+        /\/pos\/nail\/admin\/onboarding$/,
+        /\/pos\/nail\/admin\/merchant$/,
+        /\/pos\/nail\/admin\/orders$/,
+        /\/pos\/nail\/admin\/packages$/,
+        /\/pos\/nail\/admin\/devices$/,
       ];
 
       const links = page.locator('body a[href]');
@@ -57,17 +57,17 @@ test.describe('Điều hướng Sidebar — Overview', () => {
     'TC-OVW-050 — điều hướng mọi link nhóm POS tới đúng route theo store',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage, page }) => {
-      await dashboardPage.sidebar.navigateToHref(/\/pos\/\d+\/orders$/);
-      await expect(page).toHaveURL(/\/pos\/\d+\/orders(\?.*)?$/);
+      await dashboardPage.sidebar.navigateToHref(/\/pos\/nail\/\d+\/orders$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/orders(\?.*)?$/);
 
-      await dashboardPage.sidebar.navigateToHref(/\/pos\/\d+\/payroll$/);
-      await expect(page).toHaveURL(/\/pos\/\d+\/payroll(\?.*)?$/);
+      await dashboardPage.sidebar.navigateToHref(/\/pos\/nail\/\d+\/payroll$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/payroll(\?.*)?$/);
 
-      await dashboardPage.sidebar.navigateToHref(/\/pos\/\d+\/batch$/);
-      await expect(page).toHaveURL(/\/pos\/\d+\/batch(\?.*)?$/);
+      await dashboardPage.sidebar.navigateToHref(/\/pos\/nail\/\d+\/batch$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/batch(\?.*)?$/);
 
-      await dashboardPage.sidebar.navigateToHref(/\/pos\/\d+\/overview$/);
-      await expect(page).toHaveURL(/\/pos\/\d+\/overview(\?.*)?$/);
+      await dashboardPage.sidebar.navigateToHref(/\/pos\/nail\/\d+\/overview$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/overview(\?.*)?$/);
       await expect(dashboardPage.heading).toBeVisible();
     },
   );
@@ -76,24 +76,24 @@ test.describe('Điều hướng Sidebar — Overview', () => {
     'TC-OVW-051 — điều hướng mọi link nhóm Management tới đúng route theo store',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage, page }) => {
-      await dashboardPage.sidebar.navigateToHref(/\/pos\/\d+\/staffs$/);
-      await expect(page).toHaveURL(/\/pos\/\d+\/staffs(\?.*)?$/);
+      await dashboardPage.sidebar.navigateToHref(/\/pos\/nail\/\d+\/staffs$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/staffs(\?.*)?$/);
 
       await dashboardPage.goto();
-      await dashboardPage.sidebar.navigateToHref(/\/pos\/\d+\/services$/);
-      await expect(page).toHaveURL(/\/pos\/\d+\/services(\?.*)?$/);
+      await dashboardPage.sidebar.navigateToHref(/\/pos\/nail\/\d+\/services$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/services(\?.*)?$/);
 
       await dashboardPage.goto();
-      await dashboardPage.sidebar.navigateToHref(/\/pos\/\d+\/customers$/);
-      await expect(page).toHaveURL(/\/pos\/\d+\/customers(\?.*)?$/);
+      await dashboardPage.sidebar.navigateToHref(/\/pos\/nail\/\d+\/customers$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/customers(\?.*)?$/);
 
       await dashboardPage.goto();
-      await dashboardPage.sidebar.navigateToHref(/\/pos\/\d+\/income$/);
-      await expect(page).toHaveURL(/\/pos\/\d+\/income(\?.*)?$/);
+      await dashboardPage.sidebar.navigateToHref(/\/pos\/nail\/\d+\/income$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/income(\?.*)?$/);
 
       await dashboardPage.goto();
-      await dashboardPage.sidebar.navigateToHref(/\/pos\/\d+\/setting$/);
-      await expect(page).toHaveURL(/\/pos\/\d+\/setting(\?.*)?$/);
+      await dashboardPage.sidebar.navigateToHref(/\/pos\/nail\/\d+\/setting$/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/setting(\?.*)?$/);
     },
   );
 

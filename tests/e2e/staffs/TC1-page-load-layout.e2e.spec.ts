@@ -13,7 +13,7 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Staffs', () => 
       await staffsPage.waitForReady();
       // Default sort param changed: the screen lands on `sort=pos_order`, it used
       // to be `orderCreatedAt=desc`.
-      await expect(page).toHaveURL(/\/pos\/\d+\/staffs\?page=1&status=active&sort=pos_order/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/staffs\?page=1&status=active&sort=pos_order/);
       await expect(staffsPage.pageTitle).toBeVisible();
       await expect(page.getByRole('table')).toBeVisible();
     },
@@ -24,9 +24,12 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Staffs', () => 
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage, staffsPage, page }) => {
       await dashboardPage.goto();
-      await dashboardPage.sidebar.navigateTo('Staffs');
-      await expect(page).toHaveURL(/\/pos\/\d+\/staffs/);
-      await expect(staffsPage.sidebar.item('Staffs')).toHaveAttribute('aria-current', 'page');
+      await dashboardPage.sidebar.navigateTo('Staff Members');
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/staffs/);
+      await expect(staffsPage.sidebar.item('Staff Members')).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
       await expect(staffsPage.pageTitle).toBeVisible();
     },
   );

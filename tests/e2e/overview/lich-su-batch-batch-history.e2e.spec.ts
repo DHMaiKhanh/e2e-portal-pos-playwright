@@ -38,7 +38,7 @@ test.describe('Lịch sử Batch (Batch History) — Overview', () => {
     async ({ dashboardPage, page }) => {
       await expect(dashboardPage.batchViewAllLink).toBeVisible();
       await dashboardPage.batchViewAllLink.click();
-      await expect(page).toHaveURL(/\/pos\/\d+\/batch/);
+      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/batch/);
     },
   );
 });
