@@ -8,6 +8,7 @@ import { CustomersPage } from '@pages/customers/CustomersPage';
 import { CustomerDetailPage } from '@pages/customers/CustomerDetailPage';
 import { IncomePage } from '@pages/income/IncomePage';
 import { SettingsPage } from '@pages/settings/SettingsPage';
+import { CheckoutSettingPage } from '@pages/settings/CheckoutSettingPage';
 import { PayrollPage } from '@pages/payroll/PayrollPage';
 import { BatchHistoryPage } from '@pages/batch/BatchHistoryPage';
 import { StaffsPage } from '@pages/staffs/StaffsPage';
@@ -29,6 +30,8 @@ export interface PagesFixture {
   customerDetailPage: CustomerDetailPage;
   incomePage: IncomePage;
   settingsPage: SettingsPage;
+  /** Checkout setting card (Payment & Transactions). Call `.mockSettingWrites()` before `goto()`. */
+  checkoutSettingPage: CheckoutSettingPage;
   payrollPage: PayrollPage;
   batchHistoryPage: BatchHistoryPage;
   staffsPage: StaffsPage;
@@ -69,6 +72,9 @@ export const pagesFixture = base.extend<PagesFixture>({
   },
   settingsPage: async ({ page }, use) => {
     await use(new SettingsPage(page));
+  },
+  checkoutSettingPage: async ({ page }, use) => {
+    await use(new CheckoutSettingPage(page));
   },
   payrollPage: async ({ page }, use) => {
     await use(new PayrollPage(page));

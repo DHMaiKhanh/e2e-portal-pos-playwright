@@ -30,6 +30,7 @@ export const Urls = {
   CUSTOMERS: `${posStoreBase}/customers`,
   INCOME: `${posStoreBase}/income`,
   SETTINGS: `${posStoreBase}/setting`,
+  SETTINGS_PAYMENT_TRANSACTIONS: `${posStoreBase}/setting?tab=payment-transactions`,
   PAYROLL: `${posStoreBase}/payroll`,
   BATCH_HISTORY: `${posStoreBase}/batch`,
   STAFFS: `${posStoreBase}/staffs`,
