@@ -7,6 +7,7 @@ export * from './products/ProductsPage';
 export * from './customers/CustomersPage';
 export * from './income/IncomePage';
 export * from './settings/SettingsPage';
+export * from './settings/CheckoutSettingPage';
 export * from './payroll/PayrollPage';
 export * from './merchants/MerchantsPage';
 export * from './onboarding/OnboardingPage';
