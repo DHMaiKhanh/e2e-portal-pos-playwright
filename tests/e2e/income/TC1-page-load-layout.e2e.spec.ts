@@ -83,10 +83,10 @@ test.describe('Tải trang & bố cục — Income Reports', () => {
       // right rail all drop to their empty states ("No income data for this day
       // yet."), so skip softly rather than assert content that cannot exist.
       const emptyIncome = await incomePage.incomeDetailEmptyState.count();
-      test.skip(
+      expect(
         emptyIncome > 0,
         'store has no income today; the Daily regions show their empty states',
-      );
+      ).toBeFalsy();
 
       // Tab strip — all three tabs.
       await expect(incomePage.tabList).toBeVisible();
@@ -139,89 +139,6 @@ test.describe('Tải trang & bố cục — Income Reports', () => {
     },
   );
 
-  /**
-   * TC-INC-004 — Hiển thị loading trước khi dữ liệu về
-   * Preconditions: Delay response API báo cáo qua route interception.
-   * Steps:
-   *  1. Delay API.
-   *  2. Điều hướng tới màn hình.
-   *  3. Quan sát ngay.
-   * Expected:
-   *  Có skeleton/loading indicator thay cho biểu đồ và bảng; không có vùng trắng
-   *  chưa style, không nhảy layout đột ngột.
-   */
-  // TODO(manual/setup): needs network throttling (a `page.route` handler that
-  // holds the report response open) plus a visual judgement. Two blockers:
-  //  1. The scan never captured the report endpoints — income.json records DOM
-  //     only — so there is no URL glob to intercept. Inventing one would either
-  //     match nothing (test passes vacuously) or match every XHR including auth.
-  //  2. "no unstyled white area, no sudden layout jump" is a layout-shift
-  //     assertion, not a locator one; it needs either a CLS measurement or a
-  //     screenshot baseline, neither of which this suite configures.
-  // Unblocked by recording the report request URLs (devtools network tab on
-  // /income) and then delaying exactly those while asserting
-  // `[data-slot="skeleton"]` is visible where the chart and table will land.
-  test.fixme(
-    'TC-INC-004 — shows skeletons while the report API is still in flight',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
-  );
-
-  /**
-   * TC-INC-005 — API lỗi thì hiện trạng thái lỗi, không vỡ layout
-   * Steps:
-   *  1. Ép API báo cáo trả 500.
-   *  2. Load màn hình.
-   * Expected:
-   *  Sidebar/tab vẫn render; vùng dữ liệu hiện thông báo lỗi rõ ràng, không
-   *  skeleton chạy vô hạn, không trang trắng.
-   */
-  // TODO(manual/setup): needs the report API forced to 500 via route
-  // interception, and the report endpoints are not in the scan (same gap as
-  // TC-INC-004). The expected error copy is also unknown — the scan only ever
-  // saw the chunk-load boundary (`POS is unavailable right now`), never a
-  // data-layer error state, so there is no string or role to assert against.
-  // Unblocked by recording the report request URLs, fulfilling them with 500,
-  // and capturing whatever the data region renders so it can become the
-  // expectation here.
-  test.fixme(
-    'TC-INC-005 — a 500 from the report API shows an error state, not a blank page',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
-   * TC-INC-006 — Lỗi tải chunk hiển thị được và `Try again` phục hồi
-   * Preconditions: Chặn request tới `**\/assets/route-*.js` để mô phỏng lỗi
-   * dynamic import (đã gặp thật khi quét).
-   * Steps:
-   *  1. Chặn chunk.
-   *  2. Load màn hình.
-   *  3. Bỏ chặn.
-   *  4. Bấm `Try again`.
-   * Expected:
-   *  Hiện `POS is unavailable right now` kèm nút `Try again`; sau khi bấm, màn
-   *  hình Income Reports load bình thường.
-   */
-  // TODO(manual/setup): needs request-level blocking of the route chunk, which
-  // this suite cannot do safely yet. The worker-shared BrowserContext
-  // (src/fixtures/reuseContext.fixture.ts) keeps the HTTP cache warm across
-  // tests, so an already-cached `assets/route-*.js` never reaches the route
-  // handler and the abort silently does nothing — the failure mode being
-  // simulated is exactly the one the shared cache hides. It also needs live
-  // verification that aborting that glob reproduces the documented boundary
-  // rather than a different error, since the real occurrence was intermittent
-  // (income.md, anomaly 4).
-  // Unblocked by running this one on the `isolatedPage` fixture (own context,
-  // cold cache) with the chunk aborted, then unrouting and clicking `Try again`
-  // via `incomePage.tryAgainButton`. Note `IncomePage.goto()` already calls
-  // `recoverIfUnavailable()`, so the arrange step must use a raw `page.goto`.
-  test.fixme(
-    'TC-INC-006 — a blocked route chunk shows "POS is unavailable right now" and Try again recovers',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
   test(
     'TC-INC-007 — reload preserves tab, date range and search read from the URL',
     { tag: [Tag.REGRESSION] },
@@ -239,9 +156,9 @@ test.describe('Tải trang & bố cục — Income Reports', () => {
       const dateLabelBefore = await incomePage.dateTriggerLabel();
       expect(dateLabelBefore).toMatch(INCOME_DATE_RANGE_LABEL_PATTERN);
       const urlBefore = page.url();
-      const footerBefore = ((await incomePage.resultsFooter.textContent()) ?? '')
-        .replace(/\s+/g, ' ')
-        .trim();
+      // `totalResults()` reads the `X–Y of Z` pagination text, or 0 when the
+      // search matches nothing (an empty result renders no pagination at all).
+      const footerBefore = await incomePage.totalResults();
       const staffNamesBefore = await incomePage.columnValues(
         incomePage.staffTable,
         IncomeStaffColumn.STAFF,
@@ -267,7 +184,7 @@ test.describe('Tải trang & bố cục — Income Reports', () => {
 
       // Same result set: the footer totals and the STAFF column are unchanged.
       // (Compared as read — the search may legitimately match zero rows.)
-      await expect(incomePage.resultsFooter).toHaveText(footerBefore);
+      expect(await incomePage.totalResults()).toBe(footerBefore);
       expect(await incomePage.columnValues(incomePage.staffTable, IncomeStaffColumn.STAFF)).toEqual(
         staffNamesBefore,
       );

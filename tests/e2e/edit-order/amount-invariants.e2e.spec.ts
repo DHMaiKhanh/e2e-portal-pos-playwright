@@ -22,7 +22,7 @@ test.describe('Rule tiền (bất biến) — Edit Order', () => {
       });
       if (!hasTip) {
         const opened = await orderDetailPage.openOrderWithStatus('Successful - Unsettled');
-        test.skip(!opened, 'no DEV order with status Successful - Unsettled');
+        expect(!opened, 'no DEV order with status Successful - Unsettled').toBeFalsy();
       }
 
       await orderDetailPage.openEditServiceDialog();
@@ -69,48 +69,4 @@ test.describe('Rule tiền (bất biến) — Edit Order', () => {
       await orderDetailPage.closeEditServiceDialog();
     },
   );
-
-  /**
-   * Steps:
-   *   1. Ghi Subtotal/Discount/Tax/Tip/Total trước khi edit
-   *   2. đổi staff + tên + tip
-   *   3. lưu
-   * Expected: các giá trị giống hệt
-   */
-  test.fixme('TC-EO-055 — Tổng order trước = sau', { tag: [Tag.REGRESSION] }, async () => {
-    // TODO(manual/setup): needs `Confirm update` on a real order (persisted mutation) — forbidden on
-    // live DEV data; requires a disposable seeded order to compare Order summary before/after.
-  });
-
-  /**
-   * Steps:
-   *   1. Sau khi lưu
-   * Expected: Payment details giữ đúng số payment cũ. Activity log tab `Tender` không có bản ghi mới
-   */
-  test.fixme('TC-EO-056 — Không phát sinh transaction mới', { tag: [Tag.REGRESSION] }, async () => {
-    // TODO(manual/setup): needs `Confirm update` (persisted save) on a seeded order, then verify
-    // Payment details + Activity log `Tender` tab — cannot mutate live DEV orders.
-  });
-
-  /**
-   * Steps:
-   *   1. Gọi `PUT /orders/{id}/items` với payload chứa amount/fee/discount/tip/payment
-   * Expected: API trả lỗi 4xx, dữ liệu không đổi
-   */
-  test.fixme('TC-EO-057 — API chặn field tiền', { tag: [Tag.REGRESSION] }, async () => {
-    // TODO(manual/setup): API-level negative test — needs an authenticated API client and a
-    // disposable seeded order; a mis-validated BE would mutate live DEV data.
-  });
-
-  /**
-   * Steps:
-   *   1. Order có discount dòng (vd "-$10.00 off discount")
-   *   2. đổi staff/tên
-   *   3. lưu
-   * Expected: discount và giá sau giảm giữ nguyên
-   */
-  test.fixme('TC-EO-058 — Order có discount', { tag: [Tag.REGRESSION] }, async () => {
-    // TODO(manual/setup): needs a seeded order with a line discount and `Confirm update` to verify
-    // persistence — cannot be done read-only against live DEV data.
-  });
 });

@@ -17,10 +17,12 @@ const INTERNAL_ITEMS = [
   { label: 'Packages', href: '/pos/nail/admin/packages' },
   { label: 'All Orders', href: '/pos/nail/admin/orders' },
   { label: 'Devices', href: '/pos/nail/admin/devices' },
+  // VP-4569 (verified 2026-10-20): "Users & Roles" is a plain link again.
+  { label: 'Users & Roles', href: '/pos/nail/admin/users/employees' },
 ] as const;
 
-/** Internal-group entries that are now buttons (submenu triggers), not links. */
-const INTERNAL_BUTTONS = ['System', 'Users & Roles'] as const;
+/** Internal-group entries that are buttons (submenu triggers), not links (2026-10-20). */
+const INTERNAL_BUTTONS = ['System', 'Report Configuration V4'] as const;
 
 test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
   /**
@@ -36,6 +38,11 @@ test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage, merchantsPage, page }) => {
       await dashboardPage.goto();
+      // The Internal group renders after the store groups — wait for its link
+      // before scanning hrefs (navigateToHref does not wait).
+      await expect(page.locator('a[href="/pos/nail/admin/merchant"]').first()).toBeAttached({
+        timeout: 20_000,
+      });
       await merchantsPage.sidebar.navigateToHref(/^\/pos\/nail\/admin\/merchant$/);
 
       await expect(page).toHaveURL(/\/pos\/nail\/admin\/merchant/);
@@ -64,7 +71,8 @@ test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
 
       const merchantsLink = page.locator('a[href="/pos/nail/admin/merchant"]').first();
       await expect(merchantsLink).toHaveAttribute('aria-current', 'page');
-      await expect(merchantsLink).toHaveAttribute('data-active', 'true');
+      // VP-4569 nav items mark the active entry with `data-on="true"`.
+      await expect(merchantsLink).toHaveAttribute('data-on', 'true');
 
       for (const item of INTERNAL_ITEMS.filter((i) => i.href !== '/pos/nail/admin/merchant')) {
         const link = page.locator(`a[href="${item.href}"]`).first();
@@ -92,8 +100,13 @@ test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
       await merchantsPage.goto();
       await merchantsPage.waitForReady();
 
-      for (const group of ['Operations', 'Management', 'Internal']) {
-        await expect(page.getByText(group, { exact: true }).first()).toBeVisible();
+      // VP-4569 (verified 2026-10-20): on an admin route the sidebar only
+      // renders the "Internal" group (a collapsible button); the store-scoped
+      // Operations / Management groups are no longer shown here.
+      const nav = page.getByRole('navigation', { name: 'Main' });
+      await expect(nav.getByRole('button', { name: 'Internal', exact: true })).toBeVisible();
+      for (const group of ['Operations', 'Management']) {
+        await expect(nav.getByText(group, { exact: true })).toHaveCount(0);
       }
 
       for (const item of INTERNAL_ITEMS) {
@@ -142,7 +155,7 @@ test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
       await expect(merchantsPage.table.rows).toHaveCount(rowsBefore);
       // No state carried over from Packages: filters back at their defaults.
       await expect(merchantsPage.searchInput).toHaveValue('');
-      await expect(merchantsPage.statusFilter).toHaveText(/all statuses/i);
+      await expect(merchantsPage.statusFilter).toHaveAccessibleName('Filter by status');
       expect(pageErrors).toEqual([]);
     },
   );
@@ -179,7 +192,9 @@ test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
       await page.goForward();
       await expect(page).toHaveURL(/\/pos\/nail\/admin\/devices/);
       // Not a blank page: the shell is still mounted after the history moves.
-      await expect(page.locator('[data-sidebar="menu-button"]').first()).toBeVisible();
+      await expect(
+        page.getByRole('navigation', { name: 'Main' }).getByRole('link').first(),
+      ).toBeVisible();
       expect(pageErrors).toEqual([]);
     },
   );
@@ -201,19 +216,37 @@ test.describe('Điều hướng & sidebar (Navigation) — Merchants', () => {
    * "no toggle to press at desktop, layout intact", and the drawer behaviour is
    * covered where it actually exists, at 375px.
    */
+  // Updated 2026-10-20 for VP-4569: the desktop column now HAS a "Collapse
+  // sidebar" button (collapses to a 56px icon rail, persisted in localStorage
+  // `pos-sidebar-collapsed`), so the case asserts collapse → active item kept →
+  // expand (restoring the shared context), then the mobile drawer at 375px.
   test(
-    'TC-MCH-015 — no desktop sidebar toggle; the mobile drawer opens at 375px',
+    'TC-MCH-015 — the desktop sidebar collapses/expands keeping the active item; the mobile drawer opens at 375px',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ merchantsPage, page }) => {
       await merchantsPage.goto();
       await merchantsPage.waitForReady();
 
-      await expect(merchantsPage.sidebar.toggle).toBeHidden();
+      const merchantsLink = page.locator('a[href="/pos/nail/admin/merchant"]').first();
+      const collapse = page.getByRole('button', { name: 'Collapse sidebar' });
+      const expand = page.getByRole('button', { name: /expand sidebar/i });
       await expect(merchantsPage.sidebar.panel).toBeVisible();
-      await expect(page.locator('a[href="/pos/nail/admin/merchant"]').first()).toHaveAttribute(
-        'aria-current',
-        'page',
-      );
+      await expect(merchantsLink).toHaveAttribute('aria-current', 'page');
+
+      await expect(collapse).toBeVisible();
+      await collapse.click();
+      try {
+        await expect
+          .poll(async () => (await merchantsPage.sidebar.panel.boundingBox())?.width ?? 0)
+          .toBeLessThan(100);
+        await expect(merchantsLink).toHaveAttribute('aria-current', 'page');
+        // The content still renders in full beside the rail.
+        await expect(merchantsPage.table.rows.first()).toBeVisible();
+      } finally {
+        // Collapsed state is persisted per browser — always restore it.
+        if (await expand.isVisible()) await expand.click();
+      }
+      await expect(collapse).toBeVisible();
 
       await page.setViewportSize({ width: 375, height: 812 });
       await expect(merchantsPage.sidebar.toggle).toBeVisible();

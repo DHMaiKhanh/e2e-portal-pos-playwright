@@ -10,85 +10,90 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --bg: #0d1117; --panel: #151b24; --panel-2: #1b2330; --border: #263041; --hover: #202a39;
-    --text: #e6edf3; --muted: #8b98a9; --faint: #5d6b7e;
-    --accent: #6d5efc; --accent-2: #8f84ff; --accent-soft: rgba(109,94,252,.16);
+    /* cool slate ground, teal-biased neutrals — a console, not GitHub-dark */
+    --bg: #0b1014; --panel: #121a20; --panel-2: #18232b; --border: #24323c; --hover: #1d2a33;
+    --text: #e9f0f4; --muted: #93a4b1; --faint: #607180;
+    --accent: #6366f1; --accent-2: #818cff; --accent-soft: rgba(99,102,241,.16);
     --pass: #2fbf71; --pass-soft: rgba(47,191,113,.14);
     --fail: #f0525e; --fail-soft: rgba(240,82,94,.14);
     --flaky: #f5a524; --flaky-soft: rgba(245,165,36,.14);
-    --skip: #7d8796; --skip-soft: rgba(125,135,150,.16);
-    --run: #3ea6ff; --run-soft: rgba(62,166,255,.14);
-    --shadow: 0 8px 30px rgba(0,0,0,.35);
-    --radius: 12px;
+    --skip: #7d8796; --skip-soft: rgba(125,135,150,.15);
+    --run: #22c3e6; --run-soft: rgba(34,195,230,.15);
+    --shadow: 0 10px 34px rgba(0,0,0,.42);
+    --shadow-soft: 0 4px 16px rgba(0,0,0,.26);
+    --radius: 14px;
     color-scheme: dark;
   }
   :root[data-theme="light"] {
-    --bg: #f4f6fb; --panel: #ffffff; --panel-2: #f7f8fc; --border: #e3e7ef; --hover: #eef1f8;
-    --text: #18202c; --muted: #5d6a7d; --faint: #9aa5b5;
-    --accent: #5b4bf5; --accent-2: #4a3be0; --accent-soft: rgba(91,75,245,.10);
-    --pass: #13995a; --pass-soft: rgba(19,153,90,.10);
+    --bg: #eceff4; --panel: #ffffff; --panel-2: #f4f7fa; --border: #dbe3ea; --hover: #eef2f7;
+    --text: #0f1a22; --muted: #566675; --faint: #8795a3;
+    --accent: #4f52e0; --accent-2: #3f43d6; --accent-soft: rgba(79,82,224,.10);
+    --pass: #159a5a; --pass-soft: rgba(21,154,90,.12);
     --fail: #d93745; --fail-soft: rgba(217,55,69,.10);
-    --flaky: #c27c00; --flaky-soft: rgba(194,124,0,.12);
-    --skip: #6f7887; --skip-soft: rgba(111,120,135,.12);
-    --run: #1677d2; --run-soft: rgba(22,119,210,.10);
-    --shadow: 0 8px 30px rgba(20,30,60,.10);
+    --flaky: #bd7a00; --flaky-soft: rgba(189,122,0,.12);
+    --skip: #6c7784; --skip-soft: rgba(108,119,132,.12);
+    --run: #0e97b8; --run-soft: rgba(14,151,184,.12);
+    --shadow: 0 12px 34px rgba(24,38,56,.12);
+    --shadow-soft: 0 3px 12px rgba(24,38,56,.08);
     color-scheme: light;
   }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
-  body { background: var(--bg); color: var(--text); font: 14px/1.45 Inter, system-ui, sans-serif; overflow: hidden; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; -webkit-font-smoothing: antialiased; }
   button, input, select { font: inherit; color: inherit; }
-  .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace; }
+  .eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--faint); }
 
   /* ---------- top bar ---------- */
-  header { height: 60px; display: flex; align-items: center; gap: 14px; padding: 0 18px; background: var(--panel); border-bottom: 1px solid var(--border); }
-  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; white-space: nowrap; }
-  .logo { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: linear-gradient(135deg, var(--accent), #b04bf5); color: #fff; }
-  .brand small { display: block; font-weight: 500; font-size: 11px; color: var(--muted); }
+  header { height: 62px; display: flex; align-items: center; gap: 14px; padding: 0 20px; background: var(--panel); border-bottom: 1px solid var(--border); }
+  .brand { display: flex; align-items: center; gap: 11px; font-weight: 700; font-size: 15px; white-space: nowrap; letter-spacing: -.01em; }
+  .logo { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: linear-gradient(140deg, var(--accent), #9b5cf6); color: #fff; box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 42%, transparent); }
+  .brand small { display: block; font-weight: 500; font-size: 11px; color: var(--muted); letter-spacing: 0; }
   .spacer { flex: 1; }
-  .btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid var(--border); background: var(--panel-2); cursor: pointer; font-weight: 500; white-space: nowrap; transition: background .15s, border-color .15s, transform .05s; }
+  .btn { display: inline-flex; align-items: center; gap: 7px; height: 38px; padding: 0 15px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel-2); cursor: pointer; font-weight: 600; white-space: nowrap; transition: background .14s, border-color .14s, transform .05s, box-shadow .14s; }
   .btn:hover { background: var(--hover); }
   .btn:active { transform: translateY(1px); }
   .btn:disabled { opacity: .45; cursor: not-allowed; }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; box-shadow: 0 6px 16px color-mix(in srgb, var(--accent) 36%, transparent); }
   .btn.primary:hover { background: var(--accent-2); }
   .btn.danger { background: var(--fail); border-color: var(--fail); color: #fff; }
-  .btn.ghost { background: transparent; border-color: transparent; }
-  .btn.ghost:hover { background: var(--hover); }
-  .btn.sm { height: 28px; padding: 0 10px; font-size: 12.5px; border-radius: 7px; }
-  .btn.icon { width: 36px; padding: 0; justify-content: center; }
-  .btn .kbd { font-size: 11px; opacity: .7; }
-  .select { height: 36px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border); background: var(--panel-2); }
-  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--panel-2); border: 1px solid var(--border); white-space: nowrap; }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
+  .btn.ghost:hover { background: var(--hover); color: var(--text); }
+  .btn.sm { height: 30px; padding: 0 11px; font-size: 12.5px; border-radius: 8px; }
+  .btn.icon { width: 38px; padding: 0; justify-content: center; }
+  .btn.big { height: 46px; padding: 0 22px; font-size: 15px; border-radius: 12px; }
+  .btn .kbd { font-size: 10.5px; opacity: .72; font-weight: 500; padding: 1px 5px; border: 1px solid currentColor; border-radius: 5px; }
+  .select { height: 38px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel-2); font-weight: 600; font-size: 12.5px; cursor: pointer; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 999px; font-size: 12.5px; font-weight: 600; background: var(--panel-2); border: 1px solid var(--border); white-space: nowrap; }
   .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--skip); }
   .pill.running .dot { background: var(--run); animation: pulse 1.2s infinite; }
   .pill.passed .dot { background: var(--pass); } .pill.failed .dot { background: var(--fail); } .pill.stopped .dot { background: var(--flaky); }
   @keyframes pulse { 50% { opacity: .3; } }
-  .est { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+  .est { color: var(--muted); font-size: 12.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
   /* ---------- layout ---------- */
-  .layout { display: grid; grid-template-columns: 400px 1fr; height: calc(100% - 60px); }
+  .layout { display: grid; grid-template-columns: 410px 1fr; height: calc(100% - 62px); }
   .layout > * { min-width: 0; }
   aside { border-right: 1px solid var(--border); background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
   main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 
   /* ---------- sidebar ---------- */
-  .side-head { padding: 14px 14px 10px; display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--border); }
+  .side-head { padding: 14px 14px 12px; display: flex; flex-direction: column; gap: 11px; border-bottom: 1px solid var(--border); }
   .search { position: relative; }
-  .search input { width: 100%; height: 38px; border-radius: 9px; border: 1px solid var(--border); background: var(--panel-2); padding: 0 12px 0 34px; outline: none; }
+  .search input { width: 100%; height: 38px; border-radius: 10px; border: 1px solid var(--border); background: var(--panel-2); padding: 0 12px 0 35px; outline: none; }
   .search input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-  .search svg { position: absolute; left: 11px; top: 11px; color: var(--muted); }
+  .search svg { position: absolute; left: 11px; top: 11px; color: var(--faint); }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; }
-  .chip { height: 26px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--border); background: transparent; font-size: 12px; cursor: pointer; color: var(--muted); }
+  .chip { height: 27px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--border); background: transparent; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--muted); }
   .chip:hover { color: var(--text); }
   .chip.on { background: var(--accent-soft); border-color: var(--accent); color: var(--text); }
-  .chip.st-failed.on { background: var(--fail-soft); border-color: var(--fail); }
+  .chip.st-failed.on { background: var(--fail-soft); border-color: var(--fail); color: var(--fail); }
   .toolbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
-  .sel-info { font-size: 12.5px; color: var(--muted); margin-left: auto; }
+  .sel-info { font-size: 12.5px; color: var(--muted); margin-left: auto; font-variant-numeric: tabular-nums; }
   .sel-info b { color: var(--text); }
   .tree { flex: 1; overflow: auto; padding: 6px 6px 20px; }
-  .group-h { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--faint); padding: 12px 10px 6px; text-transform: uppercase; }
-  .row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; cursor: pointer; user-select: none; position: relative; }
+  .group-h { font-size: 10.5px; font-weight: 700; letter-spacing: .12em; color: var(--faint); padding: 14px 10px 6px; text-transform: uppercase; }
+  .row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 9px; cursor: pointer; user-select: none; position: relative; }
   .row:hover { background: var(--hover); }
   .row:hover .row-run { opacity: 1; }
   .row.feature { font-weight: 600; padding: 8px; }
@@ -97,49 +102,50 @@
   .row.test.sel { color: var(--text); }
   .row .title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .row.test .title { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .chev { width: 16px; height: 16px; flex: none; color: var(--muted); transition: transform .15s; }
+  .chev { width: 16px; height: 16px; flex: none; color: var(--faint); transition: transform .15s; }
   .open > .chev { transform: rotate(90deg); }
   .cb { appearance: none; width: 17px; height: 17px; flex: none; border-radius: 5px; border: 1.5px solid var(--faint); background: transparent; cursor: pointer; display: grid; place-items: center; margin: 0; }
   .cb:checked, .cb:indeterminate { background: var(--accent); border-color: var(--accent); }
   .cb:checked::after { content: ""; width: 9px; height: 5px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
   .cb:indeterminate::after { content: ""; width: 8px; height: 2px; background: #fff; border-radius: 1px; }
-  .count { font-size: 11.5px; color: var(--muted); font-weight: 500; background: var(--panel-2); border: 1px solid var(--border); padding: 1px 7px; border-radius: 999px; white-space: nowrap; }
-  .mini { display: inline-flex; gap: 4px; font-size: 11px; font-weight: 600; }
+  .count { font-size: 11.5px; color: var(--muted); font-weight: 600; background: var(--panel-2); border: 1px solid var(--border); padding: 1px 8px; border-radius: 999px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .mini { display: inline-flex; gap: 5px; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; }
   .mini .f { color: var(--fail); } .mini .p { color: var(--pass); }
-  .row-run { opacity: 0; width: 24px; height: 24px; border-radius: 6px; border: 0; background: var(--accent-soft); color: var(--accent-2); display: grid; place-items: center; cursor: pointer; flex: none; }
+  .row-run { opacity: 0; width: 24px; height: 24px; border-radius: 7px; border: 0; background: var(--accent-soft); color: var(--accent-2); display: grid; place-items: center; cursor: pointer; flex: none; }
   :root[data-theme="light"] .row-run { color: var(--accent); }
   .row-run:hover { background: var(--accent); color: #fff; }
-  .tag { font-size: 10.5px; padding: 0 6px; border-radius: 4px; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+  .tag { font-size: 10.5px; padding: 0 6px; border-radius: 5px; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; font-family: "JetBrains Mono", ui-monospace, monospace; }
   .s-ico { width: 16px; height: 16px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 800; color: #fff; }
   .s-ico.passed { background: var(--pass); } .s-ico.failed { background: var(--fail); } .s-ico.flaky { background: var(--flaky); }
   .s-ico.skipped { background: var(--skip); } .s-ico.none { background: transparent; border: 1.5px dashed var(--faint); }
   .s-ico.running, .s-ico.retrying { border: 2px solid var(--run); border-top-color: transparent; animation: spin .8s linear infinite; }
   .s-ico.queued { background: transparent; border: 2px solid var(--run-soft); }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .empty { padding: 30px 20px; text-align: center; color: var(--muted); }
+  .empty { padding: 30px 20px; text-align: center; color: var(--muted); line-height: 1.6; }
 
   /* ---------- tabs ---------- */
   .tabs { display: flex; gap: 2px; padding: 0 18px; border-bottom: 1px solid var(--border); background: var(--panel); }
-  .tab { padding: 13px 14px; border: 0; background: none; cursor: pointer; color: var(--muted); font-weight: 500; border-bottom: 2px solid transparent; display: flex; gap: 7px; align-items: center; }
+  .tab { position: relative; padding: 14px 15px; border: 0; background: none; cursor: pointer; color: var(--muted); font-weight: 600; font-size: 13.5px; display: flex; gap: 7px; align-items: center; }
   .tab:hover { color: var(--text); }
-  .tab.on { color: var(--text); border-bottom-color: var(--accent); }
-  .tab .badge { font-size: 11px; background: var(--fail); color: #fff; padding: 0 6px; border-radius: 999px; }
-  .view { flex: 1; overflow: auto; padding: 18px; display: none; min-height: 0; }
+  .tab.on { color: var(--text); }
+  .tab.on::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--accent); }
+  .tab .badge { font-size: 11px; background: var(--fail); color: #fff; padding: 0 6px; border-radius: 999px; font-weight: 700; }
+  .view { flex: 1; overflow: auto; padding: 20px; display: none; min-height: 0; }
   .view.on { display: flex; flex-direction: column; gap: 16px; }
 
   .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); }
-  .card-h { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 600; }
+  .card-h { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 13px 16px; border-bottom: 1px solid var(--border); font-weight: 700; font-size: 14px; }
   .card-b { padding: 16px; }
 
   /* options */
   .opts { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px 18px; }
   .field { display: flex; flex-direction: column; gap: 6px; }
-  .field > span { font-size: 12px; color: var(--muted); font-weight: 500; }
-  .field input[type=text], .field input[type=number], .field input[type=time], .field select { height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); padding: 0 10px; outline: none; width: 100%; }
-  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field > span { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .field input[type=text], .field input[type=number], .field input[type=time], .field select { height: 36px; border-radius: 9px; border: 1px solid var(--border); background: var(--panel-2); padding: 0 11px; outline: none; width: 100%; }
+  .field input:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
   .range { display: flex; align-items: center; gap: 10px; }
   .range input { flex: 1; accent-color: var(--accent); }
-  .range b { min-width: 22px; text-align: right; }
+  .range b { min-width: 22px; text-align: right; font-variant-numeric: tabular-nums; }
   .switch { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; height: 34px; }
   .switch input { display: none; }
   .switch i { width: 38px; height: 22px; border-radius: 999px; background: var(--border); position: relative; transition: background .15s; flex: none; }
@@ -150,9 +156,9 @@
   /* stats */
   .stats { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
   .stat { padding: 14px 16px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--border); }
-  .stat .k { font-size: 12px; color: var(--muted); font-weight: 500; display: flex; align-items: center; gap: 6px; }
-  .stat .k::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--accent)); }
-  .stat .v { font-size: 26px; font-weight: 700; margin-top: 2px; letter-spacing: -.02em; }
+  .stat .k { font-size: 12px; color: var(--muted); font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .stat .k::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--accent)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--c, var(--accent)) 16%, transparent); }
+  .stat .v { font-size: 26px; font-weight: 800; margin-top: 4px; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
   .progress { height: 10px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--border); overflow: hidden; display: flex; }
   .progress > div { height: 100%; transition: width .3s; }
   .prog-meta { display: flex; justify-content: space-between; font-size: 12.5px; color: var(--muted); margin-top: 8px; gap: 10px; flex-wrap: wrap; }
@@ -161,32 +167,34 @@
   .split { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; min-height: 420px; flex: 1; }
   .split .card { display: flex; flex-direction: column; min-height: 0; }
   .results { overflow: auto; flex: 1; max-height: 62vh; }
-  .res { display: flex; gap: 10px; align-items: flex-start; padding: 9px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .res { display: flex; gap: 10px; align-items: flex-start; padding: 10px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
   .res:hover { background: var(--hover); }
   .res .s-ico { margin-top: 2px; }
   .res .t { flex: 1; min-width: 0; }
-  .res .t div:first-child { font-weight: 500; }
+  .res .t div:first-child { font-weight: 600; }
   .res .t small { color: var(--muted); font-size: 12px; }
-  .res .d { color: var(--muted); font-size: 12px; white-space: nowrap; }
+  .res .d { color: var(--muted); font-size: 12px; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .res .err { color: var(--fail); font-size: 12px; margin-top: 4px; white-space: pre-wrap; max-height: 3.2em; overflow: hidden; }
-  .console { flex: 1; margin: 0; padding: 12px 16px; overflow: auto; font-size: 12px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; background: #0a0d12; color: #c9d1d9; border-radius: 0 0 var(--radius) var(--radius); max-height: 62vh; }
+  .console { flex: 1; margin: 0; padding: 12px 16px; overflow: auto; font-size: 12px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; background: #080b0f; color: #c9d4de; border-radius: 0 0 var(--radius) var(--radius); max-height: 62vh; }
+  :root[data-theme="light"] .console { background: #0d141b; color: #d4dde6; }
   .c31 { color: #ff7b72; } .c32 { color: #3fb950; } .c33 { color: #d29922; } .c34 { color: #58a6ff; } .c35 { color: #bc8cff; } .c36 { color: #39c5cf; } .c90 { color: #6e7681; } .cb1 { font-weight: 700; } .cdim { opacity: .65; }
 
   table { width: 100%; border-collapse: collapse; }
-  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap; }
-  th { color: var(--muted); font-weight: 500; font-size: 12px; background: var(--panel-2); position: sticky; top: 0; }
+  th, td { text-align: left; padding: 11px 14px; border-bottom: 1px solid var(--border); font-size: 13px; white-space: nowrap; }
+  td { font-variant-numeric: tabular-nums; }
+  th { color: var(--muted); font-weight: 600; font-size: 11px; letter-spacing: .04em; text-transform: uppercase; background: var(--panel-2); position: sticky; top: 0; }
   tbody tr:hover { background: var(--hover); cursor: pointer; }
-  .n-p { color: var(--pass); font-weight: 600; } .n-f { color: var(--fail); font-weight: 600; } .n-k { color: var(--flaky); font-weight: 600; } .n-s { color: var(--skip); }
-  .status-tag { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; }
+  .n-p { color: var(--pass); font-weight: 700; } .n-f { color: var(--fail); font-weight: 700; } .n-k { color: var(--flaky); font-weight: 700; } .n-s { color: var(--skip); }
+  .status-tag { font-size: 11.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px; }
   .status-tag.passed { background: var(--pass-soft); color: var(--pass); } .status-tag.failed { background: var(--fail-soft); color: var(--fail); } .status-tag.stopped { background: var(--flaky-soft); color: var(--flaky); }
 
   .days { display: flex; gap: 6px; flex-wrap: wrap; }
-  .day { width: 40px; height: 34px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); cursor: pointer; font-size: 12.5px; }
+  .day { width: 42px; height: 36px; border-radius: 9px; border: 1px solid var(--border); background: var(--panel-2); cursor: pointer; font-size: 12.5px; font-weight: 600; }
   .day.on { background: var(--accent); border-color: var(--accent); color: #fff; }
   .hint { color: var(--muted); font-size: 12.5px; }
 
   /* drawer */
-  .drawer-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
+  .drawer-bg { position: fixed; inset: 0; background: rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .2s; z-index: 10; }
   .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(720px, 100%); background: var(--panel); border-left: 1px solid var(--border); box-shadow: var(--shadow); transform: translateX(100%); transition: transform .22s ease; z-index: 11; display: flex; flex-direction: column; }
   .drawer.on { transform: none; } .drawer-bg.on { opacity: 1; pointer-events: auto; }
   .drawer-h { padding: 16px 18px; border-bottom: 1px solid var(--border); display: flex; gap: 12px; align-items: flex-start; }
@@ -197,10 +205,98 @@
   .shots img { width: 100%; display: block; }
   .att { display: flex; flex-wrap: wrap; gap: 8px; }
 
-  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-weight: 500; transition: transform .25s; z-index: 20; box-shadow: var(--shadow); }
+  .toast { position: fixed; bottom: 22px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--text); color: var(--bg); padding: 11px 18px; border-radius: 11px; font-weight: 600; transition: transform .25s; z-index: 20; box-shadow: var(--shadow); }
   .toast.on { transform: translateX(-50%); }
   .loading { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 40px; color: var(--muted); }
   .spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+
+  /* ---------- results: done banner (feature 5) ---------- */
+  .done-banner { display: none; align-items: center; gap: 14px; padding: 15px 18px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--panel); box-shadow: var(--shadow-soft); }
+  .done-banner.on { display: flex; }
+  .done-banner.ok { border-color: var(--pass); background: var(--pass-soft); }
+  .done-banner.bad { border-color: var(--fail); background: var(--fail-soft); }
+  .done-banner.warn { border-color: var(--flaky); background: var(--flaky-soft); }
+  .done-banner .bell { font-size: 22px; flex: none; }
+  .done-banner .msg { flex: 1; min-width: 0; }
+  .done-banner .msg b { font-size: 15px; }
+  .done-banner .msg .hint { margin-top: 2px; }
+
+  /* ---------- health dashboard (feature 1) ---------- */
+  .health { display: flex; gap: 28px; align-items: center; flex-wrap: wrap; padding: 24px; background: linear-gradient(135deg, var(--accent-soft), transparent 45%), var(--panel); }
+  .donut { position: relative; width: 150px; height: 150px; flex: none; }
+  .donut svg { transform: rotate(-90deg); width: 100%; height: 100%; }
+  .donut .ring-bg { stroke: var(--panel-2); }
+  .donut .seg { transition: stroke-dasharray .4s ease; stroke-linecap: round; }
+  .donut .center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; }
+  .donut .center .pct { font-size: 36px; font-weight: 800; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .donut .center .lbl { font-size: 11px; color: var(--muted); margin-top: 4px; text-transform: uppercase; letter-spacing: .1em; font-weight: 700; }
+  .health-body { flex: 1; min-width: 240px; display: flex; flex-direction: column; gap: 14px; }
+  .verdict { font-size: 20px; font-weight: 800; line-height: 1.3; letter-spacing: -.01em; text-wrap: balance; }
+  .verdict small { display: block; font-weight: 500; font-size: 13.5px; color: var(--muted); margin-top: 5px; }
+  .health-nums { display: flex; gap: 10px; flex-wrap: wrap; }
+  .hnum { display: inline-flex; align-items: center; gap: 9px; padding: 9px 14px; border-radius: 11px; background: var(--panel-2); border: 1px solid var(--border); font-weight: 800; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .hnum .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .hnum small { color: var(--muted); font-weight: 600; font-size: 12.5px; }
+
+  /* ---------- screen map (feature 2) ---------- */
+  .screen-map { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .sm-tile { text-align: left; padding: 12px 13px; border-radius: 12px; border: 1px solid var(--border); background: var(--panel-2); cursor: pointer; display: flex; flex-direction: column; gap: 9px; transition: transform .06s, border-color .15s, box-shadow .15s; border-left-width: 3px; }
+  .sm-tile:hover { transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+  .sm-tile.on { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .sm-tile .nm { font-weight: 700; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sm-tile .bar { height: 7px; border-radius: 999px; background: var(--border); overflow: hidden; display: flex; }
+  .sm-tile .bar > i { display: block; }
+  .sm-tile .mini2 { font-size: 11.5px; color: var(--muted); display: flex; gap: 9px; align-items: center; font-variant-numeric: tabular-nums; }
+  .sm-tile.pass { border-left-color: var(--pass); }
+  .sm-tile.fail { border-left-color: var(--fail); }
+  .sm-tile.flaky { border-left-color: var(--flaky); }
+  .sm-tile.run { border-left-color: var(--run); }
+  .sm-tile.none2 { border-left-color: var(--border); opacity: .65; }
+
+  /* ---------- error inbox (feature 3) ---------- */
+  .inbox { display: flex; flex-direction: column; }
+  .inbox-item { display: flex; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .inbox-item:last-child { border-bottom: 0; }
+  .inbox-item:hover { background: var(--hover); }
+  .inbox-item .s-ico { margin-top: 1px; }
+  .inbox-item .body { flex: 1; min-width: 0; }
+  .inbox-item .ttl { font-weight: 700; font-size: 14px; letter-spacing: -.01em; }
+  .inbox-item .sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+  .inbox-item .emsg { color: var(--fail); font-size: 12.5px; margin-top: 8px; white-space: pre-wrap; max-height: 3.4em; overflow: hidden; line-height: 1.45; background: var(--fail-soft); border-radius: 8px; padding: 8px 11px; font-family: "JetBrains Mono", ui-monospace, monospace; }
+  .inbox-media { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .inbox-media a, .inbox-media video { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; height: 96px; display: block; background: var(--panel-2); }
+  .inbox-media img { height: 96px; display: block; }
+  .inbox-item .d { color: var(--muted); font-size: 12px; white-space: nowrap; flex: none; font-variant-numeric: tabular-nums; }
+
+  /* ---------- step replay (feature 6) ---------- */
+  .steps { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .step { display: flex; gap: 10px; align-items: flex-start; padding: 9px 12px; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .step:last-child { border-bottom: 0; }
+  .step .n { width: 20px; height: 20px; border-radius: 50%; background: var(--panel-2); border: 1px solid var(--border); display: grid; place-items: center; font-size: 11px; font-weight: 700; flex: none; color: var(--muted); }
+  .step.ok .n { background: var(--pass-soft); border-color: var(--pass); color: var(--pass); }
+  .step.bad { background: var(--fail-soft); }
+  .step.bad .n { background: var(--fail); border-color: var(--fail); color: #fff; }
+  .step .st { flex: 1; min-width: 0; }
+  .step .st .em { color: var(--fail); font-size: 12px; margin-top: 3px; white-space: pre-wrap; }
+  .step .sd { color: var(--faint); font-size: 11.5px; white-space: nowrap; }
+
+  /* ---------- trend chart (feature 4) ---------- */
+  .trend { display: flex; align-items: flex-end; gap: 7px; height: 150px; padding: 6px 2px 0; overflow-x: auto; }
+  .tbar { flex: none; width: 30px; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; cursor: pointer; }
+  .tbar:hover .stack { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .tbar .stack { display: flex; flex-direction: column-reverse; border-radius: 5px 5px 2px 2px; overflow: hidden; min-height: 4px; }
+  .tbar .stack > i { display: block; min-height: 0; }
+  .tbar .cap { font-size: 9.5px; color: var(--faint); text-align: center; white-space: nowrap; line-height: 1.2; font-variant-numeric: tabular-nums; }
+  .tbar.has-flaky .cap { color: var(--flaky); font-weight: 700; }
+  .trend-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .trend-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .trend-legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  /* ---------- notify settings (feature 5 channels) ---------- */
+  .notify-grid { display: flex; flex-direction: column; gap: 14px; max-width: 620px; }
+  .notify-sec { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: var(--panel-2); }
+  .notify-sec h4 { margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
+  .notify-sec .rows { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
 
   @media (max-width: 1100px) { .stats { grid-template-columns: repeat(3, 1fr); } .split { grid-template-columns: 1fr; } }
   @media (max-width: 820px) {
@@ -214,6 +310,57 @@
     .layout { height: auto; }
     .brand small, .est { display: none; }
   }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; } }
+
+  /* ---------- dashboard (tick features to run) ---------- */
+  .dash-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; padding: 20px 22px; border-radius: var(--radius); background: linear-gradient(135deg, var(--accent-soft), transparent 55%), var(--panel); box-shadow: var(--shadow-soft); }
+  .dash-nums { display: flex; flex-wrap: wrap; gap: 28px; }
+  .dash-num .v { font-size: 28px; font-weight: 800; line-height: 1.1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .dash-num .k { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .dash-go { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; margin-left: auto; }
+  .dash-go .hint { font-size: 12px; }
+  .dash-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .dash-row .lbl { font-size: 12px; color: var(--muted); margin-right: 2px; }
+  .dash-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 16px; }
+  .dash-tools .search { flex: 1; min-width: 220px; max-width: 380px; }
+  .preset-chip { display: inline-flex; align-items: center; gap: 4px; }
+  .preset-chip .x { border: 0; background: none; cursor: pointer; color: var(--faint); padding: 0 2px; font-size: 14px; }
+  .preset-chip .x:hover { color: var(--fail); }
+  .preset-save { display: inline-flex; gap: 6px; }
+  .preset-save input { height: 30px; width: 170px; border-radius: 8px; border: 1px solid var(--border); background: var(--panel-2); padding: 0 10px; font-size: 12.5px; outline: none; }
+  .preset-save input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .fgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(254px, 1fr)); gap: 13px; }
+  .fgrid > .loading { grid-column: 1 / -1; }
+  .fgroup-h { grid-column: 1 / -1; display: flex; align-items: center; gap: 10px; font-size: 10.5px; font-weight: 700; letter-spacing: .12em; color: var(--faint); text-transform: uppercase; margin-top: 6px; }
+  .fgroup-h::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .fcard { position: relative; text-align: left; padding: 15px 16px 14px 18px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--panel); cursor: pointer; display: flex; flex-direction: column; gap: 11px; transition: border-color .15s, box-shadow .15s, transform .06s; user-select: none; overflow: hidden; }
+  .fcard::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--stripe, var(--border)); }
+  .fcard.st-fail { --stripe: var(--fail); } .fcard.st-run { --stripe: var(--run); } .fcard.st-flaky { --stripe: var(--flaky); } .fcard.st-pass { --stripe: var(--pass); } .fcard.st-none2 { --stripe: var(--border); }
+  .fcard:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+  .fcard:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .fcard.sel { border-color: var(--accent); background: linear-gradient(var(--accent-soft), var(--accent-soft)), var(--panel); }
+  .fcard.part { border-color: var(--accent); border-style: dashed; }
+  .fc-top { display: flex; align-items: flex-start; gap: 11px; }
+  .fc-check { flex: none; width: 22px; height: 22px; border-radius: 7px; border: 2px solid var(--faint); display: grid; place-items: center; font-size: 13px; font-weight: 800; color: #fff; margin-top: 1px; transition: background .12s, border-color .12s; }
+  .fcard.sel .fc-check { background: var(--accent); border-color: var(--accent); }
+  .fcard.part .fc-check { border-color: var(--accent); color: var(--accent); }
+  .fc-title { flex: 1; min-width: 0; font-weight: 700; font-size: 14px; line-height: 1.25; letter-spacing: -.01em; }
+  .fc-title small { display: block; font-weight: 500; font-size: 11px; color: var(--faint); margin-top: 3px; font-family: "JetBrains Mono", ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fc-actions { display: flex; gap: 2px; opacity: .5; transition: opacity .15s; }
+  .fcard:hover .fc-actions { opacity: 1; }
+  .fc-act { width: 30px; height: 30px; border-radius: 8px; border: 0; background: transparent; cursor: pointer; color: var(--muted); display: grid; place-items: center; }
+  .fc-act:hover { background: var(--hover); color: var(--text); }
+  .fc-act.go:hover { background: var(--pass-soft); color: var(--pass); }
+  .fc-meta { display: flex; flex-wrap: wrap; gap: 3px 14px; font-size: 12px; color: var(--muted); }
+  .fc-meta b { color: var(--text); font-weight: 700; }
+  .fc-bar { height: 7px; border-radius: 999px; background: var(--panel-2); overflow: hidden; display: flex; }
+  .fc-bar > i { display: block; }
+  .fc-st { font-size: 12px; display: flex; gap: 10px; align-items: center; color: var(--muted); min-height: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .fc-st .p { color: var(--pass); } .fc-st .f { color: var(--fail); } .fc-st .fl { color: var(--flaky); } .fc-st .r { color: var(--run); }
+  .fc-st .badge { margin-left: auto; padding: 3px 10px; border-radius: 999px; font-weight: 700; font-size: 11px; display: inline-flex; align-items: center; gap: 5px; }
+  .badge.pass { background: var(--pass-soft); color: var(--pass); } .badge.fail { background: var(--fail-soft); color: var(--fail); }
+  .badge.flaky { background: var(--flaky-soft); color: var(--flaky); } .badge.run { background: var(--run-soft); color: var(--run); }
+  .badge.none { background: var(--skip-soft); color: var(--muted); }
 </style>
 </head>
 <body>
@@ -254,23 +401,84 @@
 
   <main>
     <nav class="tabs">
-      <button class="tab on" data-tab="run">⚡ Chạy test</button>
+      <button class="tab on" data-tab="dashboard">🎯 Dashboard</button>
+      <button class="tab" data-tab="results">📊 Kết quả</button>
+      <button class="tab" data-tab="run">⚡ Chạy &amp; Console</button>
       <button class="tab" data-tab="history">🕘 Lịch sử</button>
       <button class="tab" data-tab="schedule">⏰ Lên lịch</button>
+      <button class="tab" data-tab="notify">🔔 Thông báo</button>
     </nav>
 
-    <section class="view on" id="view-run">
+    <section class="view on" id="view-dashboard">
+      <div class="card dash-hero">
+        <div class="dash-nums" id="dashNums"></div>
+        <div class="dash-go">
+          <button class="btn primary big" id="dashRun">▶ Chạy test đã chọn</button>
+          <button class="btn danger big" id="dashStop" style="display:none">■ Dừng</button>
+          <span class="hint" id="dashGoHint"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="dash-tools" style="border-bottom:1px solid var(--border)">
+          <span class="dash-row"><span class="lbl">Chọn nhanh:</span>
+            <button class="btn sm" id="dAll">☑ Tất cả tính năng</button>
+            <button class="btn sm" id="dNone">☐ Bỏ chọn hết</button>
+            <button class="btn sm" id="dFailed" title="Chọn toàn bộ các tính năng có test lỗi ở lần chạy gần nhất">✕ Tính năng đang lỗi</button>
+          </span>
+          <span class="dash-row" id="dTags"></span>
+        </div>
+        <div class="dash-tools">
+          <span class="dash-row"><span class="lbl">Bộ chọn đã lưu:</span><span class="dash-row" id="dPresets"></span></span>
+          <span class="preset-save"><input id="dPresetName" placeholder="Tên bộ chọn, vd: Smoke sáng" maxlength="40" /><button class="btn sm" id="dPresetSave">💾 Lưu</button></span>
+        </div>
+      </div>
+
+      <div class="dash-tools" style="padding:0">
+        <div class="search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input id="dq" placeholder="Lọc tính năng…" autocomplete="off" />
+        </div>
+        <select class="select" id="dSort" title="Sắp xếp">
+          <option value="group">Sắp xếp: theo nhóm</option>
+          <option value="fail">Sắp xếp: lỗi trước</option>
+          <option value="size">Sắp xếp: nhiều test nhất</option>
+          <option value="name">Sắp xếp: tên A→Z</option>
+        </select>
+        <label class="switch"><input type="checkbox" id="dOnlySel" /><i></i><span class="hint">Chỉ hiện mục đã chọn</span></label>
+      </div>
+
+      <div class="fgrid" id="fgrid"><div class="loading"><div class="spinner"></div>Đang quét danh sách test…</div></div>
+    </section>
+
+    <section class="view" id="view-results">
+      <div class="done-banner" id="doneBanner"></div>
+      <div class="card health" id="health">
+        <div class="empty">Chưa có lần chạy nào — chọn test bên trái rồi bấm “▶ Chạy đã chọn”.<br>Kết quả sẽ hiện ở đây: vòng % sức khoẻ, bản đồ màn hình và hộp thư lỗi (kèm ảnh/video).</div>
+      </div>
+      <div class="card" id="screenMapCard" style="display:none">
+        <div class="card-h">🗺 Bản đồ màn hình <span class="hint" style="font-weight:400">· bấm một ô để lọc lỗi theo màn hình</span><span class="spacer"></span><button class="btn sm ghost" id="smClear" style="display:none">Bỏ lọc</button></div>
+        <div class="card-b"><div class="screen-map" id="screenMap"></div></div>
+      </div>
+      <div class="card" id="inboxCard" style="display:none">
+        <div class="card-h">📥 Hộp thư lỗi <span class="count" id="inboxCount"></span><span class="spacer"></span><div class="chips" id="inboxFilter"></div></div>
+        <div class="inbox" id="inbox"></div>
+      </div>
+    </section>
+
+    <section class="view" id="view-run">
       <div class="card">
         <div class="card-h">⚙ Tuỳ chọn chạy <span class="spacer"></span>
           <button class="btn sm ghost" id="presetFast" title="8 workers, headless, không trace">🚀 Nhanh</button>
           <button class="btn sm ghost" id="presetDebug" title="1 worker, headed, trace on">🐞 Debug</button>
           <button class="btn sm ghost" id="presetCI" title="8 workers, retries 2, trace khi lỗi">🏭 Giống CI</button>
+          <button class="btn sm ghost" id="presetClean" title="4 workers, retries 2 — chậm hơn (~1 tiếng) nhưng ổn định nhất, ít flake">🧹 Run sạch</button>
         </div>
         <div class="card-b opts">
           <label class="field"><span>Workers (luồng song song)</span>
-            <div class="range"><input type="range" id="o-workers" min="1" max="16" value="8" /><b id="o-workers-v">8</b></div></label>
+            <div class="range"><input type="range" id="o-workers" min="1" max="16" value="4" /><b id="o-workers-v">4</b></div></label>
           <label class="field"><span>Retries khi lỗi</span>
-            <select id="o-retries"><option>0</option><option>1</option><option>2</option><option>3</option></select></label>
+            <select id="o-retries"><option selected>0</option><option>1</option><option>2</option><option>3</option></select></label>
           <label class="field"><span>Lặp mỗi test (repeat-each)</span>
             <input type="number" id="o-repeat" min="1" max="20" value="1" /></label>
           <label class="field"><span>Trace</span>
@@ -281,6 +489,8 @@
             <input type="text" id="o-grep" placeholder="vd: TC-CUS-02" /></label>
           <label class="field"><span>Mở trình duyệt</span>
             <label class="switch"><input type="checkbox" id="o-headed" /><i></i><span class="hint">Headed</span></label></label>
+          <label class="field"><span>Tự chạy lại case lỗi (lần 2)</span>
+            <label class="switch"><input type="checkbox" id="o-autorerun" checked /><i></i><span class="hint">Auto pass 2</span></label></label>
         </div>
       </div>
 
@@ -311,6 +521,18 @@
     </section>
 
     <section class="view" id="view-history">
+      <div class="card" id="trendCard" style="display:none">
+        <div class="card-h">📈 Xu hướng theo lần chạy <span class="hint" style="font-weight:400">· bấm một cột để xem lại lần chạy đó</span></div>
+        <div class="card-b">
+          <div class="trend" id="trend"></div>
+          <div class="trend-legend">
+            <span><i style="background:var(--pass)"></i>Đạt</span>
+            <span><i style="background:var(--flaky)"></i>Flaky (lúc đạt lúc lỗi)</span>
+            <span><i style="background:var(--fail)"></i>Lỗi</span>
+            <span><i style="background:var(--skip)"></i>Bỏ qua</span>
+          </div>
+        </div>
+      </div>
       <div class="card">
         <div class="card-h">Các lần chạy gần đây <span class="spacer"></span><button class="btn sm ghost" id="clearHistory">Xoá lịch sử</button></div>
         <div style="overflow:auto"><table>
@@ -333,6 +555,41 @@
           <div class="field"><span>Ngày trong tuần</span><div class="days" id="s-days"></div></div>
           <p class="hint" style="margin:0">Lịch dùng môi trường và tuỳ chọn chạy hiện tại. Server GUI (<span class="mono">npm run gui</span>) phải đang mở thì lịch mới chạy. Kết quả lưu ở tab Lịch sử.</p>
           <div><button class="btn primary" id="saveSchedule">Lưu lịch</button> <span class="hint" id="scheduleState"></span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="view" id="view-notify">
+      <div class="card">
+        <div class="card-h">🔔 Gửi kết quả qua Discord / Gmail khi chạy xong</div>
+        <div class="card-b">
+          <div class="notify-grid">
+            <label class="switch"><input type="checkbox" id="n-onlyfail" /><i></i><span>Chỉ gửi khi có test lỗi (bỏ tick để gửi cả khi pass hết)</span></label>
+
+            <div class="notify-sec">
+              <h4>💬 Discord <label class="switch" style="margin-left:auto"><input type="checkbox" id="n-dc-on" /><i></i><span class="hint">Bật</span></label></h4>
+              <p class="hint" style="margin:0">Trong Discord: Server Settings → Integrations → Webhooks → New Webhook → Copy URL rồi dán vào đây.</p>
+              <div class="rows">
+                <label class="field"><span>Webhook URL</span><input type="text" id="n-dc-url" placeholder="https://discord.com/api/webhooks/..." /></label>
+                <div><button class="btn sm" id="n-dc-test">Gửi thử Discord</button></div>
+              </div>
+            </div>
+
+            <div class="notify-sec">
+              <h4>✉️ Gmail <label class="switch" style="margin-left:auto"><input type="checkbox" id="n-gm-on" /><i></i><span class="hint">Bật</span></label></h4>
+              <p class="hint" style="margin:0">Cần <b>Mật khẩu ứng dụng</b> (App Password) của Gmail, không phải mật khẩu đăng nhập. Bật 2FA rồi tạo tại <span class="mono">myaccount.google.com/apppasswords</span>. Mật khẩu chỉ lưu trên máy này (<span class="mono">reports/gui-runs/notify.json</span>, đã gitignore).</p>
+              <div class="rows">
+                <div class="opts" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+                  <label class="field"><span>Gmail gửi đi</span><input type="text" id="n-gm-user" placeholder="ban@gmail.com" /></label>
+                  <label class="field"><span>Mật khẩu ứng dụng (16 ký tự)</span><input type="password" id="n-gm-pass" placeholder="••••••••••••••••" autocomplete="new-password" /></label>
+                </div>
+                <label class="field"><span>Gửi tới (có thể nhiều email, cách nhau dấu phẩy)</span><input type="text" id="n-gm-to" placeholder="team@fastboy.net, qa@fastboy.net" /></label>
+                <div><button class="btn sm" id="n-gm-test">Gửi thử Gmail</button></div>
+              </div>
+            </div>
+
+            <div><button class="btn primary" id="saveNotify">Lưu cài đặt thông báo</button> <span class="hint" id="notifyState"></span></div>
+          </div>
         </div>
       </div>
     </section>
@@ -374,6 +631,7 @@ const S = {
   query: '', tags: new Set(), statusFilter: '',
   results: {}, run: null, lastFailed: [],
   resFilter: 'all', viewingHistory: null,
+  screenFilter: '', errFilter: 'all',
 };
 
 // ------------------------------------------------------------ theme
@@ -382,7 +640,7 @@ applyTheme(store.get('theme', matchMedia('(prefers-color-scheme: light)').matche
 $('#btnTheme').onclick = () => applyTheme(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
 
 // ------------------------------------------------------------ options
-const OPT_IDS = { workers: 'o-workers', retries: 'o-retries', repeatEach: 'o-repeat', trace: 'o-trace', maxFailures: 'o-maxfail', grep: 'o-grep', headed: 'o-headed' };
+const OPT_IDS = { workers: 'o-workers', retries: 'o-retries', repeatEach: 'o-repeat', trace: 'o-trace', maxFailures: 'o-maxfail', grep: 'o-grep', headed: 'o-headed', autoRerun: 'o-autorerun' };
 function getOptions() {
   const o = { env: $('#env').value };
   for (const [k, id] of Object.entries(OPT_IDS)) {
@@ -409,6 +667,7 @@ const preset = (o) => { setOptions(o); store.set('options', getOptions()); toast
 $('#presetFast').onclick = () => preset({ workers: 8, retries: 0, trace: 'off', headed: false, repeatEach: 1, maxFailures: 0 });
 $('#presetDebug').onclick = () => preset({ workers: 1, retries: 0, trace: 'on', headed: true, repeatEach: 1 });
 $('#presetCI').onclick = () => preset({ workers: 8, retries: 2, trace: 'retain-on-failure', headed: false, repeatEach: 1 });
+$('#presetClean').onclick = () => preset({ workers: 4, retries: 2, trace: 'retain-on-failure', headed: false, repeatEach: 1, maxFailures: 0 });
 
 // ------------------------------------------------------------ tree
 const allTests = (f) => f.files.flatMap((x) => x.tests);
@@ -484,6 +743,7 @@ function renderTree() {
   // `indeterminate` is a DOM property, not an attribute: render as attribute, then promote.
   el.querySelectorAll('.cb[indeterminate]').forEach((cb) => { cb.indeterminate = true; });
   renderSelInfo();
+  if ($('#view-dashboard').classList.contains('on')) renderDashboard();
 }
 
 let treeTimer = 0;
@@ -538,6 +798,17 @@ function updateEstimate() {
   const total = (sum + (S.selected.size - known) * avg) * Math.max(1, Number($('#o-repeat').value) || 1);
   $('#est').textContent = `≈ ${fmtMs(total / Math.max(1, Number($('#o-workers').value)) + 8000)} ước tính`;
 }
+/** Wall-clock estimate for a set of keys with the current workers/repeat. */
+function estimateOf(keys) {
+  if (!keys.length) return 0;
+  let sum = 0, known = 0;
+  for (const t of S.byKey.values()) if (t.lastDuration != null) { sum += t.lastDuration; known++; }
+  const avg = known ? sum / known : 6000;
+  let total = 0;
+  for (const k of keys) total += S.byKey.get(k)?.lastDuration ?? avg;
+  total *= Math.max(1, Number($('#o-repeat').value) || 1);
+  return total / Math.max(1, Number($('#o-workers').value)) + 8000;
+}
 
 $('#selAll').onclick = () => { const keys = filtering() ? visibleTree().flatMap(allTests).map((t) => t.key) : [...S.byKey.keys()]; toggleKeys(keys, true); toast(`Đã chọn ${keys.length} test`); };
 $('#selNone').onclick = () => { if (filtering()) toggleKeys(visibleTree().flatMap(allTests).map((t) => t.key), false); else { S.selected.clear(); store.set('selected', []); renderTree(); } };
@@ -572,19 +843,170 @@ async function loadTests(refresh) {
     if (refresh) toast(`Đã quét ${data.total} test trong ${data.features.length} tính năng`);
   } catch (e) {
     $('#tree').innerHTML = `<div class="empty">Không quét được danh sách test.<br><small>${esc(e.message)}</small></div>`;
+    $('#fgrid').innerHTML = `<div class="empty" style="grid-column:1/-1">Không quét được danh sách test.<br><small>${esc(e.message)}</small></div>`;
   }
 }
 
+// ------------------------------------------------------------ dashboard
+// One card per feature: tick a card to (de)select every test in it. Shares
+// S.selected with the sidebar tree, so both views always agree.
+const D = { q: '', sort: store.get('dashSort', 'group'), onlySel: false, presets: store.get('presets', []) };
+$('#dSort').value = D.sort;
+
+function featureSel(f) {
+  const tests = allTests(f);
+  let n = 0; for (const t of tests) if (S.selected.has(t.key)) n++;
+  return { n, total: tests.length, state: n === 0 ? '' : n === tests.length ? 'sel' : 'part' };
+}
+
+function renderDashboard() {
+  const grid = $('#fgrid');
+  if (!S.tree) return;
+  const feats = S.tree.features;
+  const selFeats = feats.filter((f) => featureSel(f).n > 0).length;
+  const keys = [...S.selected];
+  const running = !!S.run?.running;
+  const num = (v, k) => `<div class="dash-num"><div class="v">${v}</div><div class="k">${k}</div></div>`;
+  $('#dashNums').innerHTML =
+    num(`${selFeats}<span style="font-size:16px;color:var(--muted);font-weight:500"> / ${feats.length}</span>`, 'tính năng đã chọn') +
+    num(keys.length, 'test sẽ chạy') +
+    num(keys.length ? '≈ ' + fmtMs(estimateOf(keys)) : '—', 'thời gian ước tính') +
+    num(esc($('#env').value || '—'), 'môi trường');
+  $('#dashRun').style.display = running ? 'none' : '';
+  $('#dashStop').style.display = running ? '' : 'none';
+  $('#dashRun').disabled = !keys.length;
+  $('#dashRun').textContent = keys.length ? `▶ Chạy ${keys.length} test` : '▶ Chạy test đã chọn';
+  const o = getOptions();
+  $('#dashGoHint').textContent = running
+    ? `Đang chạy ${Object.values(S.results).filter((r) => ['passed', 'failed', 'flaky', 'skipped'].includes(r.status)).length}/${S.run.total ?? '?'} — xem tab Kết quả`
+    : keys.length ? `${o.workers} luồng · retries ${o.retries} · ${o.headed ? 'mở trình duyệt' : 'headless'} — đổi ở tab Chạy & Console` : 'Bấm vào thẻ tính năng bên dưới để chọn';
+
+  renderDashTags();
+  renderPresets();
+
+  let list = feats.map((f) => ({ f, sel: featureSel(f), st: computeScreenStatus(f) }));
+  if (D.q) list = list.filter(({ f }) => `${f.title} ${f.id}`.toLowerCase().includes(D.q));
+  if (D.onlySel) list = list.filter((x) => x.sel.n);
+  const byName = (a, b) => a.f.title.localeCompare(b.f.title, 'vi');
+  if (D.sort === 'name') list.sort(byName);
+  if (D.sort === 'size') list.sort((a, b) => b.sel.total - a.sel.total || byName(a, b));
+  if (D.sort === 'fail') list.sort((a, b) => b.st.fail - a.st.fail || b.st.flaky - a.st.flaky || byName(a, b));
+  if (!list.length) { grid.innerHTML = `<div class="empty" style="grid-column:1/-1">Không có tính năng nào khớp.</div>`; return; }
+
+  const seg = (n, col) => (n ? `<i style="flex:${n};background:${col}"></i>` : '');
+  let html = '', group = '';
+  for (const { f, sel, st } of list) {
+    if (D.sort === 'group' && f.group !== group) { group = f.group; html += `<div class="fgroup-h">${esc(group)}</div>`; }
+    const queued = allTests(f).filter((t) => S.results[t.key]?.status === 'queued').length;
+    const badge = st.running ? ['run', 'Đang chạy'] : queued ? ['run', `Chờ chạy ${queued}`] : st.fail ? ['fail', `${st.fail} lỗi`] : st.flaky ? ['flaky', 'Flaky'] : st.done ? ['pass', 'Đạt'] : ['none', 'Chưa chạy'];
+    const bar = st.done || st.running
+      ? `<div class="fc-bar">${seg(st.pass, 'var(--pass)')}${seg(st.flaky, 'var(--flaky)')}${seg(st.fail, 'var(--fail)')}${seg(st.skip, 'var(--skip)')}${seg(st.running, 'var(--run)')}${seg(st.total - st.done - st.running, 'transparent')}</div>`
+      : `<div class="fc-bar"></div>`;
+    html += `<div class="fcard ${sel.state} st-${st.status}" tabindex="0" role="checkbox" aria-checked="${sel.state === 'sel' ? 'true' : sel.state ? 'mixed' : 'false'}" data-fid="${esc(f.id)}">
+      <div class="fc-top">
+        <span class="fc-check">${sel.state === 'sel' ? '✓' : sel.state === 'part' ? '–' : ''}</span>
+        <div class="fc-title">${esc(f.title)}<small>${esc(f.id)}</small></div>
+        <div class="fc-actions">
+          <button class="fc-act" data-act="view" title="Xem / chọn từng test ở cây bên trái">☰</button>
+          <button class="fc-act go" data-act="run" title="Chạy riêng tính năng này">▶</button>
+        </div>
+      </div>
+      <div class="fc-meta"><span><b>${sel.total}</b> test</span><span>${f.files.length} file</span>${sel.state === 'part' ? `<span style="color:var(--accent)">đã chọn ${sel.n}/${sel.total}</span>` : ''}<span>≈ ${fmtMs(estimateOf(allTests(f).map((t) => t.key)))}</span></div>
+      ${bar}
+      <div class="fc-st">${st.pass ? `<span class="p">✓ ${st.pass}</span>` : ''}${st.fail ? `<span class="f">✕ ${st.fail}</span>` : ''}${st.flaky ? `<span class="fl">! ${st.flaky}</span>` : ''}${st.running ? `<span class="r">● ${st.running}</span>` : ''}<span class="badge ${badge[0]}">${badge[1]}</span></div>
+    </div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function renderDashTags() {
+  const counts = new Map();
+  for (const t of S.byKey.values()) for (const tag of t.tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  const tags = [...counts].sort((a, b) => b[1] - a[1]).slice(0, 6);
+  $('#dTags').innerHTML = tags.length
+    ? `<span class="lbl">Thêm theo tag:</span>` + tags.map(([t, n]) => `<button class="chip" data-tag="${esc(t)}" title="Thêm mọi test có tag ${esc(t)} vào lựa chọn">+ ${esc(t)} · ${n}</button>`).join('')
+    : '';
+}
+
+function renderPresets() {
+  $('#dPresets').innerHTML = D.presets.length
+    ? D.presets.map((p, i) => `<span class="chip preset-chip" data-i="${i}" title="${p.keys.length} test — bấm để áp dụng">${esc(p.name)} · ${p.keys.length}<button class="x" data-del="${i}" title="Xoá bộ chọn">×</button></span>`).join('')
+    : `<span class="hint">Chưa có — chọn tính năng rồi đặt tên và bấm Lưu để dùng lại lần sau.</span>`;
+}
+
+function revealInTree(f) {
+  S.open.add('f:' + f.id); store.set('open', [...S.open]); renderTree();
+  const row = document.querySelector(`#tree .row.feature[data-feature="${CSS.escape(f.id)}"]`);
+  if (row) { row.scrollIntoView({ block: 'start', behavior: 'smooth' }); row.animate([{ background: 'var(--accent-soft)' }, { background: 'transparent' }], { duration: 1400 }); }
+}
+
+function toggleFeatureCard(id) {
+  const f = featureById(id);
+  toggleKeys(allTests(f).map((t) => t.key), featureSel(f).state !== 'sel');
+}
+$('#fgrid').addEventListener('click', (e) => {
+  const card = e.target.closest('.fcard'); if (!card) return;
+  const f = featureById(card.dataset.fid);
+  const act = e.target.closest('.fc-act')?.dataset.act;
+  if (act === 'run') return startRun(allTests(f).map((t) => t.key));
+  if (act === 'view') return revealInTree(f);
+  toggleFeatureCard(f.id);
+});
+$('#fgrid').addEventListener('keydown', (e) => {
+  const card = e.target.closest('.fcard');
+  if (card && (e.key === ' ' || e.key === 'Enter') && !e.ctrlKey && !e.metaKey) { e.preventDefault(); toggleFeatureCard(card.dataset.fid); document.querySelector(`.fcard[data-fid="${CSS.escape(card.dataset.fid)}"]`)?.focus(); }
+});
+$('#dAll').onclick = () => { toggleKeys([...S.byKey.keys()], true); toast(`Đã chọn toàn bộ ${S.byKey.size} test`); };
+$('#dNone').onclick = () => { S.selected.clear(); store.set('selected', []); renderTree(); };
+$('#dFailed').onclick = () => {
+  const bad = S.tree.features.filter((f) => { const st = computeScreenStatus(f); return st.fail || st.flaky; });
+  if (!bad.length) return toast('Lần chạy gần nhất không có tính năng nào lỗi 🎉');
+  S.selected = new Set(bad.flatMap(allTests).map((t) => t.key)); store.set('selected', [...S.selected]); renderTree();
+  toast(`Đã chọn ${bad.length} tính năng đang lỗi`);
+};
+$('#dTags').onclick = (e) => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  const keys = [...S.byKey.values()].filter((t) => t.tags.includes(c.dataset.tag)).map((t) => t.key);
+  toggleKeys(keys, true); toast(`Đã thêm ${keys.length} test có tag ${c.dataset.tag}`);
+};
+$('#dPresets').onclick = (e) => {
+  const del = e.target.closest('[data-del]');
+  if (del) { D.presets.splice(Number(del.dataset.del), 1); store.set('presets', D.presets); return renderPresets(); }
+  const c = e.target.closest('.preset-chip'); if (!c) return;
+  const p = D.presets[Number(c.dataset.i)];
+  const keys = p.keys.filter((k) => S.byKey.has(k));
+  S.selected = new Set(keys); store.set('selected', keys); renderTree();
+  toast(`Đã áp dụng “${p.name}” (${keys.length} test)`);
+};
+const savePreset = () => {
+  const name = $('#dPresetName').value.trim();
+  if (!S.selected.size) return toast('Chưa chọn test nào để lưu');
+  if (!name) { $('#dPresetName').focus(); return toast('Đặt tên cho bộ chọn trước đã'); }
+  D.presets = [...D.presets.filter((p) => p.name !== name), { name, keys: [...S.selected] }];
+  store.set('presets', D.presets); $('#dPresetName').value = ''; renderPresets();
+  toast(`Đã lưu bộ chọn “${name}”`);
+};
+$('#dPresetSave').onclick = savePreset;
+$('#dPresetName').addEventListener('keydown', (e) => { if (e.key === 'Enter') savePreset(); });
+let dqTimer; $('#dq').addEventListener('input', (e) => { clearTimeout(dqTimer); dqTimer = setTimeout(() => { D.q = e.target.value.trim().toLowerCase(); renderDashboard(); }, 120); });
+$('#dSort').onchange = (e) => { D.sort = e.target.value; store.set('dashSort', D.sort); renderDashboard(); };
+$('#dOnlySel').onchange = (e) => { D.onlySel = e.target.checked; renderDashboard(); };
+$('#dashRun').onclick = () => startRun([...S.selected]);
+$('#dashStop').onclick = () => $('#btnStop').click();
+
 // ------------------------------------------------------------ run
-async function startRun(keys) {
+async function startRun(keys, optOverrides) {
   if (!keys?.length) return toast('Chưa chọn test nào');
   try {
-    await api('/api/run', { keys, options: getOptions() });
-    switchTab('run');
+    closeDoneBanner();
+    await api('/api/run', { keys, options: { ...getOptions(), ...optOverrides } });
+    switchTab('results');
   } catch (e) { toast('⚠ ' + e.message); }
 }
 $('#btnRun').onclick = () => startRun([...S.selected]);
-$('#btnFailed').onclick = () => startRun(S.lastFailed);
+// Manual re-run of last failures is a single, user-driven pass — don't chain an
+// auto pass 2 on top of it (that belongs to the main "Chạy đã chọn" button).
+$('#btnFailed').onclick = () => startRun(S.lastFailed, { autoRerun: false });
 $('#btnStop').onclick = async () => { await api('/api/stop', {}); toast('Đang dừng…'); };
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey) && !$('#btnRun').disabled) startRun([...S.selected]);
@@ -614,7 +1036,8 @@ function renderRun() {
     $('#progText').textContent = S.viewingHistory && !run?.running
       ? `Đang xem lần chạy ${new Date(S.viewingHistory.startedAt).toLocaleString('vi-VN')} (${S.viewingHistory.env})`
       : `${done}/${total} test hoàn tất (${Math.round(pct(done))}%) ${eta}`;
-    $('#progTime').textContent = run?.running ? `Đang chạy · ${c.running ? c.running + ' đang thử lại · ' : ''}env ${run.env}` : '';
+    const passTag = run && (run.pass === 2 || run.trigger === 'rerun') ? 'Lần 2 (chạy lại case lỗi) · ' : '';
+    $('#progTime').textContent = run?.running ? `${passTag}Đang chạy · ${c.running ? c.running + ' đang thử lại · ' : ''}env ${run.env}` : '';
   }
   const cmd = run?.command ?? S.viewingHistory?.command;
   $('#cmd').style.display = cmd ? 'block' : 'none'; $('#cmd').textContent = cmd ? '$ ' + cmd : '';
@@ -626,7 +1049,7 @@ function renderRun() {
   $('#btnStop').style.display = run?.running ? '' : 'none';
   $('#btnRun').style.display = run?.running ? 'none' : '';
   document.title = run?.running ? `(${done}/${total}) Portal POS Test Runner` : 'Portal POS Test Runner';
-  renderResFilter(c); renderResults(); renderSelInfo();
+  renderResFilter(c); renderResults(); renderSelInfo(); renderResultsView(c);
 }
 function renderResFilter(c) {
   const f = [['all', 'Tất cả'], ['failed', `Lỗi ${c.failed}`], ['flaky', `Flaky ${c.flaky}`], ['passed', `Pass ${c.passed}`], ['skipped', `Skip ${c.skipped}`]];
@@ -650,6 +1073,165 @@ function renderResults() {
   }).join('');
 }
 $('#results').onclick = (e) => { const r = e.target.closest('.res'); if (r) openDetail(r.dataset.key); };
+
+// ------------------------------------------------------------ Kết quả view (features 1+2+3)
+function computeScreenStatus(f) {
+  let pass = 0, fail = 0, flaky = 0, skip = 0, running = 0;
+  const tests = allTests(f);
+  for (const t of tests) {
+    const s = S.results[t.key]?.status;
+    if (!s || s === 'queued') continue;
+    if (s === 'running' || s === 'retrying') running++;
+    else if (s === 'passed') pass++;
+    else if (s === 'failed') fail++;
+    else if (s === 'flaky') flaky++;
+    else if (s === 'skipped') skip++;
+  }
+  const done = pass + fail + flaky + skip;
+  const status = fail ? 'fail' : running ? 'run' : flaky ? 'flaky' : done ? 'pass' : 'none2';
+  return { pass, fail, flaky, skip, running, done, total: tests.length, status };
+}
+
+function donutSvg(c) {
+  const done = c.passed + c.failed + c.flaky + c.skipped;
+  const denom = c.passed + c.failed + c.flaky || 1; // pass-rate of executed, non-skipped tests
+  const pct = Math.round((c.passed / denom) * 100);
+  const segs = [[c.passed, 'var(--pass)'], [c.flaky, 'var(--flaky)'], [c.failed, 'var(--fail)'], [c.skipped, 'var(--skip)']];
+  const tot = segs.reduce((a, [n]) => a + n, 0) || 1;
+  let acc = 0, arcs = '';
+  for (const [n, col] of segs) {
+    if (!n) continue;
+    const len = (n / tot) * 100;
+    arcs += `<circle class="seg" cx="78" cy="78" r="62" fill="none" stroke="${col}" stroke-width="15" pathLength="100" stroke-dasharray="${len.toFixed(2)} ${(100 - len).toFixed(2)}" stroke-dashoffset="${(-acc).toFixed(2)}" />`;
+    acc += len;
+  }
+  return `<div class="donut"><svg viewBox="0 0 156 156">
+    <circle class="ring-bg" cx="78" cy="78" r="62" fill="none" stroke-width="15" />${arcs}</svg>
+    <div class="center"><div class="pct">${done ? pct + '%' : '—'}</div><div class="lbl">${done ? 'đạt' : 'chưa chạy'}</div></div></div>`;
+}
+
+function verdictOf(c, running) {
+  const done = c.passed + c.failed + c.flaky + c.skipped;
+  if (running) return { cls: 'warn', big: `Đang chạy… ${done}/${(S.run?.total || done)}`, sub: 'Kết quả cập nhật trực tiếp, bạn cứ làm việc khác.' };
+  if (!done) return { cls: '', big: 'Chưa có kết quả', sub: '' };
+  if (c.failed === 0 && c.flaky === 0) return { cls: 'ok', big: `Hệ thống ổn — ${c.passed} test đều đạt.`, sub: c.skipped ? `${c.skipped} test được bỏ qua.` : 'Không có lỗi nào.' };
+  if (c.failed === 0) return { cls: 'warn', big: `Cơ bản ổn — ${c.passed} test đạt.`, sub: `${c.flaky} test chập chờn (flaky) nên để ý.` };
+  return { cls: 'bad', big: `Có ${c.failed} chỗ cần xem.`, sub: `${c.passed} đạt · ${c.flaky} flaky · ${c.skipped} bỏ qua.` };
+}
+
+function renderResultsView(c) {
+  c = c || counts();
+  const run = S.run;
+  const running = !!run?.running;
+  const done = c.passed + c.failed + c.flaky + c.skipped;
+  const anyData = done > 0 || c.running > 0 || Object.keys(S.results).length > 0;
+  const health = $('#health');
+  if (!anyData) {
+    health.innerHTML = `<div class="empty">Chưa có lần chạy nào — chọn test bên trái rồi bấm “▶ Chạy đã chọn”.<br>Kết quả sẽ hiện ở đây: vòng % sức khoẻ, bản đồ màn hình và hộp thư lỗi (kèm ảnh/video).</div>`;
+    $('#screenMapCard').style.display = 'none';
+    $('#inboxCard').style.display = 'none';
+    return;
+  }
+  const v = verdictOf(c, running);
+  const elapsed = run ? (running ? Date.now() - run.startedAt : run.duration ?? 0) : (S.viewingHistory?.duration ?? 0);
+  const hnum = (col, n, lbl) => `<div class="hnum"><span class="dot" style="background:${col}"></span>${n} <small>${lbl}</small></div>`;
+  const vcolor = v.cls === 'bad' ? 'var(--fail)' : v.cls === 'warn' ? 'var(--flaky)' : v.cls === 'ok' ? 'var(--pass)' : 'var(--text)';
+  health.innerHTML = `${donutSvg(c)}
+    <div class="health-body">
+      <div class="verdict" style="color:${vcolor}">${esc(v.big)}<small>${esc(v.sub)}</small></div>
+      <div class="health-nums">
+        ${hnum('var(--pass)', c.passed, 'đạt')}
+        ${hnum('var(--fail)', c.failed, 'lỗi')}
+        ${hnum('var(--flaky)', c.flaky, 'flaky')}
+        ${hnum('var(--skip)', c.skipped, 'bỏ qua')}
+        ${hnum('var(--run)', elapsed ? fmtMs(elapsed) : '—', 'thời gian')}
+      </div>
+    </div>`;
+  renderScreenMap();
+  renderInbox();
+}
+
+function renderScreenMap() {
+  if (!S.tree) return;
+  const card = $('#screenMapCard'), wrap = $('#screenMap');
+  const feats = S.tree.features.map((f) => ({ f, st: computeScreenStatus(f) })).filter((x) => x.st.done || x.st.running);
+  if (!feats.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const seg = (n, col) => (n ? `<i style="flex:${n};background:${col}"></i>` : '');
+  wrap.innerHTML = feats.map(({ f, st }) => {
+    const bar = `<div class="bar">${seg(st.pass, 'var(--pass)')}${seg(st.flaky, 'var(--flaky)')}${seg(st.fail, 'var(--fail)')}${seg(st.skip, 'var(--skip)')}${seg(st.running, 'var(--run)')}</div>`;
+    const mini = `${st.fail ? `<span style="color:var(--fail)">✕${st.fail}</span>` : ''}${st.flaky ? `<span style="color:var(--flaky)">!${st.flaky}</span>` : ''}<span>✓${st.pass}/${st.total}</span>`;
+    return `<button class="sm-tile ${st.status} ${S.screenFilter === f.id ? 'on' : ''}" data-screen="${esc(f.id)}">
+      <span class="nm" title="${esc(f.title)}">${esc(f.title)}</span>${bar}<span class="mini2">${mini}</span></button>`;
+  }).join('');
+  $('#smClear').style.display = S.screenFilter ? '' : 'none';
+}
+
+let inboxSig = '';
+function renderInbox() {
+  const card = $('#inboxCard'), el = $('#inbox');
+  const bad = Object.entries(S.results).filter(([, r]) => r.status === 'failed' || r.status === 'flaky' || r.status === 'retrying');
+  const nFail = bad.filter(([, r]) => r.status === 'failed' || r.status === 'retrying').length;
+  const nFlaky = bad.filter(([, r]) => r.status === 'flaky').length;
+  card.style.display = '';
+  $('#inboxCount').textContent = `${nFail} lỗi · ${nFlaky} flaky`;
+  $('#inboxFilter').innerHTML = [['all', `Tất cả ${bad.length}`], ['failed', `Lỗi ${nFail}`], ['flaky', `Flaky ${nFlaky}`]]
+    .map(([k, l]) => `<button class="chip ${S.errFilter === k ? 'on' : ''}" data-ef="${k}">${l}</button>`).join('');
+
+  let items = bad;
+  if (S.errFilter === 'failed') items = items.filter(([, r]) => r.status === 'failed' || r.status === 'retrying');
+  else if (S.errFilter === 'flaky') items = items.filter(([, r]) => r.status === 'flaky');
+  if (S.screenFilter) items = items.filter(([k]) => { const t = S.byKey.get(k); return t && featureOf(t)?.id === S.screenFilter; });
+
+  if (!bad.length) {
+    inboxSig = 'empty';
+    el.innerHTML = `<div class="empty" style="padding:30px">🎉 Không có lỗi nào. ${S.run?.running ? '(đang chạy, cập nhật tiếp…)' : 'Tất cả test đều đạt.'}</div>`;
+    return;
+  }
+  const sig = items.map(([k, r]) => k + r.status + (r.attachments?.length || 0)).join('|') + '::' + S.errFilter + '::' + S.screenFilter;
+  if (sig === inboxSig && el.childElementCount) return; // avoid re-fetching thumbnails on every live tick
+  inboxSig = sig;
+  if (!items.length) { el.innerHTML = `<div class="empty">Không có mục nào khớp bộ lọc.</div>`; return; }
+  const fileUrl = (p) => `/api/file?p=${encodeURIComponent(p)}`;
+  el.innerHTML = items.slice(0, 200).map(([key, r]) => {
+    const t = S.byKey.get(key), f = t && featureOf(t);
+    const shots = (r.attachments ?? []).filter((a) => a.contentType?.startsWith('image/')).slice(0, 4);
+    const vids = (r.attachments ?? []).filter((a) => a.contentType?.startsWith('video/')).slice(0, 1);
+    const media = [
+      ...shots.map((a) => `<a href="${fileUrl(a.path)}" target="_blank" onclick="event.stopPropagation()"><img src="${fileUrl(a.path)}" loading="lazy" onerror="this.closest('a').remove()"></a>`),
+      ...vids.map((a) => `<video src="${fileUrl(a.path)}" controls preload="metadata" onclick="event.stopPropagation()"></video>`),
+    ].join('');
+    return `<div class="inbox-item" data-key="${esc(key)}">${icon(r)}
+      <div class="body">
+        <div class="ttl">${esc(t?.title ?? key)}</div>
+        <div class="sub">${esc(f?.title ?? '')} · <span class="mono">${esc(t?.file ?? '')}</span>${r.retry ? ` · thử lần ${r.retry + 1}` : ''}${r.status === 'flaky' ? ' · chập chờn' : ''}</div>
+        ${r.errors?.length ? `<div class="emsg mono">${esc(r.errors[0].split('\n').slice(0, 2).join('\n'))}</div>` : ''}
+        ${media ? `<div class="inbox-media">${media}</div>` : ''}
+      </div>
+      <span class="d">${fmtMs(r.duration)}</span></div>`;
+  }).join('');
+}
+
+$('#screenMap').onclick = (e) => { const t = e.target.closest('.sm-tile'); if (!t) return; S.screenFilter = S.screenFilter === t.dataset.screen ? '' : t.dataset.screen; inboxSig = ''; renderResultsView(); };
+$('#smClear').onclick = () => { S.screenFilter = ''; inboxSig = ''; renderResultsView(); };
+$('#inboxFilter').onclick = (e) => { const b = e.target.closest('.chip'); if (b) { S.errFilter = b.dataset.ef; inboxSig = ''; renderInbox(); } };
+$('#inbox').onclick = (e) => { const it = e.target.closest('.inbox-item'); if (it) openDetail(it.dataset.key); };
+
+function showDoneBanner(entry) {
+  const c = entry.counts;
+  const b = $('#doneBanner');
+  const stopped = entry.status === 'stopped';
+  const cls = stopped ? 'warn' : c.failed ? 'bad' : c.flaky ? 'warn' : 'ok';
+  const bell = stopped ? '⏹' : c.failed ? '❗' : c.flaky ? '⚠️' : '✅';
+  const title = stopped ? 'Đã dừng lần chạy' : c.failed ? `Chạy xong — ${c.failed} test lỗi` : c.flaky ? `Chạy xong — pass nhưng ${c.flaky} flaky` : 'Chạy xong — hệ thống ổn';
+  b.className = 'done-banner on ' + cls;
+  b.innerHTML = `<span class="bell">${bell}</span>
+    <div class="msg"><b>${title}</b><div class="hint">${c.passed} đạt · ${c.failed} lỗi · ${c.flaky} flaky · ${c.skipped} bỏ qua · ${fmtMs(entry.duration)}</div></div>
+    <a class="btn sm" href="/report/index.html" target="_blank">📊 Mở báo cáo</a>
+    <button class="btn sm ghost" onclick="closeDoneBanner()">✕</button>`;
+}
+function closeDoneBanner() { $('#doneBanner').className = 'done-banner'; }
+
 let runTimer = 0;
 const scheduleRun = () => { if (!runTimer) runTimer = setTimeout(() => { runTimer = 0; renderRun(); }, 200); };
 setInterval(() => { if (S.run?.running) renderRun(); }, 1000);
@@ -679,6 +1261,22 @@ function appendLog(text) {
 $('#clearLog').onclick = () => { $('#console').innerHTML = ''; };
 
 // ------------------------------------------------------------ detail drawer
+// Feature 6 — "Kể lại từng bước": turn the captured test.step()/action list into
+// a numbered, non-technical timeline with the failing step highlighted.
+function stepsHtml(r) {
+  const steps = r?.steps;
+  if (!steps?.length) return '';
+  const firstBad = steps.findIndex((s) => !s.ok);
+  const rows = steps.map((s, i) => {
+    const bad = i === firstBad || (!s.ok && firstBad === -1);
+    return `<div class="step ${bad ? 'bad' : s.ok ? 'ok' : ''}">
+      <span class="n">${bad ? '✕' : i + 1}</span>
+      <div class="st">${esc(s.title)}${bad && s.error ? `<div class="em mono">${esc(s.error)}</div>` : ''}</div>
+      <span class="sd">${s.dur ? fmtMs(s.dur) : ''}</span></div>`;
+  }).join('');
+  return `<div><div style="font-weight:600;margin-bottom:8px">▷ Các bước đã chạy${firstBad >= 0 ? ` — dừng ở bước ${firstBad + 1}` : ''}</div><div class="steps">${rows}</div></div>`;
+}
+
 function openDetail(key) {
   const t = S.byKey.get(key), r = S.results[key];
   $('#drawerH').innerHTML = `${icon(r)}<div style="flex:1;min-width:0"><div style="font-weight:600">${esc(t?.title ?? key)}</div>
@@ -694,6 +1292,7 @@ function openDetail(key) {
     </div>
     <div class="hint mono">${esc(t?.file ?? '')}:${t?.line ?? ''} ${t?.tags?.length ? '· ' + t.tags.map(esc).join(' ') : ''}</div>
     ${r ? `<div>Trạng thái: <b>${esc(r.status)}</b> · ${fmtMs(r.duration)}${r.retry ? ` · lần thử ${r.retry + 1}` : ''}</div>` : '<div class="hint">Chưa có kết quả cho test này trong lần chạy đang xem.</div>'}
+    ${stepsHtml(r)}
     ${(r?.errors ?? []).map((e) => `<pre class="errbox mono">${esc(e)}</pre>`).join('')}
     ${shots.length ? `<div><div style="font-weight:600;margin-bottom:8px">Ảnh chụp</div><div class="shots">${shots.map((a) => `<a href="${fileUrl(a.path)}" target="_blank"><img src="${fileUrl(a.path)}" alt="${esc(a.name)}" loading="lazy" onerror="this.parentNode.outerHTML='<div class=hint>Ảnh không còn — Playwright xoá test-results/ ở mỗi lần chạy mới.</div>'"></a>`).join('')}</div></div>` : ''}
     ${others.length ? `<div><div style="font-weight:600;margin-bottom:8px">Tệp đính kèm</div><div class="att">${others.map((a) => `<a class="btn sm" href="${fileUrl(a.path)}" target="_blank">${esc(a.name)}</a>`).join('')}</div>
@@ -710,15 +1309,45 @@ $('#drawerBg').onclick = closeDetail;
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach((t) => t.classList.toggle('on', t.dataset.tab === name));
   document.querySelectorAll('.view').forEach((v) => v.classList.toggle('on', v.id === 'view-' + name));
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'results') renderResultsView();
   if (name === 'history') loadHistory();
   if (name === 'schedule') loadSchedule();
+  if (name === 'notify') loadNotify();
 }
 document.querySelector('.tabs').onclick = (e) => { const t = e.target.closest('.tab'); if (t) switchTab(t.dataset.tab); };
 
+function renderTrend(h) {
+  const card = $('#trendCard'), el = $('#trend');
+  const runs = h.slice(0, 30).reverse(); // oldest → newest, left to right
+  if (!runs.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  const totOf = (r) => r.counts.passed + r.counts.failed + r.counts.flaky + r.counts.skipped;
+  const maxTot = Math.max(...runs.map(totOf), 1);
+  const seg = (n, col) => (n ? `<i style="flex:${n};background:${col}"></i>` : '');
+  el.innerHTML = runs.map((r) => {
+    const c = r.counts, tot = totOf(r) || 1;
+    const hPct = Math.max(5, Math.round((tot / maxTot) * 100));
+    const d = new Date(r.startedAt);
+    const tip = `${d.toLocaleString('vi-VN')} · ${c.passed} đạt / ${c.failed} lỗi / ${c.flaky} flaky${r.status === 'stopped' ? ' · đã dừng' : ''}`;
+    return `<div class="tbar ${c.flaky ? 'has-flaky' : ''}" data-id="${r.id}" title="${esc(tip)}">
+      <div class="stack" style="height:${hPct}%">${seg(c.passed, 'var(--pass)')}${seg(c.flaky, 'var(--flaky)')}${seg(c.failed, 'var(--fail)')}${seg(c.skipped, 'var(--skip)')}</div>
+      <div class="cap">${d.getDate()}/${d.getMonth() + 1}<br>${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}</div></div>`;
+  }).join('');
+}
+$('#trend').onclick = async (e) => {
+  const b = e.target.closest('.tbar'); if (!b) return;
+  if (S.run?.running) return toast('Đang có lần chạy — chờ xong rồi xem lại');
+  const full = await api('/api/history?id=' + b.dataset.id);
+  S.viewingHistory = full; S.run = null; S.results = full.results ?? {}; S.screenFilter = ''; S.errFilter = 'all'; inboxSig = '';
+  switchTab('results'); renderRun(); renderTree();
+};
+
 async function loadHistory() {
   const h = await api('/api/history');
+  renderTrend(h);
   $('#historyBody').innerHTML = h.length ? h.map((r) => `<tr data-id="${r.id}">
-    <td>${new Date(r.startedAt).toLocaleString('vi-VN')}</td><td>${r.trigger === 'schedule' ? '⏰ Lịch' : '👤 Thủ công'}</td><td>${esc(r.env)}</td><td>${r.selected}</td>
+    <td>${new Date(r.startedAt).toLocaleString('vi-VN')}</td><td>${r.trigger === 'schedule' ? '⏰ Lịch' : r.trigger === 'rerun' ? '🔁 Lần 2' : '👤 Thủ công'}</td><td>${esc(r.env)}</td><td>${r.selected}</td>
     <td class="n-p">${r.counts.passed}</td><td class="n-f">${r.counts.failed}</td><td class="n-k">${r.counts.flaky}</td><td class="n-s">${r.counts.skipped}</td>
     <td>${fmtMs(r.duration)}</td><td><span class="status-tag ${r.status}">${r.status}</span></td>
     <td>${r.failedKeys?.length ? `<button class="btn sm" data-rerun="${r.id}">↻ Chạy lại ${r.failedKeys.length} lỗi</button>` : ''}</td></tr>`).join('')
@@ -727,10 +1356,10 @@ async function loadHistory() {
 $('#historyBody').onclick = async (e) => {
   const tr = e.target.closest('tr[data-id]'); if (!tr) return;
   const full = await api('/api/history?id=' + tr.dataset.id);
-  if (e.target.dataset.rerun) return startRun(full.failedKeys);
+  if (e.target.dataset.rerun) return startRun(full.failedKeys, { autoRerun: false });
   if (S.run?.running) return toast('Đang có lần chạy — chờ xong rồi xem lại');
-  S.viewingHistory = full; S.run = null; S.results = full.results ?? {};
-  switchTab('run'); renderRun(); renderTree();
+  S.viewingHistory = full; S.run = null; S.results = full.results ?? {}; S.screenFilter = ''; S.errFilter = 'all'; inboxSig = '';
+  switchTab('results'); renderRun(); renderTree();
 };
 $('#clearHistory').onclick = async () => { if (confirm('Xoá toàn bộ lịch sử chạy?')) { await api('/api/history/clear', {}); loadHistory(); } };
 
@@ -752,6 +1381,42 @@ $('#saveSchedule').onclick = async () => {
   await loadSchedule(); toast('Đã lưu lịch chạy');
 };
 
+// ------------------------------------------------------------ notify (Discord / Gmail)
+async function loadNotify() {
+  const n = await api('/api/notify');
+  $('#n-onlyfail').checked = n.onlyOnFailure;
+  $('#n-dc-on').checked = n.discord.enabled;
+  $('#n-dc-url').value = n.discord.webhook ?? '';
+  $('#n-gm-on').checked = n.gmail.enabled;
+  $('#n-gm-user').value = n.gmail.user ?? '';
+  $('#n-gm-to').value = n.gmail.to ?? '';
+  $('#n-gm-pass').value = '';
+  $('#n-gm-pass').placeholder = n.gmail.hasPassword ? '•••••••• (đã lưu — để trống nếu giữ nguyên)' : 'Mật khẩu ứng dụng 16 ký tự';
+  const on = [n.discord.enabled && '💬 Discord', n.gmail.enabled && '✉️ Gmail'].filter(Boolean);
+  $('#notifyState').textContent = on.length ? `Đang bật: ${on.join(' · ')}` : 'Chưa bật kênh nào';
+}
+async function saveNotify() {
+  const body = {
+    onlyOnFailure: $('#n-onlyfail').checked,
+    discord: { enabled: $('#n-dc-on').checked, webhook: $('#n-dc-url').value.trim() },
+    gmail: { enabled: $('#n-gm-on').checked, user: $('#n-gm-user').value.trim(), to: $('#n-gm-to').value.trim() },
+  };
+  const pass = $('#n-gm-pass').value.trim();
+  if (pass) body.gmail.appPassword = pass; // blank = keep the saved one
+  await api('/api/notify', body);
+  await loadNotify();
+  toast('Đã lưu cài đặt thông báo');
+}
+$('#saveNotify').onclick = saveNotify;
+async function testNotify(channel) {
+  await saveNotify();
+  toast('Đang gửi thử…');
+  const r = await api('/api/notify/test', { channel });
+  toast(r.ok ? `Đã gửi thử ${channel} ✓ — kiểm tra ${channel === 'discord' ? 'Discord' : 'hộp thư'}` : `Lỗi: ${r.error}`);
+}
+$('#n-dc-test').onclick = () => testNotify('discord');
+$('#n-gm-test').onclick = () => testNotify('gmail');
+
 // ------------------------------------------------------------ live events
 function connect() {
   const es = new EventSource('/api/events');
@@ -765,6 +1430,7 @@ function connect() {
       S.run = e.run; S.results = {}; S.viewingHistory = null; S.resFilter = 'all';
       for (const k of e.run.selectedKeys) S.results[k] = { status: 'queued' };
       $('#console').innerHTML = ''; renderRun(); scheduleTree();
+      if (e.run.trigger === 'rerun') toast(`Chạy lại lần 2 · ${e.run.selectedKeys.length} case lỗi`);
     } else if (e.type === 'total') { if (S.run) S.run.total = e.total; scheduleRun(); }
     else if (e.type === 'log') appendLog(e.text);
     else if (e.type === 'testBegin') { S.results[e.key] = { ...(S.results[e.key] || {}), status: 'running' }; scheduleRun(); scheduleTree(); }
@@ -773,10 +1439,22 @@ function connect() {
       for (const [k, r] of Object.entries(S.results)) if (r.status === 'queued' || r.status === 'running') delete S.results[k];
       S.run = { ...S.run, running: false, status: e.entry.status, duration: e.entry.duration };
       S.lastFailed = e.entry.status === 'stopped' ? S.lastFailed : e.entry.failedKeys;
+      inboxSig = '';
+      if (!$('#view-run').classList.contains('on')) switchTab('results');
       renderRun(); renderTree();
       const c = e.entry.counts;
-      toast(e.entry.status === 'stopped' ? 'Đã dừng lần chạy' : `Xong: ${c.passed} pass · ${c.failed} lỗi · ${c.flaky} flaky · ${fmtMs(e.entry.duration)}`);
-      if (document.hidden && 'Notification' in window && Notification.permission === 'granted') new Notification('Portal POS Test Runner', { body: `${c.passed} pass · ${c.failed} lỗi` });
+      if (e.rerunPending) {
+        // Pass 1 finished but an auto 2nd pass is starting — don't declare "done" yet.
+        toast(`Lần 1 xong · ${c.failed} lỗi — đang chạy lại lần 2…`);
+      } else {
+        showDoneBanner(e.entry);
+        toast(e.entry.status === 'stopped' ? 'Đã dừng lần chạy' : `Xong: ${c.passed} pass · ${c.failed} lỗi · ${c.flaky} flaky · ${fmtMs(e.entry.duration)}`);
+        // Feature 5 — Windows notification (works even when the window is minimised / in background).
+        if ('Notification' in window && Notification.permission === 'granted') {
+          const body = e.entry.status === 'stopped' ? 'Đã dừng lần chạy' : `${c.passed} đạt · ${c.failed} lỗi · ${c.flaky} flaky · ${fmtMs(e.entry.duration)}`;
+          try { new Notification('Portal POS Test Runner — chạy xong', { body, icon: '/icon.ico' }); } catch {}
+        }
+      }
       if ($('#view-history').classList.contains('on')) loadHistory();
     }
   };

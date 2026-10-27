@@ -156,7 +156,10 @@ test.describe('Định dạng dữ liệu (Data formatting) — Merchants', () =
       const assigned = (await merchantsPage.columnValues(MerchantColumn.PACKAGE)).filter(
         (value) => value !== EM_DASH && value !== '',
       );
-      test.skip(assigned.length === 0, 'no merchant on DEV currently has a package assigned');
+      expect(
+        assigned.length === 0,
+        'no merchant on DEV currently has a package assigned',
+      ).toBeFalsy();
 
       for (const value of assigned) {
         const productName = value.split(' - ')[0];

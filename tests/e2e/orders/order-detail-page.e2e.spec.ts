@@ -57,9 +57,7 @@ test.describe('Trang Order Detail — Orders', () => {
       await expect(ordersPage.orderDetailHeading).toContainText(`#${orderCode}`);
       await expect(page.getByText('Canceled', { exact: true }).first()).toBeVisible();
       await expect(ordersPage.receiptButton).toBeVisible();
-      // "Re-Open Order" is no longer rendered — see the PARKED note on TC-ORD-031
-      // below. Not asserted here so the rest of this test keeps reporting; the
-      // button's fate is tracked by that one parked case, not by this one.
+      // "Re-open order" now sits in the "More actions" menu — covered by TC-ORD-031.
 
       await expect(ordersPage.orderInformationSection).toBeVisible();
       await expect(ordersPage.serviceDetailsSection).toBeVisible();
@@ -81,15 +79,9 @@ test.describe('Trang Order Detail — Orders', () => {
    * Nút ở trạng thái disabled (quan sát trực tiếp: [disabled] trong accessibility tree).
    * (Cần xác minh thêm điều kiện chính xác khi nào nút này được enable.)
    */
-  // PARKED 2026-08-12 — the "Re-Open Order" button is not in the DOM at all on
-  // the order detail page: not for this mocked canceled-with-credit-notes order,
-  // and not for the live order we inspected. It could not be confirmed either
-  // way against real data because the store currently holds no canceled or
-  // refunded orders, so we cannot tell whether the button was removed from the
-  // product or whether the mock no longer matches the shape the app keys off.
-  // Left failing it would burn ~10s per run for a result nobody can act on.
-  // Un-fixme once product confirms the button's status.
-  test.fixme(
+  // 2026-10-20 (VP-4569): "Re-open order" is a menu item of the header's
+  // "More actions" menu (disabled with "Only closed orders can be re-opened").
+  test(
     'TC-ORD-031 — nút "Re-Open Order" bị disabled cho order đã có credit note đầy đủ',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ ordersPage, page }) => {
@@ -107,6 +99,8 @@ test.describe('Trang Order Detail — Orders', () => {
       await mockOrderDetail(page, id, detail);
 
       await ordersPage.gotoOrderDetail(id);
+      // VP-4569: "Re-open order" lives in the header's "More actions" menu.
+      await ordersPage.openMoreActions();
 
       await expect(ordersPage.reOpenOrderButton).toBeDisabled();
     },

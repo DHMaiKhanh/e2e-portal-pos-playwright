@@ -2,6 +2,8 @@
 
 > Cập nhật thông tin Order không ảnh hưởng giá tiền. **Phần A** mô tả tính năng theo spec của 2 ticket, đối chiếu với
 > lần quét DOM thật trên DEV. **Phần B** là bộ test case QC tổng hợp từ cả 2 ticket.
+>
+> Danh sách test case **gốc** của 2 ticket Linear (đánh số theo ticket) nằm ở [edit-order-linear.md](edit-order-linear.md).
 
 |                       |                                                                                                                                                                                                                                                                                          |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -13,7 +15,7 @@
 | **Môi trường quét**   | DEV Portal `https://v2.dev-fastboypay.com`, store `#14` (Volt POS tiem test 14 v1), session `admin.stage.json`                                                                                                                                                                           |
 | **Ngày quét**         | 2026-10-13                                                                                                                                                                                                                                                                               |
 | **Nguồn quét**        | `docs/test-cases/_scan/edit-order/scan*.json` + ảnh chụp `.png` cùng thư mục (gitignored)                                                                                                                                                                                                |
-| **Tổng số test case** | 70                                                                                                                                                                                                                                                                                       |
+| **Tổng số test case** | 53                                                                                                                                                                                                                                                                                       |
 
 > **Cách quét:** Playwright MCP không kết nối được trong phiên này, nên tính năng được quét bằng script Playwright
 > chạy trực tiếp với session đã đăng nhập. Script **chỉ đọc**: mọi request `POST/PUT/PATCH/DELETE` tới API đều bị chặn
@@ -220,6 +222,8 @@ Bấm `Cancel` trên popup: popup đóng, dialog edit vẫn mở và giữ nguy�
 
 > Bộ test case tổng hợp từ **VP-2591** (30 TC, phần nghiệp vụ) và **VP-2593** (50 TC, phần Portal FE). Các case trùng
 > nhau đã được gộp; cột **Nguồn** ghi TC gốc của từng ticket. Label UI lấy từ lần quét DOM thật trên DEV ngày 2026-10-13.
+> Ngày 2026-10-18 đã bỏ 17 case (TC-EO-003, 004, 007, 008, 009, 030, 034 → 038, 042, 043, 053, 060, 062, 064) khỏi bộ
+> này; các TC gốc tương ứng vẫn được theo dõi trong [edit-order-linear.md](edit-order-linear.md).
 
 **Ký hiệu cột "Scan":**
 
@@ -242,17 +246,12 @@ Bấm `Cancel` trên popup: popup đóng, dialog edit vẫn mở và giữ nguy�
 
 ### B1. Hiển thị nút Edit & Eligibility
 
-| ID        | Tiêu đề                                            | Các bước & Kết quả mong đợi                                                                                                             | Ưu tiên    | Nguồn                 | Scan                                                       |
-| --------- | -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------- | --------------------- | ---------------------------------------------------------- |
-| TC-EO-001 | Nút edit hiện với order **Successful - Unsettled** | Mở Order Detail của order Successful - Unsettled → có `Edit customer` và `Edit service details`                                         | Cao        | 2591-TC01 · 2593-TC01 | ✅                                                         |
-| TC-EO-002 | Nút edit hiện với order **Successful - Settled**   | Mở order Successful - Settled → có cả 2 nút edit                                                                                        | Cao        | 2591-TC01 · 2593-TC02 | ✅                                                         |
-| TC-EO-003 | Nút edit hiện với order **Partial refunded**       | Mở order Partial refunded → có cả 2 nút edit                                                                                            | Cao        | 2591-TC01 · 2593-TC03 | ✅                                                         |
-| TC-EO-004 | Order **Refunded**                                 | Mở order Refunded → theo VP-2591 (mô tả): **không** có nút edit. Theo comment PO và VP-2593 AC: **có** nút edit                         | Cao        | 2591-TC03 · 2593-TC04 | ⚠️ Thực tế không có nút. Spec mâu thuẫn, chờ PO chốt       |
-| TC-EO-005 | Order **Canceled** không có nút edit               | Mở order Canceled → không có `Edit customer` / `Edit service details`                                                                   | Cao        | 2591-TC02 · 2593-TC05 | ✅                                                         |
-| TC-EO-006 | Status không hợp lệ khác không có nút edit         | Mở lần lượt order Pending, Re-opened, Canceling, Refunding, Cancel issue, Refund issue → không có nút edit                              | Trung bình | 2593-TC06             | ✅ Pending, Re-opened · 🔍 các status còn lại chưa có data |
-| TC-EO-007 | Kỳ payroll **đã chốt (locked)** vẫn được edit      | Order thuộc kỳ payroll đã lock → nút edit vẫn hiện, lưu được. Sau khi lưu, Store Income / Staff Income / Staff Payroll được recalculate | Cao        | 2591-AC               | 🔍                                                         |
-| TC-EO-008 | Kỳ payroll **đã tạo Check** thì không cho edit     | Order có staff thuộc kỳ payroll đã in check → nút edit ẩn/disable, hoặc lưu bị chặn kèm thông báo liên hệ DEV                           | Cao        | 2591-AC               | 🔍                                                         |
-| TC-EO-009 | User không có quyền thì không edit được            | Đăng nhập bằng role không có quyền sửa order → không thấy hoặc không dùng được nút edit                                                 | Cao        | 2591-TC29             | 🔍                                                         |
+| ID        | Tiêu đề                                            | Các bước & Kết quả mong đợi                                                                                | Ưu tiên    | Nguồn                 | Scan                                                       |
+| --------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ---------- | --------------------- | ---------------------------------------------------------- |
+| TC-EO-001 | Nút edit hiện với order **Successful - Unsettled** | Mở Order Detail của order Successful - Unsettled → có `Edit customer` và `Edit service details`            | Cao        | 2591-TC01 · 2593-TC01 | ✅                                                         |
+| TC-EO-002 | Nút edit hiện với order **Successful - Settled**   | Mở order Successful - Settled → có cả 2 nút edit                                                           | Cao        | 2591-TC01 · 2593-TC02 | ✅                                                         |
+| TC-EO-005 | Order **Canceled** không có nút edit               | Mở order Canceled → không có `Edit customer` / `Edit service details`                                      | Cao        | 2591-TC02 · 2593-TC05 | ✅                                                         |
+| TC-EO-006 | Status không hợp lệ khác không có nút edit         | Mở lần lượt order Pending, Re-opened, Canceling, Refunding, Cancel issue, Refund issue → không có nút edit | Trung bình | 2593-TC06             | ✅ Pending, Re-opened · 🔍 các status còn lại chưa có data |
 
 ### B2. Edit customer
 
@@ -282,41 +281,28 @@ Bấm `Cancel` trên popup: popup đóng, dialog edit vẫn mở và giữ nguy�
 
 ### B4. Sửa Service name & Note
 
-| ID        | Tiêu đề                                           | Các bước & Kết quả mong đợi                                                                                                                               | Ưu tiên    | Nguồn                      | Scan                                     |
-| --------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | -------------------------- | ---------------------------------------- |
-| TC-EO-026 | Gõ tay tên service                                | Sửa `Service name` → `Save changes` bật → Confirm → Order Detail hiện tên mới, giá dòng giữ nguyên                                                        | Cao        | 2593-TC14                  | ✅ (Save bật, giá giữ $30.00) · 🔍 (lưu) |
-| TC-EO-027 | Chọn tên từ catalog                               | `Change service` → `Search service…` → chọn 1 service → chỉ `Service name` được điền. Catalog không hiện giá, giá dòng **không** đổi theo Service Setting | Cao        | 2591-TC08/TC09 · 2593-TC15 | ✅ (catalog không có giá)                |
-| TC-EO-028 | Đổi sang service khác giá thì giá dòng giữ nguyên | Chọn service có giá trong Setting khác giá dòng → lưu → giá dòng, subtotal, tổng order không đổi. `service_id` không đổi (BE chỉ lưu name)                | Cao        | 2591-TC09 · 2593-TC16      | 🔍                                       |
-| TC-EO-029 | Tên service trống                                 | Xoá trống `Service name` → mong đợi: validate, `Save changes` bị chặn                                                                                     | Trung bình | 2593-TC18                  | ⚠️ Thực tế Save **vẫn bật**              |
-| TC-EO-030 | Tìm trong catalog                                 | Gõ từ khoá vào `Search service…` → danh sách lọc đúng. Không khớp thì hiện empty state                                                                    | Thấp       | — (bổ sung)                | 🔍                                       |
-| TC-EO-031 | Thêm Service note                                 | `Add note` trên 1 dòng → textbox `Service note` → nhập → lưu → note hiển thị/lưu đúng                                                                     | Trung bình | 2591-TC12 · 2593-TC17      | ✅ (có textbox) · 🔍 (lưu, chờ BE)       |
-| TC-EO-032 | Cập nhật Order note                               | Nhập `Order note` (placeholder "Add a note for this order") → lưu → Order information › Order note hiện nội dung mới                                      | Trung bình | 2591-TC11                  | ✅ (có textbox) · 🔍 (lưu)               |
-| TC-EO-033 | Report Service hiện tên mới                       | Sau khi đổi tên service → report liên quan hiện tên mới, số tiền giữ nguyên                                                                               | Trung bình | 2591-TC10                  | 🔍                                       |
-
-### B5. Dòng Refunded (order Partial refunded)
-
-| ID        | Tiêu đề                                           | Các bước & Kết quả mong đợi                                                                                                         | Ưu tiên    | Nguồn       | Scan                                                                         |
-| --------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ---------- | ----------- | ---------------------------------------------------------------------------- |
-| TC-EO-034 | Dòng refunded có label "Refunded" và highlight đỏ | Mở edit trên order Partial refunded → dòng refunded có label "Refunded", nền/viền đỏ                                                | Trung bình | 2593-TC20   | ✅ label · 🔍 màu đỏ (xem ảnh)                                               |
-| TC-EO-035 | Dòng refunded vẫn move/sửa được                   | Kéo hoặc `Move to…` dòng refunded, sửa tên → được phép. BE tự tính lại                                                              | Cao        | 2593-TC19   | ⚠️ Thực tế `Service name`, `Change service`, drag, checkbox đều **disabled** |
-| TC-EO-036 | Dòng refunded không tính vào tip                  | Order Partial refunded có tip → Recipients & amounts và `$x in services` không tính tiền dòng refunded                              | Trung bình | 2593-TC21   | 🔍 (cần order Partial refunded có tip)                                       |
-| TC-EO-037 | Tổng tiền đúng sau khi move dòng refunded         | Move dòng refunded → lưu → tổng order, số tiền refund không đổi                                                                     | Trung bình | 2593-TC22   | 🔍 (bị chặn bởi TC-EO-035)                                                   |
-| TC-EO-038 | `Services total` khi có dòng refunded             | Kiểm tra `Services total` (thực tế $37.00, chỉ dòng chưa refund) so với header nhóm ($67.00) → xác nhận cách hiển thị đúng với ý PO | Thấp       | — (bổ sung) | ⚠️ Cần xác nhận                                                              |
+| ID        | Tiêu đề                                           | Các bước & Kết quả mong đợi                                                                                                                               | Ưu tiên    | Nguồn                      | Scan                                                                                          |
+| --------- | ------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | -------------------------- | --------------------------------------------------------------------------------------------- |
+| TC-EO-026 | Gõ tay tên service                                | Sửa `Service name` → `Save changes` bật → Confirm → Order Detail hiện tên mới, giá dòng giữ nguyên                                                        | Cao        | 2593-TC14                  | ✅ (Save bật, giá giữ $30.00) · 🔍 (lưu)                                                      |
+| TC-EO-027 | Chọn tên từ catalog                               | `Change service` → `Search service…` → chọn 1 service → chỉ `Service name` được điền. Catalog không hiện giá, giá dòng **không** đổi theo Service Setting | Cao        | 2591-TC08/TC09 · 2593-TC15 | ✅ (catalog không có giá)                                                                     |
+| TC-EO-028 | Đổi sang service khác giá thì giá dòng giữ nguyên | Chọn service có giá trong Setting khác giá dòng → lưu → giá dòng, subtotal, tổng order không đổi. `service_id` không đổi (BE chỉ lưu name)                | Cao        | 2591-TC09 · 2593-TC16      | 🔍                                                                                            |
+| TC-EO-029 | Tên service trống                                 | Xoá trống `Service name` → mong đợi: validate, `Save changes` bị chặn                                                                                     | Trung bình | 2593-TC18                  | ✅ (2026-10-23) ô `[invalid]` + lỗi "Each service needs a name." + Save disabled — **đã fix** |
+| TC-EO-031 | Thêm Service note                                 | `Add note` trên 1 dòng → textbox `Service note` → nhập → lưu → note hiển thị/lưu đúng                                                                     | Trung bình | 2591-TC12 · 2593-TC17      | ✅ (có textbox) · 🔍 (lưu, chờ BE)                                                            |
+| TC-EO-032 | Cập nhật Order note                               | Nhập `Order note` (placeholder "Add a note for this order") → lưu → Order information › Order note hiện nội dung mới                                      | Trung bình | 2591-TC11                  | ✅ (có textbox) · 🔍 (lưu)                                                                    |
+| TC-EO-033 | Report Service hiện tên mới                       | Sau khi đổi tên service → report liên quan hiện tên mới, số tiền giữ nguyên                                                                               | Trung bình | 2591-TC10                  | 🔍                                                                                            |
 
 ### B6. Dòng Store (không có staff)
 
-| ID        | Tiêu đề                               | Các bước & Kết quả mong đợi                                                              | Ưu tiên    | Nguồn     | Scan            |
-| --------- | ------------------------------------- | ---------------------------------------------------------------------------------------- | ---------- | --------- | --------------- |
-| TC-EO-039 | Store item không kéo được             | Order có store item → mở edit → dòng store không có tay nắm kéo / không kéo được         | Trung bình | 2593-TC23 | 🔍 (thiếu data) |
-| TC-EO-040 | Store item không chọn, không sửa được | Không có checkbox, `Service name` và `Change service` bị khoá                            | Trung bình | 2593-TC24 | 🔍              |
-| TC-EO-041 | Store item không nhận tip             | Store item không xuất hiện trong Recipients & amounts                                    | Trung bình | 2593-TC25 | 🔍              |
-| TC-EO-042 | Store item không có trong payload     | Lưu thay đổi → request `PUT /orders/{id}/items` không chứa store item (kiểm tra Network) | Trung bình | 2593-TC26 | 🔍              |
+| ID        | Tiêu đề                               | Các bước & Kết quả mong đợi                                                      | Ưu tiên    | Nguồn     | Scan                                                                                                                           |
+| --------- | ------------------------------------- | -------------------------------------------------------------------------------- | ---------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| TC-EO-039 | Store item không kéo được             | Order có store item → mở edit → dòng store không có tay nắm kéo / không kéo được | Trung bình | 2593-TC23 | ✅ (2026-10-23) OD261023-26157840 có "Store · 1 item · Not editable", img "Store item — cannot reassign", không có tay nắm kéo |
+| TC-EO-040 | Store item không chọn, không sửa được | Không có checkbox, `Service name` và `Change service` bị khoá                    | Trung bình | 2593-TC24 | ✅ (2026-10-23) không checkbox / không Service name / không Change service — "Not editable"                                    |
+| TC-EO-041 | Store item không nhận tip             | Store item không xuất hiện trong Recipients & amounts                            | Trung bình | 2593-TC25 | ✅ (2026-10-23) Recipients chỉ có staff có service; store $36 không nằm trong Services total                                   |
 
 ### B7. Tip allocation
 
 | ID        | Tiêu đề                                 | Các bước & Kết quả mong đợi                                                                                                                                               | Ưu tiên    | Nguồn                 | Scan               |
 | --------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | --------------------- | ------------------ |
-| TC-EO-043 | Order không tip                         | Mở edit trên order tip $0 → hiện "No tip on this order", không có khu Tip allocation                                                                                      | Thấp       | — (bổ sung)           | ✅                 |
 | TC-EO-044 | Bố cục Tip allocation                   | Order có tip → hiện `Total tip $x`, tablist "Tip split method" (`Split evenly` mặc định / `Proportion` / `Manual`), "Recipients & amounts", trạng thái `Balanced $x / $x` | Cao        | 2593                  | ✅                 |
 | TC-EO-045 | **Split evenly**                        | Tip $3, 2 staff → $1.50 / $1.50, ô tip disabled                                                                                                                           | Cao        | 2591-TC13 · 2593-TC27 | ✅                 |
 | TC-EO-046 | **Proportion**                          | Tip $3, service $30 / $37 → $1.35 / $1.65 (theo tỷ lệ), ô tip disabled                                                                                                    | Cao        | 2591-TC13 · 2593-TC28 | ✅                 |
@@ -326,37 +312,33 @@ Bấm `Cancel` trên popup: popup đóng, dialog edit vẫn mở và giữ nguy�
 | TC-EO-050 | Người nhận tip = staff đang làm service | Danh sách người nhận = staff có service trong order, không có checkbox chọn tay                                                                                           | Trung bình | 2591-TC14 · 2593-TC31 | ✅                 |
 | TC-EO-051 | Đổi staff thì tip đi theo               | Chuyển hết service của A sang B → Recipients chỉ còn B (`$x in services` cập nhật) → lưu → tip của B đúng                                                                 | Cao        | 2591-TC14 · 2593-TC32 | ✅ (UI) · 🔍 (lưu) |
 | TC-EO-052 | Total Tip trước = sau                   | Đổi method/phân bổ → lưu → Order summary › Tip và tổng tip trong report không đổi                                                                                         | Cao        | 2591-TC13 · 2593-TC33 | 🔍                 |
-| TC-EO-053 | Tip lưu chung 1 API                     | Lưu thay đổi tip → Network chỉ có request edit-order, **không** có `PUT /split_tip`                                                                                       | Trung bình | 2593-TC34             | 🔍                 |
 
 ### B8. Rule tiền (bất biến)
 
-| ID        | Tiêu đề                          | Các bước & Kết quả mong đợi                                                                                             | Ưu tiên    | Nguồn                    | Scan |
-| --------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------ | ---- |
-| TC-EO-054 | Không có field tiền nào sửa được | Trong dialog: giá dòng, discount, `Services total`, `Total tip` chỉ là text. Không có input amount/fee/discount/payment | Cao        | 2591-TC17 · 2593-TC36/37 | ✅   |
-| TC-EO-055 | Tổng order trước = sau           | Ghi Subtotal/Discount/Tax/Tip/Total trước khi edit → đổi staff + tên + tip → lưu → các giá trị giống hệt                | Cao        | 2591-TC18 · 2593-TC13/35 | 🔍   |
-| TC-EO-056 | Không phát sinh transaction mới  | Sau khi lưu → Payment details giữ đúng số payment cũ. Activity log tab `Tender` không có bản ghi mới                    | Cao        | 2591-TC19 · 2593-TC38    | 🔍   |
-| TC-EO-057 | API chặn field tiền              | Gọi `PUT /orders/{id}/items` với payload chứa amount/fee/discount/tip/payment → API trả lỗi 4xx, dữ liệu không đổi      | Cao        | 2591-TC28                | 🔍   |
-| TC-EO-058 | Order có discount                | Order có discount dòng (vd "-$10.00 off discount") → đổi staff/tên → lưu → discount và giá sau giảm giữ nguyên          | Trung bình | — (bổ sung)              | 🔍   |
+| ID        | Tiêu đề                          | Các bước & Kết quả mong đợi                                                                                             | Ưu tiên    | Nguồn                    | Scan                                                                                                                                          |
+| --------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| TC-EO-054 | Không có field tiền nào sửa được | Trong dialog: giá dòng, discount, `Services total`, `Total tip` chỉ là text. Không có input amount/fee/discount/payment | Cao        | 2591-TC17 · 2593-TC36/37 | ✅                                                                                                                                            |
+| TC-EO-055 | Tổng order trước = sau           | Ghi Subtotal/Discount/Tax/Tip/Total trước khi edit → đổi staff + tên + tip → lưu → các giá trị giống hệt                | Cao        | 2591-TC18 · 2593-TC13/35 | ✅ (2026-10-23) OD261023-26713053: đổi tên service + Confirm → Subtotal $134.00 / Discount −$13.40 / Tip $0.05 / **Total $126.68** giữ nguyên |
+| TC-EO-056 | Không phát sinh transaction mới  | Sau khi lưu → Payment details giữ đúng số payment cũ. Activity log tab `Tender` không có bản ghi mới                    | Cao        | 2591-TC19 · 2593-TC38    | ✅ (2026-10-23) sau Confirm vẫn "Paid in full · 1 payment"; không có Tender mới                                                               |
+| TC-EO-057 | API chặn field tiền              | Gọi `PUT /orders/{id}/items` với payload chứa amount/fee/discount/tip/payment → API trả lỗi 4xx, dữ liệu không đổi      | Cao        | 2591-TC28                | 🔍                                                                                                                                            |
+| TC-EO-058 | Order có discount                | Order có discount dòng (vd "-$10.00 off discount") → đổi staff/tên → lưu → discount và giá sau giảm giữ nguyên          | Trung bình | — (bổ sung)              | 🔍                                                                                                                                            |
 
 ### B9. Save / Confirm popup
 
-| ID        | Tiêu đề                                   | Các bước & Kết quả mong đợi                                                                                                                                                                                              | Ưu tiên    | Nguồn                 | Scan                                                                               |
-| --------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- | --------------------- | ---------------------------------------------------------------------------------- |
-| TC-EO-059 | Save disabled khi chưa có thay đổi hợp lệ | Mở dialog → `Save changes` disabled. Có thay đổi hợp lệ thì bật. Có lỗi validate thì lại disabled                                                                                                                        | Cao        | 2593-TC39             | ✅                                                                                 |
-| TC-EO-060 | Popup đúng nội dung                       | Bấm `Save changes` → popup Title "Confirm Order Update?", Message "This action will update the order information without changing any amount or payment data. Do you want to continue?", nút `Cancel` / `Confirm Update` | Cao        | 2591-TC20 · 2593-TC40 | ⚠️ Message khớp. Title/nút khác chữ hoa: "Confirm order update?", "Confirm update" |
-| TC-EO-061 | Cancel trên popup                         | Popup → `Cancel` → popup đóng, dialog edit vẫn mở và giữ thay đổi, chưa lưu gì                                                                                                                                           | Cao        | 2591-TC21 · 2593-TC42 | ✅                                                                                 |
-| TC-EO-062 | Confirm update                            | Popup → `Confirm update` → lưu thành công, popup và dialog đóng, Order Detail hiện dữ liệu mới                                                                                                                           | Cao        | 2591-TC22 · 2593-TC41 | 🔍                                                                                 |
-| TC-EO-063 | Đóng dialog không lưu                     | Sửa vài field → `Cancel` (hoặc Esc) → dialog đóng ngay. Mở lại thấy dữ liệu gốc                                                                                                                                          | Trung bình | 2593-TC47             | ✅ (đóng ngay, không có cảnh báo huỷ)                                              |
-| TC-EO-064 | Dữ liệu được lưu bền                      | Sau khi lưu → reload trang → dữ liệu mới vẫn hiển thị                                                                                                                                                                    | Cao        | 2593-TC48             | 🔍                                                                                 |
+| ID        | Tiêu đề                                   | Các bước & Kết quả mong đợi                                                                       | Ưu tiên    | Nguồn                 | Scan                                  |
+| --------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------- | --------------------- | ------------------------------------- |
+| TC-EO-059 | Save disabled khi chưa có thay đổi hợp lệ | Mở dialog → `Save changes` disabled. Có thay đổi hợp lệ thì bật. Có lỗi validate thì lại disabled | Cao        | 2593-TC39             | ✅                                    |
+| TC-EO-061 | Cancel trên popup                         | Popup → `Cancel` → popup đóng, dialog edit vẫn mở và giữ thay đổi, chưa lưu gì                    | Cao        | 2591-TC21 · 2593-TC42 | ✅                                    |
+| TC-EO-063 | Đóng dialog không lưu                     | Sửa vài field → `Cancel` (hoặc Esc) → dialog đóng ngay. Mở lại thấy dữ liệu gốc                   | Trung bình | 2593-TC47             | ✅ (đóng ngay, không có cảnh báo huỷ) |
 
 ### B10. Activity log & tag Updated
 
-| ID        | Tiêu đề                          | Các bước & Kết quả mong đợi                                                                | Ưu tiên    | Nguồn                 | Scan                                                      |
-| --------- | -------------------------------- | ------------------------------------------------------------------------------------------ | ---------- | --------------------- | --------------------------------------------------------- |
-| TC-EO-065 | Activity log đủ thông tin        | Sau khi lưu → Activity log có: user thực hiện, thời gian, field thay đổi, giá trị cũ → mới | Cao        | 2591-TC23 · 2593-TC45 | 🔍                                                        |
-| TC-EO-066 | Log khi sửa nhiều field cùng lúc | Đổi Staff + tên service + Tip trong 1 lần Save → log ghi từng field. Mọi thay đổi đều đúng | Cao        | 2591-TC24 · 2593-TC46 | 🔍                                                        |
-| TC-EO-067 | Tag **Updated** ở Order Detail   | Sau khi lưu → header Order Detail có tag Updated                                           | Cao        | 2591-TC25 · 2593-TC44 | 🔍                                                        |
-| TC-EO-068 | Tag **Updated** ở Order Listing  | Sau khi lưu → dòng order trên listing có tag Updated                                       | Trung bình | 2591-TC26 · 2593-TC43 | ⚠️ Chưa có trên listing (chờ BE expose `edited`, VP-3825) |
+| ID        | Tiêu đề                          | Các bước & Kết quả mong đợi                                                                | Ưu tiên    | Nguồn                 | Scan                                                                                                                        |
+| --------- | -------------------------------- | ------------------------------------------------------------------------------------------ | ---------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| TC-EO-065 | Activity log đủ thông tin        | Sau khi lưu → Activity log có: user thực hiện, thời gian, field thay đổi, giá trị cũ → mới | Cao        | 2591-TC23 · 2593-TC45 | ✅ (2026-10-23) log "Service Name A → A QC", user Khanh Do (DEV), 03:05:11 PM, nguồn Server                                 |
+| TC-EO-066 | Log khi sửa nhiều field cùng lúc | Đổi Staff + tên service + Tip trong 1 lần Save → log ghi từng field. Mọi thay đổi đều đúng | Cao        | 2591-TC24 · 2593-TC46 | 🔍                                                                                                                          |
+| TC-EO-067 | Tag **Updated** ở Order Detail   | Sau khi lưu → header Order Detail có tag Updated                                           | Cao        | 2591-TC25 · 2593-TC44 | ✅ (2026-10-23) header hiện tag "Updated" cạnh status sau Confirm                                                           |
+| TC-EO-068 | Tag **Updated** ở Order Listing  | Sau khi lưu → dòng order trên listing có tag Updated                                       | Trung bình | 2591-TC26 · 2593-TC43 | ✅ (2026-10-23) listing hiện icon/badge "Updated" (`aria-label="Order information was updated."`) cạnh mã order — **đã có** |
 
 ### B11. Edge case / Negative / Phi chức năng
 
@@ -373,49 +355,45 @@ Bấm `Cancel` trên popup: popup đóng, dialog edit vẫn mở và giữ nguy�
 
 ### B12. Tổng kết độ phủ
 
-**Theo mức ưu tiên:** Cao 41 · Trung bình 24 · Thấp 5
+**Theo mức ưu tiên:** Cao 32 · Trung bình 19 · Thấp 2
 
 **Theo kết quả quét:**
 
 | Kết quả                                   | Số case | Ghi chú                                                                                                                               |
 | ----------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| ✅ Khớp spec (đầy đủ hoặc một phần UI)    | 28      | Eligibility, bố cục dialog, Move to, nhóm rỗng, catalog, tip evenly/proportion/manual, validate tip, popup Cancel, field tiền chỉ đọc |
-| ⚠️ Lệch spec / cần xác nhận               | 6       | TC-EO-004, 029, 035, 038, 060, 068                                                                                                    |
-| 🔍 Chỉ test thủ công được / cần seed data | 36      | Các case phải bấm `Confirm update`, kiểm tra report/payroll/API, store item, quyền                                                    |
+| ✅ Khớp spec (đầy đủ hoặc một phần UI)    | 25      | Eligibility, bố cục dialog, Move to, nhóm rỗng, catalog, tip evenly/proportion/manual, validate tip, popup Cancel, field tiền chỉ đọc |
+| ⚠️ Lệch spec / cần xác nhận               | 2       | TC-EO-029, 068                                                                                                                        |
+| 🔍 Chỉ test thủ công được / cần seed data | 26      | Các case phải bấm `Confirm update`, kiểm tra report/payroll/API, store item                                                           |
 
-**Ánh xạ nguồn:** 30/30 TC của VP-2591 và 50/50 TC của VP-2593 đều đã được ánh xạ vào bộ trên. Phần lớn case trùng
-giữa 2 ticket đã được gộp. 10 case "bổ sung" là các case rút ra từ UI thực tế (Clear, Select all services, nhóm rỗng,
-search catalog, discount…).
+**Ánh xạ nguồn:** sau khi bỏ 17 case, bộ này không còn phủ đủ 30 TC của VP-2591 và 50 TC của VP-2593. Danh sách đầy đủ
+theo từng ticket nằm ở [edit-order-linear.md](edit-order-linear.md). 6 case "bổ sung" là các case rút ra từ UI thực tế
+(tìm customer, huỷ đổi customer, Clear, Select all services, nhóm rỗng, discount).
 
 **Data cần chuẩn bị trước khi test thủ công:**
 
-1. Order có **store item** (không staff): cho TC-EO-039 → 042.
-2. Order **Partial refunded có tip**: cho TC-EO-036.
-3. Kỳ payroll **locked** và kỳ payroll **đã tạo Check**: cho TC-EO-007, 008.
-4. Tài khoản **không có quyền** sửa order: cho TC-EO-009.
-5. Order ở các status `Canceling`, `Refunding`, `Cancel issue`, `Refund issue`: cho TC-EO-006.
+1. Order có **store item** (không staff): cho TC-EO-039 → 041.
+2. Order ở các status `Canceling`, `Refunding`, `Cancel issue`, `Refund issue`: cho TC-EO-006.
 
 ---
 
 ## Phần C — Chạy test tự động
 
-Code Playwright cho 70 case ở Phần B nằm trong `tests/e2e/edit-order/`, Page Object là
+Code Playwright cho 53 case ở Phần B nằm trong `tests/e2e/edit-order/`, Page Object là
 `src/pages/orders/OrderDetailPage.ts` (fixture `orderDetailPage`).
 
 | Nhóm                                | File spec                              | Chạy thật | `fixme` |
 | ----------------------------------- | -------------------------------------- | --------: | ------: |
-| B1. Hiển thị nút Edit & Eligibility | `eligibility.e2e.spec.ts`              |         5 |       4 |
+| B1. Hiển thị nút Edit & Eligibility | `eligibility.e2e.spec.ts`              |         4 |       0 |
 | B2. Edit customer                   | `edit-customer.e2e.spec.ts`            |         1 |       4 |
 | B3. Sửa Staff                       | `edit-staff.e2e.spec.ts`               |         4 |       7 |
-| B4. Sửa Service name & Note         | `service-name-note.e2e.spec.ts`        |         4 |       4 |
-| B5. Dòng Refunded                   | `refunded-line.e2e.spec.ts`            |         1 |       4 |
-| B6. Dòng Store                      | `store-line.e2e.spec.ts`               |         0 |       4 |
-| B7. Tip allocation                  | `tip-allocation.e2e.spec.ts`           |         9 |       2 |
+| B4. Sửa Service name & Note         | `service-name-note.e2e.spec.ts`        |         4 |       3 |
+| B6. Dòng Store                      | `store-line.e2e.spec.ts`               |         0 |       3 |
+| B7. Tip allocation                  | `tip-allocation.e2e.spec.ts`           |         8 |       1 |
 | B8. Rule tiền                       | `amount-invariants.e2e.spec.ts`        |         1 |       4 |
-| B9. Save / Confirm popup            | `save-confirm-popup.e2e.spec.ts`       |         3 |       3 |
+| B9. Save / Confirm popup            | `save-confirm-popup.e2e.spec.ts`       |         3 |       0 |
 | B10. Activity log & tag Updated     | `activity-log-updated-tag.e2e.spec.ts` |         0 |       4 |
 | B11. Edge case / Negative           | `edge-negative.e2e.spec.ts`            |         0 |       2 |
-| **Tổng**                            |                                        |    **28** |  **42** |
+| **Tổng**                            |                                        |    **25** |  **28** |
 
 ### C1. Câu lệnh
 
@@ -447,10 +425,10 @@ npm run report
 
 ### C2. Cách đọc kết quả
 
-- **28 case chạy thật** gồm các case ✅ và phần UI của các case ✅ + 🔍.
-- **42 case `fixme`** hiện là **skipped**. Đây là kết quả bình thường, không phải lỗi:
-  - 36 case 🔍 có ghi chú `TODO(manual/setup)`: cần bấm Confirm update, seed data, đổi role hoặc kiểm tra report/API.
-  - 6 case ⚠️ có ghi chú `TODO(spec-conflict)`: chờ PO/DEV chốt.
+- **25 case chạy thật** gồm các case ✅ và phần UI của các case ✅ + 🔍.
+- **28 case `fixme`** hiện là **skipped**. Đây là kết quả bình thường, không phải lỗi:
+  - 26 case 🔍 có ghi chú `TODO(manual/setup)`: cần bấm Confirm update, seed data hoặc kiểm tra report/API.
+  - 2 case ⚠️ có ghi chú `TODO(spec-conflict)`: chờ PO/DEV chốt.
 
   Tìm các ghi chú này bằng `grep -rn "TODO(" tests/e2e/edit-order`.
 
@@ -512,3 +490,84 @@ Lưu ý:
   - Picker `Move to…` liệt kê toàn bộ staff của tiệm → gõ tên vào `Search staff...` trước khi chọn.
   - Lọc sẵn order nhiều staff qua cột Staff trên listing; chờ nút `Edit service details` render trước khi loại order.
 - Report chi tiết: `npm run report` (reports/html)
+
+### 2026-10-19 17:30 (UTC+7)
+
+- Lệnh: `npx cross-env ENV=stage playwright test tests/e2e/edit-order tests/e2e/edit-order-linear`, sau đó chạy lại các
+  case fail: `--last-failed --workers=3 --retries=1`
+- Kết quả cuối: 23 passed, 1 failed, 29 skipped (tổng 53). 28 skip là `test.fixme` có chủ đích; TC-EO-017 skip vì không
+  tìm thấy order Successful - Unsettled có 2 staff trong các order đã duyệt.
+- TC-EO-005, TC-EO-061 fail ở lượt đầu do trang Orders trên DEV không tải xong; chạy lại thì pass.
+- Fail: TC-EO-010 · Mở dialog Edit customer — order đầu tiên đã có customer nên dialog có tiêu đề "Edit customer", không
+  khớp "Add customer" / "Change customer" mà test chờ. Lỗi do dữ liệu, không phải lỗi sản phẩm.
+- Report chi tiết: `npm run report` (reports/html)
+
+### 2026-10-19 21:00 (UTC+7)
+
+- TC-EO-010: QC xác nhận dialog "Edit customer" (khi order đã có customer) là đúng. Test giờ chấp nhận cả "Add customer"
+  và "Edit customer". Chạy lại (`--retries=2`): **passed**.
+- Ghi chú: Order Listing đã có dấu hiệu order đã sửa — icon bút chì cạnh mã order (`aria-label="Order information was
+updated."`), khác với tag chữ "Updated" ở Order Detail.
+
+### 2026-10-23 (MCP live test — verify VP-2591 trên DEV)
+
+- Cách chạy: điều khiển trực tiếp browser qua **Playwright MCP (`portal-qa`)**, session `khanh_do@fastboy.net`, store 14
+  trên `https://v2.dev-fastboypay.com`. Có **1 lần save thật + revert** (đổi tên service rồi đổi lại).
+- Kết quả: **toàn bộ case test được đều PASS.** Không phát hiện bug sản phẩm mới → không log bug.
+- Order mẫu dùng: Unsettled 1 thợ có tip+discount `OD261023-26713053`; Unsettled 2 thợ + **store item** + tip
+  `OD261023-26157840` (Ora Spencer/Thalia, store "Gel Manicure product 2"); Partial refunded `OD261009-16969206`;
+  Refunded `OD261016-61407567`; Canceled `OD261022-33615335`; Settled `OD261022-41160750`.
+- Eligibility: Unsettled ✅ / Settled ✅ / Partial refunded ✅ **có** nút Edit; Refunded ✅ / Canceled ✅ **không** có.
+- Edit customer: dialog "Edit customer" (order có customer), search lọc đúng, Save bật khi chọn, Cancel giữ nguyên.
+- Edit service details: Add staff → nhóm rỗng chặn Save ("Each section needs a staff and a service."); Remove staff;
+  **Move to…** (tick → picker staff → chuyển dòng, tổng nhóm đổi, Services total giữ); **Change staff for group** đổi cả
+  nhóm; catalog `Change service` không hiện giá; gõ tay tên; Add note; Order note.
+- **3 điểm ⚠️ trong doc nay đã FIX:**
+  1. TC-EO-029: xoá trống Service name → ô `[invalid]` + "Each service needs a name." + **Save disabled**.
+  2. Popup xác nhận: title **"Confirm Order Update?"** + nút **"Confirm Update"** (đúng title-case theo VP-2591).
+  3. TC-EO-068: listing hiện dấu "Updated" (`aria-label="Order information was updated."`).
+- Tip allocation (OD...157840, tip $0.08, 2 thợ): Split evenly $0.04/$0.04 ✅ · Proportion $0.05/$0.03 ✅ ·
+  Manual sửa được, lệch tổng → "Off by $x" + "Tip shares must add up to the total tip." + Save disabled ✅ ·
+  balanced → Save bật ✅ · đổi staff → Recipients đi theo ✅.
+- **Store item** (DEV nay đã có data): "Store · Not editable", không kéo/chọn/sửa, không nhận tip, không nằm trong
+  Services total → TC-EO-039/040/041 ✅.
+- **End-to-end save + revert** (OD261023-26713053, đổi "Full set Ombre (2 colors)" → "...QC" → Confirm):
+  - Tiền **không đổi**: Subtotal $134.00 / Discount −$13.40 / Tip $0.05 / **Total $126.68** (TC-EO-055 ✅).
+  - **1 payment** giữ nguyên, không Tender mới (TC-EO-056 ✅).
+  - Activity log ghi "Service Name A → A QC", user Khanh Do (DEV), nguồn Server (TC-EO-065 ✅).
+  - Header hiện tag **Updated** (TC-EO-067 ✅).
+  - Đã **revert** tên về gốc; Total vẫn $126.68.
+- Còn mở (không phải bug, chờ PO/FE): **dòng refunded vẫn bị khoá** trong order Partial refunded
+  (`Service name`/`Change service` disabled, không kéo/chọn) — lệch VP-2593 (A5.2 / A9 #2). Cần PO chốt.
+
+**Re-verify subtask bug của VP-2591 (2026-10-23, DEV #14):**
+
+- ✅ Đã fix → chuyển QC Completed: VP-4963 (popup text), VP-4964 (tag Updated ở listing), VP-4965 (service name trống → validate), VP-4968 (Manual đổi staff → tip chuyển đúng, order #OD261019-00003107), **VP-4973** (toast lỗi khi Save chỉ hiện 1 lần — verify bằng route abort PUT; data không bị lưu).
+- ❌ Còn lỗi (đã comment "Please help me fix"): **VP-4966** (tip allocation không prefill đúng split method — order #OD261019-00003107 lưu Manual $10/$5/$4.50 nhưng dialog default Split evenly $6.50), **VP-4971** (edit bị gộp nhóm "Settled" trong activity log; user & tên staff dòng tip nay đã có).
+- ⏳ Chưa re-verify được: VP-4967 (partial refund + tip → 422, cần order partial-refunded có tip + save thật).
+- Đã lùi **VP-2591 → QC Testing** (chưa pass hết subtask). Mỗi subtask đã verify đều có ảnh nhúng trong comment Linear.
+
+---
+
+## Linear — Task & Bug liên quan
+
+> Nguồn: Linear team VP, label `Portal` — lấy ngày 2026-10-20. Bỏ Canceled, TechDebt/CI và Restaurant Portal.
+> Thứ tự: Bug → đang QC/Review → đã Prod/Done → Todo/Backlog. **6 issue.**
+
+| ID                                                  | Loại    | Tiêu đề                                                                            | Trạng thái          | Ưu tiên | Test hiện có                                     | E2E được? | Ghi chú                                     |
+| --------------------------------------------------- | ------- | ---------------------------------------------------------------------------------- | ------------------- | ------- | ------------------------------------------------ | --------- | ------------------------------------------- |
+| [VP-2327](https://linear.app/fastboy/issue/VP-2327) | Bug     | [Bug] Không thể chuyển Services thợ A sang thợ B                                   | QC Completed        | High    | Một phần — `edit-order/edit-staff`               | Có        | Chuyển 1 phần service từ thợ A sang thợ B   |
+| [VP-2591](https://linear.app/fastboy/issue/VP-2591) | Task    | [Portal] Cho phép cập nhật thông tin Order không ảnh hưởng đến giá tiền            | QC Testing          | High    | Có — `edit-order-linear/vp-2591`                 | Có        | Ticket cha                                  |
+| [VP-2593](https://linear.app/fastboy/issue/VP-2593) | Feature | [Portal] Cập nhật thông tin Order không ảnh hưởng đến giá tiền                     | QC Testing          | High    | Có — `edit-order-linear/vp-2593`, `edit-order/*` | Có        | FE của VP-2591 (cha: VP-2591)               |
+| [VP-2592](https://linear.app/fastboy/issue/VP-2592) | Task    | [API] Support API cập nhật thông tin Order không ảnh hưởng đến giá tiền            | Done                | High    | Gián tiếp qua spec FE                            | API       | BE `PUT /orders/{id}/items` (cha: VP-2591)  |
+| [VP-3172](https://linear.app/fastboy/issue/VP-3172) | Enh     | [Request] Ticket #1489939_Edit lại thợ trên order đã complete                      | Verified Production | Urgent  | Một phần — `edit-order/edit-staff`               | Có        | Đổi thợ trên order đã complete              |
+| [VP-3175](https://linear.app/fastboy/issue/VP-3175) | Enh     | [Request] Ticket #1490990_Chuyển service $88 từ Tracy sang Tom (OD260815-61458501) | Verified Production | Medium  | Một phần — `edit-order/edit-staff`               | Có        | Ticket hỗ trợ cụ thể, dùng làm case hồi quy |
+
+## Đã loại bỏ / thay đổi (2026-10-20)
+
+Không xoá TC nào.
+
+- TC-EO-015: chọn order có dòng staff (`withStaffRows`) — DEV có order chỉ có "Store · Not editable".
+- TC-EO-017: dùng order Successful - Settled có ≥2 staff (DEV từ 2025-01 chỉ có ~18 order Unsettled, không order nào ≥2 staff; order Settled cũng sửa được — TC-EO-002; test không lưu).
+
+Kết quả 2026-10-20: edit-staff.e2e.spec.ts 5/5 PASS.

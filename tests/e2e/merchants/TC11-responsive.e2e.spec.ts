@@ -90,15 +90,25 @@ test.describe('Responsive — Merchants', () => {
       await merchantsPage.waitForReady();
 
       expect(await documentScrollsSideways(page)).toBe(false);
+      // VP-4569 (measured 2026-10-20): instead of scrolling, the table drops
+      // low-priority columns at narrower widths — at 1366 "Timezone" and
+      // "Joined at" are hidden (the Columns menu labels them "Hidden at this
+      // width") and the remaining six fit. If anything still overflows, it must
+      // be the table's own scroll area, never the page.
       const scroller = await tableScroller(page);
-      expect(scroller?.slot, 'the table must own its horizontal scrolling').toBe(
-        'scroll-area-viewport',
-      );
-      await expect(merchantsPage.columnHeaders).toHaveCount(MERCHANT_COLUMNS.length);
+      if (scroller) {
+        expect(scroller.slot, 'the table must own its horizontal scrolling').toBe(
+          'scroll-area-viewport',
+        );
+      }
+      await expect(merchantsPage.columnHeaders).toHaveCount(MERCHANT_COLUMNS.length - 2);
+      for (const name of ['#', 'Merchant', 'Status']) {
+        await expect(merchantsPage.columnHeader(name).first()).toBeVisible();
+      }
 
       // The sidebar sits beside the content, not on top of it.
       const overlap = await page.evaluate(() => {
-        const sidebar = document.querySelector('[data-slot="sidebar"]');
+        const sidebar = document.querySelector('aside[aria-label="Sidebar"]');
         const table = document.querySelector('table');
         if (!sidebar || !table) return false;
         const nav = sidebar.getBoundingClientRect();
@@ -133,7 +143,13 @@ test.describe('Responsive — Merchants', () => {
       await expect(merchantsPage.statusOptions).toHaveCount(3);
       await page.keyboard.press('Escape');
 
-      await expect(merchantsPage.columnHeaders).toHaveCount(MERCHANT_COLUMNS.length);
+      // VP-4569: at 1024 the table keeps five priority columns (#, Merchant,
+      // Package, Status, Owner email) and hides the rest; headers stay aligned.
+      await expect(merchantsPage.columnHeaders).toHaveCount(5);
+      const headerBoxes = await merchantsPage.columnHeaders.evaluateAll((ths) =>
+        ths.map((th) => th.getBoundingClientRect().left),
+      );
+      expect([...headerBoxes].sort((a, b) => a - b)).toEqual(headerBoxes);
       expect(await documentScrollsSideways(page)).toBe(false);
 
       // The doc expected a collapse at this width; the Portal keeps the column.
@@ -175,9 +191,12 @@ test.describe('Responsive — Merchants', () => {
       await expect(merchantsPage.statusOptions).toHaveCount(3);
       await page.keyboard.press('Escape');
 
-      // Scrolling the container reaches the last column rather than hiding it.
-      await merchantsPage.columnHeader('JOINED AT').scrollIntoViewIfNeeded();
-      await expect(merchantsPage.columnHeader('JOINED AT')).toBeVisible();
+      // Scrolling the container reaches the last rendered column (VP-4569
+      // hides Owner phone / Timezone / Joined at at this width).
+      const lastHeader = merchantsPage.columnHeaders.last();
+      await lastHeader.scrollIntoViewIfNeeded();
+      await expect(lastHeader).toBeVisible();
+      await expect(lastHeader).toHaveText('Owner email');
     },
   );
 });

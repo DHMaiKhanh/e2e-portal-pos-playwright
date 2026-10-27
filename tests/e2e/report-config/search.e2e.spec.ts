@@ -8,7 +8,8 @@ import { REPORT_CONFIG_SCREEN_NAMES } from '@pages/report-config/ReportConfigPag
  *  - Pages/Blocks filter in memory (they re-GET the full `itemsPerPage=100` list),
  *    Sources sends `report_data.jsonld?name[]=`, Columns sends `label[]=` or
  *    `slug[]=` depending on the shape of the term;
- *  - no-match renders `[data-slot="empty"]` + "Showing 0 to 0 of 0 results".
+ *  - no-match renders `[data-slot="pos-empty-state"]` and removes the
+ *    `navigation "Pagination"` footer; the header count reads "0 of N …".
  * Needles are read from live rows, never hard-coded.
  */
 test.describe('Tìm kiếm (Search) — Report Configuration', () => {
@@ -37,24 +38,28 @@ test.describe('Tìm kiếm (Search) — Report Configuration', () => {
   );
 
   /**
-   * TC-RCF-021 — Blocks: tìm theo dataset (placeholder hứa "name, slug or dataset")
+   * TC-RCF-021 — Blocks: tìm theo key (slug) và theo một phần tên
+   * (placeholder mới "Search name or key..." — không còn hứa tìm theo dataset)
    */
   test(
-    'TC-RCF-021 — Blocks: searching a dataset slug returns blocks bound to it',
+    'TC-RCF-021 — Blocks: searching a block key returns that block; a name fragment narrows the list',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportConfigPage }) => {
       const rc = reportConfigPage.on('blocks');
       await rc.goto();
-      const dataset = (await rc.columnValues(rc.columnIndex('DATASET')))[0];
-      await rc.search(dataset);
-      expect(await rc.totalResults()).toBeGreaterThan(0);
-      const datasets = await rc.columnValues(rc.columnIndex('DATASET'));
-      expect(datasets).toContain(dataset);
-      // Slug search works too — the first row's slug finds that exact block.
-      await rc.clearSearch();
-      const { slug } = await rc.nameAndSlug(0);
+      const total = await rc.totalResults();
+      const { name, slug } = await rc.nameAndSlug(0);
       await rc.search(slug);
+      expect(await rc.totalResults()).toBeGreaterThan(0);
       expect((await rc.nameAndSlug(0)).slug).toBe(slug);
+      await rc.clearSearch();
+      const fragment = name.split(' ')[0];
+      await rc.search(fragment);
+      const narrowed = await rc.totalResults();
+      expect(narrowed).toBeGreaterThan(0);
+      expect(narrowed).toBeLessThanOrEqual(total);
+      for (const row of await rc.visibleRows.allInnerTexts())
+        expect(row.toLowerCase()).toContain(fragment.toLowerCase());
     },
   );
 
@@ -127,7 +132,7 @@ test.describe('Tìm kiếm (Search) — Report Configuration', () => {
    * TC-RCF-025 — Không khớp → empty state riêng từng màn hình
    */
   test(
-    'TC-RCF-025 — a non-matching term shows the screen-specific empty state on all four screens',
+    'TC-RCF-025 — a non-matching term shows the screen-specific empty state (no pagination) on all four screens',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportConfigPage }) => {
       for (const screen of REPORT_CONFIG_SCREEN_NAMES) {
@@ -135,10 +140,10 @@ test.describe('Tìm kiếm (Search) — Report Configuration', () => {
         await rc.goto();
         await rc.search('zzz-no-match-xyz');
         await expect(rc.emptyState).toHaveText(rc.spec.emptyText);
-        await expect(rc.resultsFooter).toHaveText('Showing 0 to 0 of 0 results');
-        await expect(rc.pageIndicator).toHaveText(/^1\s*\/\s*1$/);
-        await expect(rc.prevButton).toBeDisabled();
-        await expect(rc.nextButton).toBeDisabled();
+        await expect(rc.count).toHaveText(/^0\s*of \d+/);
+        await expect(rc.table.rows).toHaveCount(0);
+        // The pagination footer is removed for an empty list.
+        await expect(rc.pagination).toHaveCount(0);
       }
     },
   );

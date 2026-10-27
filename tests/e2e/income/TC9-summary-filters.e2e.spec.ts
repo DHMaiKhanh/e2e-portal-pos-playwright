@@ -76,7 +76,7 @@ test.describe('Tab Income Summary — bộ lọc — Income Reports', () => {
 
       // Default period: `Day`, whether or not the app spells it out on the URL.
       expect(DEFAULT_PERIOD_PARAMS).toContain(incomePage.param('period'));
-      await expect(incomePage.incomePeriodCombobox).toHaveText(/^Day$/);
+      await expect(incomePage.incomePeriodValueLabel).toHaveText(/^Day$/);
 
       // Default range: a single day — today — surfaced as the `Today` label.
       expect(await incomePage.dateTriggerLabel()).toBe('Today');
@@ -119,7 +119,7 @@ test.describe('Tab Income Summary — bộ lọc — Income Reports', () => {
       // Still data-gated: if even that month holds no Summary rows, skip softly;
       // it runs fully on a traded month.
       const summaryRows = await incomePage.summaryDateLabels();
-      test.skip(summaryRows.length === 0, 'the selected range holds no Summary rows yet');
+      expect(summaryRows.length === 0, 'the selected range holds no Summary rows yet').toBeFalsy();
 
       // Both ends are on the URL, in order, and inside the same month.
       const dateAfter = incomePage.param('dateAfter');
@@ -167,7 +167,7 @@ test.describe('Tab Income Summary — bộ lọc — Income Reports', () => {
       await incomePage.selectIncomePeriod('Week');
 
       await expect(page).toHaveURL(/period=week/);
-      await expect(incomePage.incomePeriodCombobox).toHaveText(/^Week$/);
+      await expect(incomePage.incomePeriodValueLabel).toHaveText(/^Week$/);
 
       // Every DATE cell is now a week bucket, e.g. `Week 23 (Jun 1 – Jun 7, 2026)`.
       const labels = await incomePage.columnValues(
@@ -189,7 +189,7 @@ test.describe('Tab Income Summary — bộ lọc — Income Reports', () => {
   // PRODUCT GAP (2026-10-11): on store 100004 the Month period renders 10 DATE
   // rows for the 3-calendar-month Jun 1 – Aug 21 range instead of collapsing to
   // ≤ 3 month buckets. Re-enable once month bucketing is fixed.
-  test.fixme(
+  test(
     'TC-INC-082 — period Month buckets the same range into its 3 months',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage, page }) => {
@@ -199,7 +199,7 @@ test.describe('Tab Income Summary — bộ lọc — Income Reports', () => {
       await incomePage.selectIncomePeriod('Month');
 
       await expect(page).toHaveURL(/period=month/);
-      await expect(incomePage.incomePeriodCombobox).toHaveText(/^Month$/);
+      await expect(incomePage.incomePeriodValueLabel).toHaveText(/^Month$/);
 
       const labels = await incomePage.columnValues(
         incomePage.summaryTable,
@@ -227,7 +227,7 @@ test.describe('Tab Income Summary — bộ lọc — Income Reports', () => {
       await incomePage.waitForDataSettled();
 
       // Deep-linked state has to win over the `Day` default.
-      await expect(incomePage.incomePeriodCombobox).toHaveText(/^Month$/);
+      await expect(incomePage.incomePeriodValueLabel).toHaveText(/^Month$/);
       expect(await incomePage.incomePeriodValue()).not.toBe('Day');
     },
   );
@@ -243,7 +243,7 @@ test.describe('Tab Income Summary — bộ lọc — Income Reports', () => {
       await expect(page).toHaveURL(incomeTabUrlPattern(IncomeTab.SUMMARY));
       expect(incomePage.param('period')).not.toBe('bogus');
       expect(DEFAULT_PERIOD_PARAMS).toContain(incomePage.param('period'));
-      await expect(incomePage.incomePeriodCombobox).toHaveText(/^Day$/);
+      await expect(incomePage.incomePeriodValueLabel).toHaveText(/^Day$/);
 
       // And the table still renders rather than erroring out.
       await expect(incomePage.summaryHeaders.first()).toBeVisible();
@@ -271,7 +271,7 @@ test.describe('Tab Income Summary — bộ lọc — Income Reports', () => {
   // PRODUCT GAP (2026-10-11): Clear filters resets the date range but leaves the
   // Income period on its prior value (stays `week` here instead of `day`).
   // Re-enable once Clear filters also resets the period.
-  test.fixme(
+  test(
     'TC-INC-086 — Clear filters resets range and period to default',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage }) => {
@@ -283,7 +283,7 @@ test.describe('Tab Income Summary — bộ lọc — Income Reports', () => {
 
       // Period back to `Day`.
       expect(DEFAULT_PERIOD_PARAMS).toContain(incomePage.param('period'));
-      await expect(incomePage.incomePeriodCombobox).toHaveText(/^Day$/);
+      await expect(incomePage.incomePeriodValueLabel).toHaveText(/^Day$/);
 
       // The filtered range is gone — asserted as "no longer these values"
       // rather than "no params at all", because the default state itself can
@@ -301,7 +301,7 @@ test.describe('Tab Income Summary — bộ lọc — Income Reports', () => {
   // renders a full page of zero-value day rows (30) in the Summary Day view
   // instead of the 0-row "clean empty state" the case expects. Re-enable once an
   // empty range yields an empty table.
-  test.fixme(
+  test(
     'TC-INC-087 — a range with no transactions renders a clean empty state',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage }) => {
@@ -314,7 +314,7 @@ test.describe('Tab Income Summary — bộ lọc — Income Reports', () => {
       // Table: header still up, no data rows, and the footer counts nothing.
       await expect(incomePage.summaryHeaders.first()).toBeVisible();
       await expect(incomePage.summaryTable.rows).toHaveCount(0);
-      await expect(incomePage.resultsFooter).toHaveText(/showing 0 to 0 of 0 results/i);
+      expect(await incomePage.resultsRange()).toEqual([0, 0, 0]);
 
       // Right panel keeps its placeholder: with no rows there is nothing to pick.
       await expect(incomePage.noRowSelectedTitle.first()).toBeVisible();
@@ -328,7 +328,7 @@ test.describe('Tab Income Summary — bộ lọc — Income Reports', () => {
   // Request failed with status code 400" — it never settles into a footer, so
   // the range is neither swapped nor emptied gracefully. Re-enable once inverted
   // ranges are handled instead of erroring.
-  test.fixme(
+  test(
     'TC-INC-088 — an inverted range resolves deterministically',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage, page }) => {

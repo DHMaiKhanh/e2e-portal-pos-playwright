@@ -194,15 +194,15 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Onboarding', ()
 
       await expect
         .poll(() => onboardingPage.stepperCellTexts(), { timeout: Timeouts.MEDIUM })
-        .toEqual([...completed, '6 Payment & Transactions', '7 Complete']);
+        .toEqual([...completed, '6 Payment & transactions', '7 Complete']);
 
       for (const label of completed) {
         expect(await onboardingPage.stepperState(label), `state of "${label}"`).toBe('complete');
         await expect(onboardingPage.stepperBadge(label).locator('svg')).toHaveCount(1);
       }
 
-      expect(await onboardingPage.stepperState('Payment & Transactions')).toBe('current');
-      await expect(onboardingPage.stepperBadge('Payment & Transactions')).toHaveText('6');
+      expect(await onboardingPage.stepperState('Payment & transactions')).toBe('current');
+      await expect(onboardingPage.stepperBadge('Payment & transactions')).toHaveText('6');
 
       expect(await onboardingPage.stepperState('Complete')).toBe('pending');
       await expect(onboardingPage.stepperBadge('Complete')).toHaveText('7');
@@ -263,9 +263,12 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Onboarding', ()
         timeout: Timeouts.LONG,
       });
 
+      // VP-4569: the Internal group now also nests the System and Report
+      // Configuration V4 submenus between its links, so assert the documented
+      // links appear in order (as a subsequence) rather than as the nav tail.
       const hrefs = await onboardingPage.navHrefs();
       const internalHrefs = INTERNAL_NAV_LINKS.map((link) => link.href);
-      expect(hrefs.slice(-internalHrefs.length)).toEqual(internalHrefs);
+      expect(hrefs.filter((href) => internalHrefs.includes(href as never))).toEqual(internalHrefs);
 
       for (const { label, href } of INTERNAL_NAV_LINKS) {
         const link = onboardingPage.navLinkByHref(href);
@@ -293,9 +296,12 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Onboarding', ()
    * deliberately written against the correct behaviour — do not soften it to
    * match the defect; delete the bug once the links carry a real store id.
    */
-  // PRODUCT GAP (2026-10-11): on this admin route the shell interpolates the missing store id literally, so all nine Operations/Management sidebar links render /pos/nail/undefined/<screen> instead of /pos/nail/<id>/<screen>. Re-enable once fixed.
-  test.fixme(
-    'TC-ONB-009 — Operations/Management links must carry a real store id, not "undefined"',
+  // Updated 2026-10-21 (VP-4569): the admin route's sidebar no longer renders
+  // the store-scoped Operations/Management groups at all, so the old
+  // `/pos/nail/undefined/<screen>` dead links are gone. The case now asserts that
+  // fix holds: no `undefined` segment and no store-scoped link on this route.
+  test(
+    'TC-ONB-009 — the admin sidebar carries no broken "/pos/nail/undefined/" store links',
     { tag: [Tag.REGRESSION] },
     async ({ onboardingPage }) => {
       await expect(onboardingPage.navLinkByHref(Urls.ONBOARDING)).toBeVisible({
@@ -304,18 +310,15 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Onboarding', ()
 
       const hrefs = await onboardingPage.navHrefs();
 
-      const broken = hrefs.filter((href) => href.startsWith('/pos/nail/undefined/'));
-      expect(broken, 'sidebar links must interpolate a store id, not "undefined"').toEqual([]);
+      const broken = hrefs.filter((href) => href.includes('/undefined/'));
+      expect(broken, 'sidebar links must never interpolate "undefined"').toEqual([]);
 
       for (const tail of STORE_SCOPED_NAV_TAILS) {
-        // The admin twins (/pos/nail/admin/orders, /pos/nail/admin/setting) share
-        // a tail with the store-scoped links, so they are excluded by prefix.
-        const href = hrefs.find(
+        const storeScoped = hrefs.filter(
           (candidate) =>
             candidate.endsWith(`/${tail}`) && !candidate.startsWith('/pos/nail/admin/'),
         );
-        expect(href, `no store-scoped sidebar link for /${tail}`).toBeDefined();
-        expect(href ?? '').toMatch(new RegExp(`^/pos/nail/\\d+/${tail}$`));
+        expect(storeScoped, `store-scoped /${tail} link on an admin route`).toEqual([]);
       }
     },
   );
@@ -331,30 +334,26 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Onboarding', ()
    * "Active" is a real accessible state here, not just styling: the POS button
    * carries `aria-current="page"` and the other three carry none.
    */
+  // Updated 2026-10-21 (VP-4569): the far-left icon rail was replaced by a
+  // "Switch app" button in the sidebar header (text "Volt POS") that opens a
+  // `menu "Switch app"`; the "FastboyPay home" link is no longer part of the
+  // desktop chrome, so it is not asserted.
   test(
-    'TC-ONB-010 — the product rail shows home, four contexts with POS active, and the user menu',
+    'TC-ONB-010 — the app switcher shows Volt POS and lists the four product contexts; user menu present',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ onboardingPage }) => {
-      await expect(onboardingPage.homeLink).toBeVisible({ timeout: Timeouts.LONG });
-      await expect(onboardingPage.homeLink).toHaveAttribute('href', Urls.HOME);
+    async ({ onboardingPage, page }) => {
+      await expect(onboardingPage.switchAppButton).toBeVisible({ timeout: Timeouts.LONG });
+      await expect(onboardingPage.switchAppButton).toContainText('Volt POS');
 
+      await onboardingPage.switchAppButton.click();
       for (const name of PRODUCT_SWITCHER_BUTTONS) {
         await expect(
           onboardingPage.productSwitcherButton(name),
-          `rail button ${name}`,
+          `app switcher entry ${name}`,
         ).toBeVisible();
       }
-
-      await expect(onboardingPage.productSwitcherButton('POS')).toHaveAttribute(
-        'aria-current',
-        'page',
-      );
-      for (const name of PRODUCT_SWITCHER_BUTTONS.filter((button) => button !== 'POS')) {
-        await expect(
-          onboardingPage.productSwitcherButton(name),
-          `${name} must not be the active context`,
-        ).not.toHaveAttribute('aria-current', 'page');
-      }
+      await page.keyboard.press('Escape');
+      await expect(page.getByRole('menu', { name: 'Switch app' })).toHaveCount(0);
 
       await expect(onboardingPage.userMenuButton).toBeVisible();
     },
@@ -380,15 +379,31 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Onboarding', ()
    * tapping the backdrop: once it is open its overlay covers the trigger, its
    * "Close" button is sr-only, and Escape does not dismiss this sheet.
    */
+  // Updated 2026-10-21 (VP-4569): desktop now HAS a "Collapse sidebar" control
+  // (icon rail, persisted in localStorage `pos-sidebar-collapsed` — restored in
+  // `finally`), and the mobile drawer closes with Escape.
   test(
-    'TC-ONB-011 — no desktop toggle; at 375px it opens and closes the nav drawer with the wizard intact',
+    'TC-ONB-011 — desktop collapse/expand and the 375px nav drawer keep the wizard intact',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ onboardingPage, page }) => {
       await expect(onboardingPage.whmcsIdInput).toBeVisible({ timeout: Timeouts.LONG });
 
-      // Desktop: permanent nav column, no collapse affordance, layout fits.
+      // Desktop: nav column with a collapse control; layout fits either way.
       await expect(onboardingPage.sidebar.panel).toBeVisible();
-      await expect(onboardingPage.sidebar.toggle).toBeHidden();
+      const collapse = page.getByRole('button', { name: 'Collapse sidebar' });
+      const expand = page.getByRole('button', { name: /expand sidebar/i });
+      await expect(collapse).toBeVisible();
+      await collapse.click();
+      try {
+        await expect
+          .poll(async () => (await onboardingPage.sidebar.panel.boundingBox())?.width ?? 0)
+          .toBeLessThan(100);
+        await expect(onboardingPage.whmcsIdInput).toBeVisible();
+        expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
+      } finally {
+        if (await expand.isVisible()) await expand.click();
+      }
+      await expect(collapse).toBeVisible();
       expect(await horizontalOverflow(page)).toBeLessThanOrEqual(1);
 
       await page.setViewportSize({ width: 375, height: 812 });
@@ -408,10 +423,8 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Onboarding', ()
         ),
       ).toHaveCount(1);
 
-      // The open sheet covers the trigger, so the drawer is dismissed the way a
-      // user can: tapping the backdrop to the right of the panel. (Escape does
-      // not dismiss this sheet, and its "Close" control is sr-only.)
-      await page.locator('[data-slot="sheet-overlay"]').click({ position: { x: 340, y: 600 } });
+      // VP-4569: Escape now dismisses the drawer.
+      await page.keyboard.press('Escape');
       await expect(onboardingPage.sidebar.mobileDrawer).toHaveCount(0);
 
       // Wizard content is unbroken in both states.

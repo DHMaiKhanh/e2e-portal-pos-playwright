@@ -36,8 +36,10 @@ export class CustomerDetailPage extends BasePage {
   }
 
   async waitForReady(): Promise<void> {
+    // Since the 2026-10-13 refactor there is no persistent "Save changes"
+    // button on a pristine form, so readiness is the profile form + tab strip.
     await expect(this.nameInput).toBeVisible({ timeout: Timeouts.NAVIGATION });
-    await expect(this.saveChangesButton).toBeVisible({ timeout: Timeouts.MEDIUM });
+    await expect(this.tab(/^profile$/i)).toBeVisible({ timeout: Timeouts.MEDIUM });
   }
 
   tab(name: RegExp): Locator {
@@ -50,8 +52,8 @@ export class CustomerDetailPage extends BasePage {
   }
 
   get heading(): Locator {
-    // The customer's name is rendered above the tab strip.
-    return this.page.locator('[data-slot="tabs-list"]').first();
+    // The customer's name is the page's level-1 heading.
+    return this.page.getByRole('heading', { level: 1 });
   }
 
   /**

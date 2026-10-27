@@ -18,7 +18,7 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Services', () =
       await productsPage.waitForReady();
 
       await expect(productsPage.pageTitle).toBeVisible();
-      await expect(productsPage.pageTitle).toHaveText(/All Services/i);
+      await expect(productsPage.pageTitle).toHaveText(/^Services$/i);
       await expect(productsPage.searchInput).toBeVisible();
       await expect(productsPage.activeTab).toBeVisible();
       await expect(productsPage.inactiveTab).toBeVisible();

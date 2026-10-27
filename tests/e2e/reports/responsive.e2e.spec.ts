@@ -46,12 +46,13 @@ test.describe('Reports — responsive @ 768px', () => {
   test.use({ viewport: { width: 768, height: 1024 } });
 
   test(
-    'TC-RPT-095 — tablet: Income Summary table and side panel render without page overflow',
+    'TC-RPT-095 — tablet: Income Summary table and breakdown sheet render without page overflow',
     { tag: [Tag.REGRESSION, Tag.SLOW] },
     async ({ reportPagesPage: rp, page }) => {
       await rp.openWithData(ReportPageSlug.INCOME_SUMMARY);
       await expect(rp.table).toBeVisible();
-      await expect(rp.noRowSelected).toBeVisible();
+      await rp.dataRows().first().click();
+      await expect(rp.breakdownDialog).toBeVisible({ timeout: Timeouts.MEDIUM });
       const [scrollW, innerW] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
       expect(scrollW).toBeLessThanOrEqual(innerW);
     },

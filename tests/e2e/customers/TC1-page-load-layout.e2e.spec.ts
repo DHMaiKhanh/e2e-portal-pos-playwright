@@ -39,7 +39,7 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Customers', () 
       await expect(customersPage.searchInput).toBeVisible();
       await expect(customersPage.groupFilter).toBeVisible();
       await expect(customersPage.page.getByRole('table')).toBeVisible();
-      await expect(customersPage.resultsFooter).toContainText(/showing 1 to 30 of \d+ results/i);
+      await expect(customersPage.resultsFooter).toContainText(/^1–30 of [\d,]+$/);
       await expect(customersPage.pagination.prevButton).toBeVisible();
       await expect(customersPage.pageIndicator).toBeVisible();
       await expect(customersPage.pagination.nextButton).toBeVisible();
@@ -62,7 +62,7 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Customers', () 
       await customersPage.waitForReady();
       await expect(customersPage.table.rows).toHaveCount(30);
       await expect(customersPage.columnHeaders).toHaveCount(8);
-      await expect(customersPage.resultsFooter).toContainText(/showing 1 to 30 of \d+ results/i);
+      await expect(customersPage.resultsFooter).toContainText(/^1–30 of [\d,]+$/);
     },
   );
 

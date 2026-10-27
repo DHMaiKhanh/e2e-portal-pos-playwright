@@ -12,11 +12,10 @@ test.describe('Khả năng tiếp cận (Accessibility) — Customers', () => {
     async ({ customersPage, page }) => {
       await customersPage.waitForReady();
 
-      // Verified against the live DOM: from the search box, focus runs
-      // search -> group filter -> the table's scroll region -> pager. The
-      // scroll region is focusable on purpose (a keyboard user must be able to
-      // scroll a wide table), so it belongs in the expected order rather than
-      // being treated as a stray stop.
+      // Verified against the live DOM (2026-10-20, after the design-system
+      // refactor): from the search box, focus runs search -> "Group" filter
+      // chip -> "Columns" menu -> the first data row. Rows are focusable
+      // (tabindex=0) because each one opens the customer's detail page.
       await customersPage.searchInput.focus();
       await expect(customersPage.searchInput).toBeFocused();
 
@@ -24,18 +23,18 @@ test.describe('Khả năng tiếp cận (Accessibility) — Customers', () => {
       await expect(customersPage.groupFilter).toBeFocused();
 
       await page.keyboard.press('Tab');
-      const scrollRegion = page.locator(':focus');
-      await expect(scrollRegion).toHaveCount(1);
-      // It is the element wrapping the table, not something off-screen.
-      expect(await scrollRegion.evaluate((el) => !!el.querySelector('table'))).toBe(true);
+      await expect(
+        customersPage.activePanel.getByRole('button', { name: 'Columns' }),
+      ).toBeFocused();
 
       await page.keyboard.press('Tab');
-      await expect(customersPage.pagination.nextButton).toBeFocused();
+      const firstRow = customersPage.table.rows.first();
+      await expect(firstRow).toBeFocused();
 
       // Focus must stay on something the user can actually see at every stop —
       // the failure mode this case exists to catch is focus disappearing into a
       // hidden node.
-      await expect(customersPage.pagination.nextButton).toBeVisible();
+      await expect(firstRow).toBeVisible();
     },
   );
 

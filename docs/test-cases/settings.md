@@ -1150,6 +1150,142 @@
 
 ---
 
+## Bổ sung từ explore 2026-10-23 — Checkout setting + Point config (VP-4590 / VP-4974)
+
+> Khu vực mới ở tab **Payment & transactions** chưa có trong kiểm kê trước: card **`Setting point config`** (Point conversion) và card **`Checkout setting`** (Checkout type Manual/Auto/Hybrid + field **Point Bonus**). Đã verify thực tế trên DEV store #100004 ngày 2026-10-23 — tất cả **PASS**; đã revert về trạng thái gốc (Manual + Point conversion `$2.00`). Chi tiết: [checkout-type-setting-2026-10-23.md](../bug-reports/checkout-type-setting-2026-10-23.md).
+
+### Y. Tab Payment & Transactions — `Setting point config` (Point conversion)
+
+**TC-SET-280 · Hiển thị card Setting point config với 4 phương thức** — Mức độ ưu tiên: Cao · Loại: Giao diện
+
+- Các bước: Quan sát card `Setting point config`.
+- Kết quả mong đợi: Có 4 ô earning `Cash`, `Card`, `Gift card`, `Other` dạng `1 Point = $X.XX`; mô tả _"Amount a customer must pay by each method to earn 1 point… Set $0.00 to stop a method from earning points."_ · (Quét 2026-10-23: cả 4 = `$2.00` — **PASS**).
+
+**TC-SET-281 · Ô Point conversion loại bỏ ký tự chữ** — Mức độ ưu tiên: Cao · Loại: Tiêu cực
+
+- Các bước: 1) Gõ `abc` vào ô `Cash`. 2) Quan sát.
+- Kết quả mong đợi: Mask loại bỏ ký tự không phải số → hiển thị `$0.00`; không giữ chuỗi rác · (2026-10-23 — **PASS**).
+
+**TC-SET-282 · Ô Point conversion không nhận số âm** — Mức độ ưu tiên: Cao · Loại: Tiêu cực
+
+- Các bước: 1) Gõ `-5` vào ô `Cash`. 2) Quan sát.
+- Kết quả mong đợi: Dấu `-` bị bỏ, giá trị luôn ≥ 0 · (2026-10-23: `-5` → `$0.05` theo cơ chế cộng dồn cents — **PASS**).
+
+**TC-SET-283 · Ô Point conversion cap giá trị tối đa** — Mức độ ưu tiên: Trung bình · Loại: Biên
+
+- Các bước: 1) Gõ chuỗi số rất dài (`99999999999999`). 2) Quan sát.
+- Kết quả mong đợi: Giá trị bị giới hạn ở mức tối đa hợp lý · (2026-10-23: cap tại `$99,999.99` — **PASS**).
+
+**TC-SET-284 · Ô Point conversion khi để trống** — Mức độ ưu tiên: Trung bình · Loại: Biên
+
+- Các bước: 1) Xóa sạch ô `Cash`. 2) Blur.
+- Kết quả mong đợi: Tự về `$0.00` (tắt earning cho phương thức đó), không để trạng thái trống · (2026-10-23 — **PASS**).
+
+### Z. Tab Payment & Transactions — `Checkout setting` (Checkout type)
+
+**TC-SET-285 · Hiển thị Checkout type với 3 lựa chọn + mô tả** — Mức độ ưu tiên: Cao · Loại: Giao diện
+
+- Các bước: Quan sát card `Checkout setting`.
+- Kết quả mong đợi: Radiogroup `Checkout type` gồm `Manual Checkout`, `Auto Checkout`, `Hybrid Checkout`, mỗi lựa chọn có mô tả; mô tả card _"Choose when check-ins are checked out and how they earn points. Changes apply to check-ins checked out after you save."_ · (2026-10-23 — **PASS**).
+
+**TC-SET-286 · Manual Checkout — không hiện Point Bonus, hiện Point Config** — Mức độ ưu tiên: Cao · Loại: Chức năng
+
+- Các bước: 1) Chọn `Manual Checkout`. 2) Quan sát.
+- Kết quả mong đợi: **Không** có field `Point Bonus`; hiển thị bảng `Point Config` (read-only) với rate đã lưu; chú thích _"Points follow Point Config."_ · (2026-10-23 — **PASS**).
+
+**TC-SET-287 · Auto Checkout — hiện field Point Bonus** — Mức độ ưu tiên: Cao · Loại: Chức năng
+
+- Các bước: 1) Chọn `Auto Checkout`. 2) Quan sát.
+- Kết quả mong đợi: Xuất hiện field `Point Bonus` kèm chú thích _"pts for each completed order, whatever the amount"_; mô tả _"Point Config isn't used."_ · (2026-10-23 — **PASS**).
+
+**TC-SET-288 · Hybrid Checkout — hiện Point Bonus và Point Config** — Mức độ ưu tiên: Cao · Loại: Chức năng
+
+- Các bước: 1) Chọn `Hybrid Checkout`. 2) Quan sát.
+- Kết quả mong đợi: Xuất hiện field `Point Bonus` kèm chú thích _"pts for each check-in checked out automatically at 11:59 PM"_; **đồng thời** hiển thị bảng `Point Config` (được dùng cho order hoàn tất trên POS) · (2026-10-23 — **PASS**).
+
+**TC-SET-289 · Lưu đổi Checkout type và giữ sau reload** — Mức độ ưu tiên: Cao · Loại: Chức năng
+
+- Các bước: 1) Đổi từ Manual sang Auto. 2) Bấm `Save`. 3) Reload tab.
+- Kết quả mong đợi: Thanh "unsaved changes" biến mất sau Save; gửi `PUT /sys_settings/{id}` → 200; sau reload vẫn chọn Auto và Point Bonus giữ giá trị đã lưu · (2026-10-23 — **PASS**).
+
+**TC-SET-290 · Discard hoàn tác thay đổi Checkout setting chưa lưu** — Mức độ ưu tiên: Cao · Loại: Chức năng
+
+- Các bước: 1) Đổi Checkout type / sửa Point Bonus (chưa Save). 2) Bấm `Discard`.
+- Kết quả mong đợi: Quay về trạng thái đã lưu gần nhất; thanh unsaved biến mất; không có request ghi · (2026-10-23 — **PASS**).
+
+### Z1. VP-4974 — Validation field `Point Bonus`
+
+**TC-SET-291 · [VP-4974] Point Bonus nhập ký tự chữ** — Mức độ ưu tiên: Cao · Loại: Tiêu cực
+
+- Các bước: 1) Chọn Auto/Hybrid. 2) Gõ `abc` vào `Point Bonus`. 3) Thử `Save`.
+- Kết quả mong đợi: Field đánh dấu lỗi (`aria-invalid=true`), hiện _"Point bonus must be a whole number of 0 or more"_; **Save bị chặn**, không persist · (2026-10-23 — **PASS / bug đã fix**).
+
+**TC-SET-292 · [VP-4974] Point Bonus nhập số âm** — Mức độ ưu tiên: Cao · Loại: Tiêu cực
+
+- Các bước: 1) Gõ `-5`. 2) Thử `Save`.
+- Kết quả mong đợi: Báo lỗi "whole number of 0 or more"; Save bị chặn · (2026-10-23 — **PASS**).
+
+**TC-SET-293 · [VP-4974] Point Bonus nhập số thập phân** — Mức độ ưu tiên: Cao · Loại: Tiêu cực
+
+- Các bước: 1) Gõ `2.5`. 2) Thử `Save`.
+- Kết quả mong đợi: Báo lỗi "whole number of 0 or more" (chỉ nhận số nguyên); Save bị chặn · (2026-10-23 — **PASS**).
+
+**TC-SET-294 · [VP-4974] Point Bonus để trống** — Mức độ ưu tiên: Cao · Loại: Tiêu cực
+
+- Các bước: 1) Xóa sạch `Point Bonus`. 2) Quan sát.
+- Kết quả mong đợi: Báo lỗi riêng _"Point bonus is required"_; Save bị chặn · (2026-10-23 — **PASS**).
+
+**TC-SET-295 · [VP-4974] Point Bonus số nguyên hợp lệ (≥0)** — Mức độ ưu tiên: Cao · Loại: Chức năng
+
+- Các bước: 1) Gõ `5` (hoặc `0`). 2) Quan sát + Save.
+- Kết quả mong đợi: Hết lỗi (`aria-invalid=false`), `0` hợp lệ (tắt bonus); Save thành công · (2026-10-23 — **PASS**).
+
+**TC-SET-296 · [VP-4974] Save khi Point Bonus invalid không gửi request ghi** — Mức độ ưu tiên: Cao · Loại: Chức năng
+
+- Các bước: 1) Đặt `Point Bonus` = giá trị invalid. 2) Bấm `Save`. 3) Kiểm tra Network.
+- Kết quả mong đợi: **Không** có request PUT/PATCH/POST nào; dữ liệu không hợp lệ không được persist · (2026-10-23 — **PASS**).
+
+**TC-SET-297 · [VP-4974] Validation Point Bonus nhất quán giữa Auto và Hybrid** — Mức độ ưu tiên: Trung bình · Loại: Chức năng
+
+- Các bước: Lặp lại test invalid ở cả Auto và Hybrid.
+- Kết quả mong đợi: Cùng quy tắc validation và cùng thông báo lỗi ở cả hai chế độ · (2026-10-23 — **PASS**).
+
+**TC-SET-298 · Point Bonus — giới hạn trên** — Mức độ ưu tiên: Thấp · Loại: Biên
+
+- Các bước: 1) Nhập `999999` (và lớn hơn). 2) Quan sát.
+- Kết quả mong đợi: _Cần xác nhận với team_ có cap max hay không · (2026-10-23: hiện **không** có cap trên, chấp nhận `999999` — **NGHI VẤN**, xem báo cáo).
+
+### Z2. VP-4974 — Reset giá trị nháp Point Bonus & toast sau khi Save
+
+> Bug gốc: nhập Point Bonus nháp ở Auto/Hybrid → chọn Manual → Save → form **không** reset theo DB (ô vẫn giữ giá trị nháp + lỗi + "unsaved change"); toast sai ("Point settings saved"). Verify trên store #14 (Hybrid + point_bonus 10) ngày 2026-10-23 — **ĐÃ FIX**.
+
+**TC-SET-300 · [VP-4974] Reset giá trị nháp KHÔNG hợp lệ sau khi Save Manual** — Mức độ ưu tiên: Cao · Loại: Chức năng
+
+- Các bước: 1) Store đang lưu point_bonus (vd 10). 2) Chọn **Auto** → nhập Point Bonus = `abc` (field báo lỗi). 3) Chọn **Manual** → **Save**. 4) Chọn lại **Auto/Hybrid**.
+- Kết quả mong đợi: Sau Save, chọn lại Auto/Hybrid → Point Bonus hiện **giá trị DB** (10), **không còn `abc`**, không lỗi, không "unsaved change" tồn đọng · (2026-10-23 — **PASS**).
+
+**TC-SET-301 · [VP-4974] Reset giá trị nháp HỢP LỆ sau khi Save Manual** — Mức độ ưu tiên: Cao · Loại: Chức năng
+
+- Các bước: 1) Chọn **Auto** → nhập Point Bonus = `5`. 2) Chọn **Manual** → **Save**. 3) Chọn lại **Auto**.
+- Kết quả mong đợi: Point Bonus hiện **giá trị DB** (10), **không giữ `5`** của bản nháp · (2026-10-23 — **PASS**).
+
+**TC-SET-302 · [VP-4974] Toast phân biệt Checkout setting vs Point settings** — Mức độ ưu tiên: Trung bình · Loại: Chức năng
+
+- Các bước: 1) Đổi Checkout type → Save (quan sát toast). 2) Đổi một ô Point conversion → Save (quan sát toast).
+- Kết quả mong đợi: Sửa Checkout → toast **"Checkout setting saved."**; sửa Point Config → toast **"Point settings saved"** · (2026-10-23 — **PASS**).
+
+**TC-SET-303 · [VP-4590 AC#6] Lưu Point Config không làm mất Checkout Type/Point Bonus (và ngược lại)** — Mức độ ưu tiên: Cao · Loại: Dữ liệu
+
+- Các bước: 1) Store đang Hybrid + point_bonus 10. 2) Sửa Cash point conversion ($1.00→$1.50) → Save. 3) Reload. 4) (Chiều ngược) đổi Checkout type → Save → reload kiểm tra Point Config.
+- Kết quả mong đợi: Sau khi lưu Point Config, Checkout Type vẫn Hybrid + Point Bonus vẫn 10; sau khi lưu Checkout setting, Point Config giữ nguyên. Hai form **không ghi đè** key của nhau trên cùng flag `merchant_point_payment_config` · (2026-10-23 — **PASS**).
+
+**TC-SET-304 · [VP-4590 AC#5] Chọn Manual rồi Save giữ nguyên point_bonus cũ** — Mức độ ưu tiên: Cao · Loại: Chức năng
+
+- Các bước: 1) Store có point_bonus = 10 (Auto/Hybrid). 2) Chọn **Manual** → Save. 3) Chọn lại Auto/Hybrid.
+- Kết quả mong đợi: `point_bonus` cũ (10) vẫn được giữ, không bị reset về 0 · (2026-10-23 — **PASS**).
+
+---
+
 ## 3. Tổng kết độ phủ (Coverage summary)
 
 **Tổng số test case: 185** (`TC-SET-001` → `TC-SET-275`, đánh số có khoảng trống theo nhóm).
@@ -1216,3 +1352,27 @@
 6. **Giới hạn validation cụ thể** — maxlength của các trường text, dung lượng/định dạng ảnh cho phép, ngưỡng min/max của các trường `%` và tiền: tất cả đang được đặt giả định trong test case, cần đối chiếu với đặc tả/backend.
 7. **Ràng buộc nghiệp vụ nguy hiểm** — tắt hết phương thức thanh toán (`TC-SET-097`), bỏ hết quyền Owner (`TC-SET-154`), đóng cửa cả 7 ngày (`TC-SET-042`): cần xác nhận với team sản phẩm xem có chặn hay không trước khi chốt kết quả mong đợi.
 8. **Không có `data-testid`** trong toàn bộ màn hình → code test phải bám vào role/label/text; nếu nhãn tiếng Anh thay đổi, test sẽ gãy. Nên đề xuất bổ sung test-id cho các control chính.
+
+---
+
+## Linear — Task & Bug liên quan
+
+> Nguồn: Linear team VP, label `Portal` — lấy ngày 2026-10-20. Bỏ Canceled, TechDebt/CI và Restaurant Portal.
+> Thứ tự: Bug → đang QC/Review → đã Prod/Done → Todo/Backlog. **13 issue.**
+
+| ID                                                  | Loại    | Tiêu đề                                                                                                               | Trạng thái          | Ưu tiên | Test hiện có                                                                                                                      | E2E được? | Ghi chú                                                                                                                                                   |
+| --------------------------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------- | ------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [VP-4093](https://linear.app/fastboy/issue/VP-4093) | Bug     | [PORTAL] Payment settings tab has two fields with the same id, so the Cash label points at the wrong control          | Ready to Review     | Medium  | Có — `regression-linear/vp-4093` ([regression-bugs-linear.md](regression-bugs-linear.md)) — **fail 2026-10-20: bug còn trên DEV** | Có        | Trùng id `cash` → label trỏ sai control                                                                                                                   |
+| [VP-4590](https://linear.app/fastboy/issue/VP-4590) | Feature | [Portal] Checkout Type Setting                                                                                        | Ready to Review     | Urgent  | TC-SET-280→304 (mục Y/Z/Z1/Z2)                                                                                                    | Có        | Checkout Setting Manual/Auto/Hybrid + Point Bonus — **verify DEV 2026-10-23: PASS 7/7 AC** ([report](../bug-reports/checkout-type-setting-2026-10-23.md)) |
+| [VP-4974](https://linear.app/fastboy/issue/VP-4974) | Bug     | [Portal][Bug] Checkout setting: Point Bonus giữ giá trị nháp sau khi Save Manual, không sync với DB (subtask VP-4590) | Ready to Review     | Medium  | TC-SET-300→302                                                                                                                    | Có        | **verify DEV 2026-10-23 trên store #14: ĐÃ FIX** — sau Save, Point Bonus reset đúng DB; toast "Checkout setting saved." (PR #870)                         |
+| [VP-2608](https://linear.app/fastboy/issue/VP-2608) | Enh     | [POS&Portal] Improve_Hỗ trợ 2 phương pháp tính Supply Share                                                           | Done                | Urgent  | Chưa                                                                                                                              | Có        | Supply Share Method 1/2 (Payment & Transactions)                                                                                                          |
+| [VP-2611](https://linear.app/fastboy/issue/VP-2611) | Enh     | [POS&Portal] Tách Discount Setting cho Promotion và Custom Promotion                                                  | Verified Production | Urgent  | Chưa                                                                                                                              | Có        | Tách Discount Setting Promotion / Custom Promotion                                                                                                        |
+| [VP-3045](https://linear.app/fastboy/issue/VP-3045) | Task    | [Portal/POS] Bổ sung Business Phone & mapping phone từ CRM                                                            | Verified Production | High    | Chỉ có TC trong doc (mục C), chưa có spec                                                                                         | Có        | Business Phone trong Business Profile                                                                                                                     |
+| [VP-3087](https://linear.app/fastboy/issue/VP-3087) | Task    | [Portal] Bổ sung Business Phone & mapping phone từ CRM                                                                | Verified Production | Medium  | Chỉ có TC trong doc (mục C), chưa có spec                                                                                         | Có        | Phần Portal của VP-3045 (cha: VP-3045)                                                                                                                    |
+| [VP-3253](https://linear.app/fastboy/issue/VP-3253) | Task    | [Portal] Improve_Passcode Settings để cấu hình các tính năng cụ thể yêu cầu xác thực Passcode.                        | Verified Production | Urgent  | Chỉ có TC trong doc (mục R), chưa có spec                                                                                         | Có        | Passcode theo từng tính năng                                                                                                                              |
+| [VP-3261](https://linear.app/fastboy/issue/VP-3261) | Task    | [Portal] Tách Discount Setting cho Promotion và Custom Promotion                                                      | Verified Production | Urgent  | Chưa                                                                                                                              | Có        | Phần Portal của VP-2611                                                                                                                                   |
+| [VP-3331](https://linear.app/fastboy/issue/VP-3331) | Task    | Support setting Service tax number in the portal                                                                      | Verified Production | Urgent  | Chưa                                                                                                                              | Có        | Service tax number                                                                                                                                        |
+| [VP-3426](https://linear.app/fastboy/issue/VP-3426) | Task    | [Portal] Improve_Hỗ trợ 2 phương pháp tính Supply Share                                                               | Done                | High    | Chưa                                                                                                                              | Có        | Phần Portal của VP-2608 (cha: VP-2608)                                                                                                                    |
+| [VP-3653](https://linear.app/fastboy/issue/VP-3653) | Enh     | [PORTAL] Ticket #1508213_Cho phép ẩn reward points và tùy chọn quy đổi giảm giá trên màn hình phụ                     | Done                | High    | Chưa                                                                                                                              | Có        | Ẩn reward points trên màn hình phụ                                                                                                                        |
+| [VP-3826](https://linear.app/fastboy/issue/VP-3826) | Task    | [Portal] Bổ sung Passcode Setting cho Staff Payroll                                                                   | Verified Production | High    | Chỉ có TC trong doc (mục R), chưa có spec                                                                                         | Có        | Passcode cho Staff Payroll                                                                                                                                |
+| [VP-4045](https://linear.app/fastboy/issue/VP-4045) | Task    | [PORTAL] Point Configuration                                                                                          | Verified Production | Urgent  | Chưa                                                                                                                              | Có        | Point Configuration theo payment method                                                                                                                   |

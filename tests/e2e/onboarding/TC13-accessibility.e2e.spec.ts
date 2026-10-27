@@ -262,7 +262,7 @@ test.describe('Khả năng tiếp cận (Accessibility) — Onboarding', () => {
    * — a WAI-ARIA dialog-pattern violation. The Expected is asserted as written.
    */
   // PRODUCT GAP (2026-10-11): Escape closes the feature dialog but leaves focus on <body> instead of returning it to the opening trigger — a WAI-ARIA dialog-pattern violation. Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-ONB-153 — the feature dialog traps Tab and hands focus back on Escape',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ onboardingPage, page }) => {
@@ -296,28 +296,6 @@ test.describe('Khả năng tiếp cận (Accessibility) — Onboarding', () => {
   );
 
   /**
-   * TC-ONB-154 — Điều khiển toàn bộ wizard bằng bàn phím
-   * Steps:
-   *  1. Chỉ dùng `Tab`/`Shift+Tab`/`Enter`/`Space`/mũi tên, đi từ bước 1 tới các
-   *     nút điều hướng cuối mỗi bước.
-   * Expected:
-   *  Mọi control (input, switch, combobox, radio, nút) đều nhận được focus theo
-   *  thứ tự hợp lý và kích hoạt được bằng bàn phím; vòng focus (focus ring) luôn
-   *  nhìn thấy.
-   */
-  // TODO(manual/setup): walking the wizard end-to-end by keyboard means *activating*
-  // each step's footer control — `Create Merchant` on step 1 and `Save Changes` /
-  // `Save Changes & Continue` on steps 2-6 — which are real writes on DEV, so this
-  // needs a single-use WHMCS ID. The focus-ring half is a visual check (a computed
-  // `:focus-visible` outline against the card background) that no assertion covers;
-  // audit it manually or with an axe/contrast pass.
-  test.fixme(
-    'TC-ONB-154 — the whole wizard is operable by keyboard with a visible focus ring',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
-  );
-
-  /**
    * TC-ONB-155 — Cấu trúc heading hợp lý
    * Steps:
    *  1. Liệt kê heading trên từng bước.
@@ -334,7 +312,7 @@ test.describe('Khả năng tiếp cận (Accessibility) — Onboarding', () => {
    * `h2` while steps 1-6 use `h3`. Both are asserted as the correct behaviour.
    */
   // PRODUCT GAP (2026-10-11): the screen renders no h1 (first heading is h3, so h0 → h3) and step 7 heads its card with h2 while steps 1-6 use h3; expected a consistent hierarchy starting at h1. Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-ONB-155 — headings start at h1, never skip a level, and keep one card level',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ onboardingPage }) => {
@@ -354,7 +332,9 @@ test.describe('Khả năng tiếp cận (Accessibility) — Onboarding', () => {
       await expect(onboardingPage.paymentMethodsHeading).toBeVisible({ timeout: Timeouts.LONG });
       const step6 = await onboardingPage.headingOutline();
       expect(levelSkips(step6), 'step 6 heading levels').toEqual([]);
-      expect(headingLevel(step6, /^Payment Methods$/), 'step 6 card heading level').toBe(step1Card);
+      expect(headingLevel(step6, /^Payment methods$/i), 'step 6 card heading level').toBe(
+        step1Card,
+      );
 
       await onboardingPage.gotoStep(OnboardingStep.COMPLETE, WHMCS_ID);
       await onboardingPage.waitForReady();
@@ -362,31 +342,10 @@ test.describe('Khả năng tiếp cận (Accessibility) — Onboarding', () => {
       const step7 = await onboardingPage.headingOutline();
       expect(levelSkips(step7), 'step 7 heading levels').toEqual([]);
       expect(
-        headingLevel(step7, /Merchant Onboarding Complete/),
+        headingLevel(step7, /Merchant onboarding complete/i),
         'step 7 must head its card at the same level as steps 1-6',
       ).toBe(step1Card);
     },
-  );
-
-  /**
-   * TC-ONB-156 — Độ tương phản của badge trạng thái
-   * Steps:
-   *  1. Kiểm tra tương phản màu của badge `Ready` (success), `Not Ready`
-   *     (destructive), `Optional` (muted) ở cả theme sáng và tối.
-   * Expected:
-   *  Đạt tối thiểu WCAG AA (4.5:1 cho chữ thường); trạng thái không chỉ được
-   *  truyền tải bằng màu mà còn bằng text (đã có nhãn chữ — đạt).
-   */
-  // TODO(manual/setup): needs a colour-contrast audit — the badge's effective
-  // background is composited from utility classes over the card, so a ratio has to
-  // be measured (axe / Lighthouse), not asserted from a locator, and the dark theme
-  // has no toggle exposed on this route or project in playwright.config. The
-  // "state is carried by text, not colour alone" half is already covered live by
-  // the badge-text assertions in TC4 (TC-ONB-040…047).
-  test.fixme(
-    'TC-ONB-156 — status badges meet WCAG AA contrast in the light and dark themes',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
   );
 
   /**

@@ -435,3 +435,35 @@
 - Đã sửa test (fail ở các lần chạy trước trong ngày, đều do test chứ không phải bug app):
   - TC-BH-009b · `tableRoot.or(emptyState)` khớp 2 phần tử (empty state nằm trong table) → thêm `.first()`
 - Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`
+
+---
+
+## Linear — Task & Bug liên quan
+
+> Nguồn: Linear team VP, label `Portal` — lấy ngày 2026-10-20. Bỏ Canceled, TechDebt/CI và Restaurant Portal.
+> Thứ tự: Bug → đang QC/Review → đã Prod/Done → Todo/Backlog. **1 issue.**
+
+| ID                                                  | Loại | Tiêu đề                                                                | Trạng thái | Ưu tiên | Test hiện có | E2E được?                | Ghi chú                                             |
+| --------------------------------------------------- | ---- | ---------------------------------------------------------------------- | ---------- | ------- | ------------ | ------------------------ | --------------------------------------------------- |
+| [VP-2472](https://linear.app/fastboy/issue/VP-2472) | Task | Portal batch close review total amount includes gift card transactions | Todo       | Medium  | Chưa         | Chưa (chưa có tính năng) | Total Amount Batch Close Review phải loại gift card |
+
+## Đã loại bỏ / thay đổi (2026-10-20)
+
+Bối cảnh: UI Portal refactor sang design system mới ngày 2026-10-13 (Linear VP-4569). Đã sửa locator trong `src/pages/batch/BatchHistoryPage.ts` và các spec, giữ nguyên test case:
+status filter là chip (`Status` / `Status: Open`) mở listbox Open/Closed — không còn option "All statuses" (bỏ chọn = all); date picker 2 tháng + preset, phải bấm **Apply**; footer phân trang "1–30 of 118" + nút "Previous page"/"Next page" (ẩn khi rỗng); empty state "No matching results"; lỗi tải "Couldn't load batches"; dialog "Batch close review — …" có phân trang riêng; desktop có nút "Collapse sidebar"; mobile dùng drawer "Navigation" (đóng bằng Escape); ở mobile cột Total payment bị ẩn.
+Các test bộ lọc/định dạng chạy trên khoảng all-time hoặc khoảng có dữ liệu cố định (2026-08-01..21, 2026-08-18).
+
+**Đã xoá**
+
+- TC-BH-053 — cần tài khoản/role không có quyền Batch History; DEV chỉ có session admin nên test kiểm tra sai tài khoản (khẳng định menu bị ẩn với admin), không bao giờ có ý nghĩa trên DEV.
+
+**Còn fail (cố ý)**
+
+- TC-BH-039 — **bug sản phẩm**: `?status=bogus` làm cả màn hình chuyển sang "We couldn't load this merchant" thay vì fallback về tất cả trạng thái.
+
+**Ghi chú dữ liệu DEV (không làm fail test)**
+
+- Dialog Batch close review của batch đã đóng (vd B-00057, totalCount 10) hiển thị "No orders in this batch" — API `/batches/orders?batch=…` trả 0 bản ghi. TC-BH-030 dùng batch đang mở (có order) nên vẫn pass; nên kiểm tra phía backend.
+- `?dateAfter=not-a-date&dateBefore=2026-07-15` hiển thị khoảng đảo ngược "Oct 13 – Jul 15, 2026" (không crash, TC-BH-038 pass).
+
+Kết quả chạy 2026-10-20 (ENV=stage, retries=0): 54 passed, 1 failed (TC-BH-039), tổng 55.

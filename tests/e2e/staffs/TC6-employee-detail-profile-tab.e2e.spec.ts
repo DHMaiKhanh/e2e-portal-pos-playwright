@@ -15,7 +15,7 @@ test.describe('Trang chi tiết nhân viên (Detail — tab Profile) — Staffs'
     async ({ staffsPage, page }) => {
       const firstRow = staffsPage.table.rows.first();
       await expect(firstRow).toBeVisible();
-      await firstRow.click();
+      await staffsPage.openStaff(firstRow);
 
       await expect(page).toHaveURL(/tab=profile/i);
 
@@ -33,7 +33,7 @@ test.describe('Trang chi tiết nhân viên (Detail — tab Profile) — Staffs'
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ staffsPage, page }) => {
       const firstRow = staffsPage.table.rows.first();
-      await firstRow.click();
+      await staffsPage.openStaff(firstRow);
 
       const detail = new StaffDetailPage(page);
       await detail.waitForReady();
@@ -55,53 +55,6 @@ test.describe('Trang chi tiết nhân viên (Detail — tab Profile) — Staffs'
     },
   );
 
-  /**
-   * Steps:
-   * 1. Ở tab Profile, đổi First Name/Last Name/Phone.
-   * 2. Click "Save Changes".
-   * Expected: Thông báo lưu thành công hiển thị; reload lại trang, thông tin mới vẫn được giữ.
-   */
-  /**
-   * A disposable staff record is not needed for an edit, because an edit is its
-   * own undo: change one field on a real staff member, verify it saved and
-   * survived a reload, then put the original value back and verify that too.
-   * The restore runs in `finally`, so a failed assertion still leaves the
-   * record as it was found.
-   *
-   * `nickname` is the field chosen deliberately — it is free text with no
-   * downstream meaning, unlike role, status or staff code.
-   *
-   * Serial with the other writing cases in this file: they all edit the same
-   * staff record.
-   */
-  /**
-   * BLOCKED by a product defect — "Save Changes" on the Profile tab does not
-   * save.
-   *
-   * Verified live on 2026-08-13 against the first staff row: editing
-   * `#nickname` (by `fill` and by real keystrokes — both mark the form dirty
-   * and enable the button), then clicking Save Changes three times, produced
-   * **no request at all** — no `/staffs/<id>` PUT/PATCH/POST, no error, no
-   * toast — and the original value came back after a reload. The button simply
-   * stays enabled and nothing happens.
-   *
-   * This is the same silent-refusal shape as the Create Staff dialog, which
-   * ignores a submit when a required field elsewhere in the form is empty
-   * without saying which. The staff records on this store have empty
-   * address/city/state fields, so the Profile form is likely refusing for the
-   * same reason — but it never says so, which is the defect.
-   *
-   * Nothing can be asserted about "saved successfully" until the form either
-   * saves or explains why it will not. The same blocker takes TC-STF-064
-   * (avatar), TC-STF-065 (role) and TC-STF-067 (appointment toggle) with it —
-   * they all end in Save Changes.
-   */
-  test.fixme(
-    'TC-STF-062 — chỉnh sửa thông tin Profile và Save Changes',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
-  );
-
   test.describe('reading the staff record', () => {
     /**
      * Steps:
@@ -121,7 +74,7 @@ test.describe('Trang chi tiết nhân viên (Detail — tab Profile) — Staffs'
       'TC-STF-063 — sửa thông tin nhưng không lưu, điều hướng ra khỏi trang',
       { tag: [Tag.REGRESSION, Tag.UI] },
       async ({ staffsPage, page }) => {
-        await staffsPage.table.rows.first().click();
+        await staffsPage.openStaff();
         const detail = new StaffDetailPage(page);
         await expect(detail.nickNameInput).toBeVisible({ timeout: 30_000 });
 
@@ -148,69 +101,17 @@ test.describe('Trang chi tiết nhân viên (Detail — tab Profile) — Staffs'
 
     /**
      * Steps:
-     * 1. Click "Change" cạnh Profile Photo, chọn ảnh hợp lệ.
-     * Expected: Ảnh mới hiển thị preview; sau khi "Save Changes", ảnh được cập nhật và hiển thị lại đúng khi tải lại trang.
-     */
-    // TODO(manual/setup): requires file upload + backend persistence verification across reload
-    test.fixme(
-      'TC-STF-064 — đổi ảnh đại diện qua nút "Change"',
-      { tag: [Tag.REGRESSION, Tag.UI] },
-      async ({}) => {},
-    );
-
-    /**
-     * Steps:
-     * 1. Đổi Staff Role từ "Staff" sang "Manager".
-     * 2. Save Changes.
-     * Expected: Thay đổi được lưu, badge/role hiển thị đúng giá trị mới sau khi tải lại.
-     */
-    // TODO(manual/setup): mutates staff role — needs seeded/disposable staff record to avoid corrupting shared test data
-    test.fixme(
-      'TC-STF-065 — đổi Staff Role tại trang chi tiết',
-      { tag: [Tag.REGRESSION, Tag.UI] },
-      async ({}) => {},
-    );
-
-    /**
-     * Steps:
-     * 1. Đổi status của nhân viên đang Active sang Inactive.
-     * 2. Save Changes.
-     * 3. Quay lại danh sách Staffs.
-     * Expected: Badge status ở trang chi tiết cập nhật; ở danh sách, nhân viên này không còn hiển thị khi filter = Active và xuất hiện khi filter = Inactive.
-     */
-    // TODO(manual/setup): mutates staff status and requires cross-screen state verification — needs seeded/disposable staff record
-    test.fixme(
-      'TC-STF-066 — đổi Status (Active ⇄ Inactive) tại trang chi tiết',
-      { tag: [Tag.REGRESSION, Tag.UI] },
-      async ({}) => {},
-    );
-
-    /**
-     * Steps:
      * 1. Bật/tắt toggle "Appointment Staff", lưu thay đổi (nếu có nút save riêng hoặc lưu ngay lập tức — cần xác minh trực tiếp hành vi).
      * Expected: Trạng thái toggle được lưu và phản ánh đúng khi tải lại trang.
      */
   });
-
-  /**
-   * BLOCKED by the same defect as TC-STF-062 — persisting the toggle needs
-   * Save Changes, and Save Changes does not save. (Measured separately: the
-   * "Toggle staff status" switch beside it does not even respond to a click,
-   * leaving `aria-checked` unchanged.) Nothing can be asserted about
-   * persistence until the form works.
-   */
-  test.fixme(
-    'TC-STF-067 — toggle "Appointment Staff"',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
-  );
 
   test(
     'TC-STF-068 — tab "Role & Permissions" — Expand All mở rộng các nhóm quyền',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ staffsPage, page }) => {
       const firstRow = staffsPage.table.rows.first();
-      await firstRow.click();
+      await staffsPage.openStaff(firstRow);
 
       const detail = new StaffDetailPage(page);
       await detail.waitForReady();
@@ -226,13 +127,24 @@ test.describe('Trang chi tiết nhân viên (Detail — tab Profile) — Staffs'
       await page.getByRole('option').first().click();
 
       await expect(detail.expandAllButton).toBeVisible();
+      // Since the 2026-10-13 refactor the groups render expanded, so the
+      // control starts as "Collapse all" and toggles to "Expand all"; the
+      // pending role change is offered as an (unclicked) "Save" button.
+      const groups = page.getByRole('tabpanel').getByRole('button', { expanded: true });
+      await expect(page.getByRole('button', { name: /^collapse all$/i })).toBeVisible();
       await detail.expandAllButton.click();
-      await expect(detail.saveChangesButton).toBeVisible();
+      await expect(page.getByRole('button', { name: /^expand all$/i })).toBeVisible();
+      await page.getByRole('button', { name: /^expand all$/i }).click();
+      await expect(page.getByRole('button', { name: /^collapse all$/i })).toBeVisible();
+      expect(await groups.count(), 'Expand all left no permission group expanded').toBeGreaterThan(
+        1,
+      );
+      await expect(page.getByRole('button', { name: /^save( changes)?$/i })).toBeVisible();
     },
   );
 
   // PRODUCT GAP (2026-10-11): a detail URL with a non-existent staff id renders a blank content area (only the nav shell) — no not-found/404/empty/error/retry state at all. Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-STF-069 — truy cập trực tiếp URL chi tiết với ID không tồn tại',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ staffsPage, page }) => {
@@ -273,7 +185,7 @@ test.describe('Trang chi tiết nhân viên (Detail — tab Profile) — Staffs'
       const pageErrors: string[] = [];
       page.on('pageerror', (error) => pageErrors.push(error.message));
 
-      await staffsPage.table.rows.first().click();
+      await staffsPage.openStaff();
       await expect(page).toHaveURL(/\/staffs\/[^/?]+\?tab=profile/);
       const staffId = new URL(page.url()).pathname.split('/').pop() as string;
 

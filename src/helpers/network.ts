@@ -127,7 +127,11 @@ export const landOnShell = async (page: Page, path: string): Promise<void> => {
   // regularly needs more than the default 10s expect timeout to hydrate; the
   // default makes session-expiry cases flaky on first attempt. Give it the same
   // congestion margin the list screens use.
-  await expect(page.locator('[data-sidebar="menu-button"]').first()).toBeVisible({
+  // Since the 2026-10-13 design-system refactor the nav is `navigation "Main"`
+  // (no more `data-sidebar="menu-button"`); its links render once the shell hydrates.
+  await expect(
+    page.getByRole('navigation', { name: 'Main' }).getByRole('link').first(),
+  ).toBeVisible({
     timeout: Timeouts.MEDIUM,
   });
 };

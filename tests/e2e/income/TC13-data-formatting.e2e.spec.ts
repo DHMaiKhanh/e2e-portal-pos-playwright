@@ -230,12 +230,12 @@ test.describe('Định dạng dữ liệu — Income Reports', () => {
       await incomePage.gotoWithQuery({
         tab: IncomeTab.DAILY,
         date: DAILY_DATA_DATE,
-        stat: incomeKpiCard('Sale Income').stat,
+        stat: incomeKpiCard('Sale income').stat,
       });
       await incomePage.waitForDataSettled();
 
       const ticks = await incomePage.chartValueAxisLabels();
-      test.skip(ticks.length === 0, 'the charted day has no value axis to read');
+      expect(ticks.length === 0, 'the charted day has no value axis to read').toBeFalsy();
 
       // Every tick is axis-shaped: `$0`, `$400`, `$1.2K` — cents optional here.
       for (const tick of ticks) {
@@ -279,7 +279,7 @@ test.describe('Định dạng dữ liệu — Income Reports', () => {
 
       // The `DATE` column under period `Day`: one single date per row.
       const dateLabels = await incomePage.summaryDateLabels();
-      test.skip(dateLabels.length === 0, 'no Summary rows in the filtered range');
+      expect(dateLabels.length === 0, 'no Summary rows in the filtered range').toBeFalsy();
 
       for (const label of dateLabels) {
         expect(label, `DATE cell "${label}"`).toMatch(INCOME_DATE_LABEL_PATTERN);
@@ -308,7 +308,7 @@ test.describe('Định dạng dữ liệu — Income Reports', () => {
       await expect(page).toHaveURL(/period=week/);
 
       const labels = await incomePage.summaryDateLabels();
-      test.skip(labels.length === 0, 'no Summary rows in the filtered range');
+      expect(labels.length === 0, 'no Summary rows in the filtered range').toBeFalsy();
 
       for (const label of labels) {
         expect(label, `week bucket "${label}"`).toMatch(INCOME_WEEK_LABEL_PATTERN);
@@ -363,7 +363,7 @@ test.describe('Định dạng dữ liệu — Income Reports', () => {
       await expect(page).toHaveURL(/period=month/);
 
       const labels = await incomePage.summaryDateLabels();
-      test.skip(labels.length === 0, 'no Summary rows in the filtered range');
+      expect(labels.length === 0, 'no Summary rows in the filtered range').toBeFalsy();
 
       for (const label of labels) {
         expect(label, `month bucket "${label}"`).toMatch(INCOME_MONTH_LABEL_PATTERN);
@@ -386,20 +386,20 @@ test.describe('Định dạng dữ liệu — Income Reports', () => {
   // stamps at once ("Aug 18, 2026, 2:57 PM (UTC+7)" AND "... 2:57 AM (UTC-5)"),
   // and other sections read UTC-5, so the single-offset pattern fails. Re-enable
   // once the dialog renders one consistent UTC offset.
-  test.fixme(
+  test(
     'TC-INC-143 — dialog timestamps carry one consistent UTC offset',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
       await incomePage.gotoWithQuery({ tab: IncomeTab.DAILY, date: DAILY_DATA_DATE });
       await incomePage.waitForDataSettled();
       const orders = await incomePage.orderCodes();
-      test.skip(orders.length === 0, 'no orders on the selected day to open');
+      expect(orders.length === 0, 'no orders on the selected day to open').toBeFalsy();
 
       const dialog = await incomePage.openOrderRow(0);
       const text = await dialog.text();
 
       // `Order Date` — the first stamp the case names.
-      const orderDate = await dialog.fieldValue('Order Date', 'Merchant');
+      const orderDate = await dialog.fieldValue('Order date', 'Merchant');
       expect(orderDate, 'Order Date value').toMatch(INCOME_TIMESTAMP_PATTERN);
 
       // Every stamp in the dialog is the same `MMM D, YYYY, h:mm A (UTC±N)` shape.
@@ -472,7 +472,7 @@ test.describe('Định dạng dữ liệu — Income Reports', () => {
       await incomePage.waitForDataSettled();
       await expect(incomePage.staffSummaryHeading).toBeVisible();
 
-      for (const label of ['Total Staff', 'Total Orders']) {
+      for (const label of ['Total staff', 'Total orders']) {
         const value = await incomePage.staffSummaryValue(label);
         expect(value, `${label} is rendered`).not.toBe('');
         // The pattern itself rejects `5324` — grouping is mandatory past 3 digits.

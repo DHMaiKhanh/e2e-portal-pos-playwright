@@ -1,5 +1,6 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
+import { CustomersPage } from '@pages/customers/CustomersPage';
 
 test.describe('Ô tìm kiếm (Search input) — Customers', () => {
   test.beforeEach(async ({ customersPage }) => {
@@ -37,7 +38,7 @@ test.describe('Ô tìm kiếm (Search input) — Customers', () => {
       // list masks all but the last four digits — e.g. "(***) ***-3301" — so the
       // only searchable value a user can read off the table is that suffix.
       const firstPhoneCell = customersPage.table.rows.first().getByRole('cell').nth(1);
-      await expect(firstPhoneCell).toHaveText(/^\(\*{3}\) \*{3}-\d{4}$/);
+      await expect(firstPhoneCell).toHaveText(CustomersPage.MASKED_PHONE);
       const rawPhone = ((await firstPhoneCell.textContent()) ?? '').replace(/\D/g, '');
 
       await customersPage.search(rawPhone);
@@ -51,7 +52,7 @@ test.describe('Ô tìm kiếm (Search input) — Customers', () => {
   // strip separators — the raw digit suffix (e.g. "3301") returns 13 rows, but the same digits with
   // a dash ("33-01") or parentheses ("(33) 01") return the empty state (0 rows). Expected a
   // format-agnostic phone search that normalises separators before matching. Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-CUS-029 — searching with different phone formats returns the same result',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ customersPage, page }) => {
@@ -59,7 +60,7 @@ test.describe('Ô tìm kiếm (Search input) — Customers', () => {
       // Phones are masked to their last four digits in the list (e.g.
       // "(***) ***-3301"), so that suffix is the only phone value a user can read
       // off the table — the full 10-digit number is no longer exposed.
-      await expect(firstPhoneCell).toHaveText(/^\(\*{3}\) \*{3}-\d{4}$/);
+      await expect(firstPhoneCell).toHaveText(CustomersPage.MASKED_PHONE);
       const suffix = ((await firstPhoneCell.textContent()) ?? '').replace(/\D/g, '');
       expect(suffix).toHaveLength(4);
 
@@ -92,7 +93,7 @@ test.describe('Ô tìm kiếm (Search input) — Customers', () => {
 
       await customersPage.clearSearch();
       await expect(page).not.toHaveURL(/search=test/);
-      await expect(customersPage.resultsFooter).toContainText(/showing 1 to 30 of \d+ results/i);
+      await expect(customersPage.resultsFooter).toContainText(/^1–30 of [\d,]+$/);
     },
   );
 
@@ -105,8 +106,14 @@ test.describe('Ô tìm kiếm (Search input) — Customers', () => {
 
       await customersPage.search('zzzzznotarealcustomer999');
       await expect(customersPage.emptyState).toBeVisible();
-      await expect(customersPage.pagination.prevButton).toBeDisabled();
-      await expect(customersPage.pagination.nextButton).toBeDisabled();
+      // Since the 2026-10-13 refactor an empty result hides the pager entirely;
+      // what matters is that no enabled paging control is offered.
+      await expect(
+        customersPage.activePanel.getByRole('button', {
+          name: /^(previous|next) page$/i,
+          disabled: false,
+        }),
+      ).toHaveCount(0);
       expect(errors).toHaveLength(0);
     },
   );

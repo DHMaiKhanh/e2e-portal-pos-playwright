@@ -31,9 +31,12 @@ function hourLabelToMinutes(label: string): number {
  * then has no axis and no bars to hover at all.
  */
 const DATA_BEARING_DATE = '2026-08-18';
+/** 52 orders, Sale income $5,150.50 — the large-revenue day (verified 2026-10-20). */
+const LARGE_REVENUE_DATE = '2026-08-05';
 
 /** A day far enough back that the store has no orders — every KPI reads zero. */
-const EMPTY_DATE = '2020-01-01';
+/** A day with sales but $0.00 tip on store 100004 (verified 2026-10-20). */
+const ZERO_TIP_DATE = '2026-06-30';
 
 test.describe('Tab Daily — KPI card & biểu đồ — Income Reports', () => {
   test.beforeEach(async ({ incomePage }) => {
@@ -67,7 +70,7 @@ test.describe('Tab Daily — KPI card & biểu đồ — Income Reports', () => 
 
           const value = await incomePage.kpiValue(card.label);
           expect(value, `${card.label} shows no headline figure`).toMatch(
-            card.label === 'Total Orders' ? INCOME_COUNT_PATTERN : INCOME_CURRENCY_PATTERN,
+            card.label === 'Total orders' ? INCOME_COUNT_PATTERN : INCOME_CURRENCY_PATTERN,
           );
 
           expect(
@@ -91,8 +94,8 @@ test.describe('Tab Daily — KPI card & biểu đồ — Income Reports', () => 
     'TC-INC-036 — About Total Orders tooltip text',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
-      const tooltip = await incomePage.openKpiTooltip('Total Orders');
-      await expect(tooltip).toContainText(incomeKpiCard('Total Orders').tooltip);
+      const tooltip = await incomePage.openKpiTooltip('Total orders');
+      await expect(tooltip).toContainText(incomeKpiCard('Total orders').tooltip);
     },
   );
 
@@ -107,8 +110,8 @@ test.describe('Tab Daily — KPI card & biểu đồ — Income Reports', () => 
     'TC-INC-037 — About Sale Income tooltip text',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
-      const tooltip = await incomePage.openKpiTooltip('Sale Income');
-      await expect(tooltip).toContainText(incomeKpiCard('Sale Income').tooltip);
+      const tooltip = await incomePage.openKpiTooltip('Sale income');
+      await expect(tooltip).toContainText(incomeKpiCard('Sale income').tooltip);
     },
   );
 
@@ -122,8 +125,8 @@ test.describe('Tab Daily — KPI card & biểu đồ — Income Reports', () => 
     'TC-INC-038 — About Total Tip tooltip text',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
-      const tooltip = await incomePage.openKpiTooltip('Total Tip');
-      await expect(tooltip).toContainText(incomeKpiCard('Total Tip').tooltip);
+      const tooltip = await incomePage.openKpiTooltip('Total tip');
+      await expect(tooltip).toContainText(incomeKpiCard('Total tip').tooltip);
     },
   );
 
@@ -136,8 +139,8 @@ test.describe('Tab Daily — KPI card & biểu đồ — Income Reports', () => 
     'TC-INC-039 — About Total Payment tooltip text',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
-      const tooltip = await incomePage.openKpiTooltip('Total Payment');
-      await expect(tooltip).toContainText(incomeKpiCard('Total Payment').tooltip);
+      const tooltip = await incomePage.openKpiTooltip('Total payment');
+      await expect(tooltip).toContainText(incomeKpiCard('Total payment').tooltip);
     },
   );
 
@@ -153,15 +156,15 @@ test.describe('Tab Daily — KPI card & biểu đồ — Income Reports', () => 
     { tag: [Tag.REGRESSION] },
     async ({ incomePage, page }) => {
       await incomePage.waitForDataSettled();
-      await incomePage.selectKpiCard('Total Tip');
+      await incomePage.selectKpiCard('Total tip');
 
       await expect(page).toHaveURL(/[?&]stat=totalTip\b/);
       expect(incomePage.param('stat')).toBe('totalTip');
-      await expect(incomePage.chartTitle).toHaveText('Total Tip by Hour');
+      await expect(incomePage.chartTitle).toHaveText('Total tip by Hour');
 
       // "Style được chọn" is exposed as aria-pressed on exactly one card.
       await expect(incomePage.selectedKpiCard).toHaveCount(1);
-      await expect(incomePage.selectedKpiCard).toHaveText(/^Total Tip\b/);
+      await expect(incomePage.selectedKpiCard).toHaveText(/^Total tip\b/i);
 
       // Tip is the one series the screen can legitimately have nothing to plot
       // for on the current day; when that happens the plot — legend included —
@@ -219,9 +222,9 @@ test.describe('Tab Daily — KPI card & biểu đồ — Income Reports', () => 
       await incomePage.waitForDataSettled();
 
       await expect(page).toHaveURL(/\/pos\/nail\/\d+\/income\?[^#]*stat=totalTip/);
-      await expect(incomePage.chartTitle).toHaveText('Total Tip by Hour');
+      await expect(incomePage.chartTitle).toHaveText('Total tip by Hour');
       await expect(incomePage.selectedKpiCard).toHaveCount(1);
-      await expect(incomePage.selectedKpiCard).toHaveText(/^Total Tip\b/);
+      await expect(incomePage.selectedKpiCard).toHaveText(/^Total tip\b/i);
     },
   );
 
@@ -235,26 +238,26 @@ test.describe('Tab Daily — KPI card & biểu đồ — Income Reports', () => 
     'TC-INC-043 — zero-tip day shows the chart empty-state sentence',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage }) => {
-      // A day the store never traded is the deterministic way to force
-      // Total Tip to $0.00 without seeding or mutating store data.
-      await incomePage.gotoWithQuery({ tab: 'daily', date: EMPTY_DATE });
+      // Pinned data anchor (verified on DEV 2026-10-20): 2026-06-30 has sales
+      // ($175.00, 3 orders) but $0.00 tip — exactly the "sales, no tip" day the
+      // tip-specific empty sentence needs. A never-traded day would show the
+      // generic no-sales sentence instead.
+      await incomePage.gotoWithQuery({ tab: 'daily', date: ZERO_TIP_DATE });
       await incomePage.waitForDataSettled();
 
       expect(
-        parseIncomeAmount(await incomePage.kpiValue('Total Tip')),
-        `${EMPTY_DATE} was expected to have no tips`,
+        parseIncomeAmount(await incomePage.kpiValue('Total tip')),
+        `${ZERO_TIP_DATE} was expected to have no tips`,
       ).toBe(0);
 
-      await incomePage.selectKpiCard('Total Tip');
+      await incomePage.selectKpiCard('Total tip');
 
       await expect(incomePage.chartEmptyState).toBeVisible();
-      // store 100004 has no "sales but zero-tip" day: a never-traded day shows
-      // the generic no-sales empty state, not the tip-specific sentence this case
-      // pins, so skip rather than assert a message that cannot appear here.
-      test.skip(
+      // The anchor day has sales, so the generic no-sales sentence must not show.
+      expect(
         /no sales recorded/i.test((await incomePage.chartEmptyState.textContent()) ?? ''),
-        'store 100004 has no sales-but-zero-tip day; chart shows the no-sales empty state',
-      );
+        `${ZERO_TIP_DATE} shows the no-sales empty state instead of the tip-specific one`,
+      ).toBeFalsy();
       await expect(incomePage.chartEmptyState).toContainText(INCOME_EMPTY_STATES.TIP_CHART);
     },
   );
@@ -278,13 +281,13 @@ test.describe('Tab Daily — KPI card & biểu đồ — Income Reports', () => 
       // "No sales recorded for this day yet." empty state, which carries no `Sale`
       // legend to assert. Skip softly then; the title still renders either way.
       const emptyChart = await incomePage.chartEmptyState.count();
-      test.skip(
+      expect(
         emptyChart > 0,
         'store has no sales today; the chart shows its empty state, not a Sale legend',
-      );
+      ).toBeFalsy();
 
       expect(incomePage.param('stat'), 'the default load should carry no stat=').toBe('');
-      await expect(incomePage.chartTitle).toHaveText('Sale Income by Hour');
+      await expect(incomePage.chartTitle).toHaveText('Sale income by Hour');
       await expect(incomePage.chartLegend('Sale')).toBeVisible();
     },
   );
@@ -333,18 +336,34 @@ test.describe('Tab Daily — KPI card & biểu đồ — Income Reports', () => 
    * Expected: Ngày lớn hiện thang dương có viết tắt (`$0 $400 $800 $1.2K
    * $1.6K`); ngày có giá trị âm hiện thang bao cả phần âm (`-$70 ... $70`).
    */
-  // TODO(manual/setup): the negative half of the comparison needs a day whose
-  // Sale Income actually contains a refund. There is no fixed such date — the
-  // case points at "today", which drifts, and DEV has no seeded refund day — so
-  // an executable version would silently degrade into re-checking a
-  // positive-only axis. Needs a seeded refund order on a known date, or a
-  // manual pass.
-  test.fixme(
+  // Negative half pinned to 2026-08-18 (refunds push Sale income below $0 in
+  // some hours: axis `-$700 … $700`), large half to 2026-08-05 (52 orders).
+  test(
     'TC-INC-046 — Y axis rescales for large revenue and for negative values',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
-      await incomePage.gotoWithQuery({ tab: 'daily', date: DATA_BEARING_DATE });
-      await incomePage.waitForDataSettled();
+      const tickValues = async (date: string): Promise<number[]> => {
+        await incomePage.gotoWithQuery({ tab: 'daily', date });
+        await incomePage.waitForDataSettled();
+        await expect(incomePage.chartRegion).toBeVisible();
+        const ticks = await incomePage.chartValueAxisLabels();
+        return ticks.map((tick) => {
+          const scale = /K$/.test(tick) ? 1_000 : /M$/.test(tick) ? 1_000_000 : 1;
+          return parseIncomeAmount(tick.replace(/[KMB]$/, '')) * scale;
+        });
+      };
+
+      const negativeDay = await tickValues(DATA_BEARING_DATE);
+      expect(negativeDay.length, 'value-axis ticks on the refund day').toBeGreaterThan(1);
+      expect(Math.min(...negativeDay), 'the axis extends below $0 on a refund day').toBeLessThan(0);
+
+      const largeDay = await tickValues(LARGE_REVENUE_DATE);
+      expect(largeDay.length, 'value-axis ticks on the large day').toBeGreaterThan(1);
+      expect(Math.min(...largeDay), 'a positive-only day starts at $0').toBeGreaterThanOrEqual(0);
+      expect(
+        Math.max(...largeDay),
+        'the axis rescales up for a larger-revenue day',
+      ).toBeGreaterThan(Math.max(...negativeDay));
     },
   );
 
@@ -382,27 +401,6 @@ test.describe('Tab Daily — KPI card & biểu đồ — Income Reports', () => 
       expect(tooltipText, 'tooltip is missing a currency value').toMatch(
         INCOME_CURRENCY_TEXT_PATTERN,
       );
-    },
-  );
-
-  /**
-   * TC-INC-048 — Cột âm (refund) phân biệt được bằng màu và dấu
-   * Steps:
-   *  1. Chọn ngày có refund.
-   *  2. Quan sát cột dưới mốc `$0`.
-   * Expected: Cột âm vẽ xuống dưới đường 0 và tô màu khác cột dương; giá trị
-   * trong tooltip có dấu trừ.
-   */
-  // TODO(manual/setup): needs a day that contains a refund — no seeded fixture
-  // date exists on DEV — and the "different colour" half is a visual comparison
-  // of two bar fills. Verify manually, or via a visual snapshot, once a
-  // refund-bearing date is seeded.
-  test.fixme(
-    'TC-INC-048 — negative refund bars render below zero in a different colour',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ incomePage }) => {
-      await incomePage.gotoWithQuery({ tab: 'daily' });
-      await incomePage.waitForDataSettled();
     },
   );
 });

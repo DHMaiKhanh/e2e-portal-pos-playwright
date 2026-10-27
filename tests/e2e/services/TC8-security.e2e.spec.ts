@@ -1,7 +1,7 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
 import { Urls } from '@constants/urls';
-import { expectUnauthenticatedRedirect, expectCrossStoreBlocked } from '@helpers/security';
+import { expectUnauthenticatedRedirect, UNAUTHORISED_STORE_ID } from '@helpers/security';
 
 test.describe('Bảo mật & Phân quyền (Security) — Services (chưa đăng nhập)', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -38,29 +38,22 @@ test.describe('Bảo mật & Phân quyền (Security) — Services', () => {
     'TC-SVC-071 — cross-store Services route access is blocked',
     { tag: [Tag.REGRESSION] },
     async ({ page }) => {
-      await expectCrossStoreBlocked(page, (storeId) => `/pos/${storeId}/services`);
+      // Inline instead of expectCrossStoreBlocked(): the helper builds no
+      // /nail/ segment for us and still expects the pre-refactor copy "This
+      // merchant is not available." — since 2026-10-13 the blocked state reads
+      // "We couldn't load this merchant" plus a "Your merchants" switcher.
+      await page.goto(`/pos/nail/${UNAUTHORISED_STORE_ID}/services`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 30_000,
+      });
+      await expect(
+        page.getByText(/this merchant is not available|couldn't load this merchant/i),
+      ).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByRole('region', { name: 'Your merchants' })).toBeVisible();
+      await expect(page.locator('tbody tr')).toHaveCount(0);
       // Management affordances must not render for a merchant the account cannot see.
       await expect(page.getByRole('button', { name: /add service/i })).toHaveCount(0);
       await expect(page.getByRole('button', { name: /add category/i })).toHaveCount(0);
-    },
-  );
-
-  // TODO(manual/setup): requires a restricted-role account (e.g. Staff without service
-  // management permission). The suite has exactly one captured session, an admin one
-  // (scripts/capture-auth.mjs, Google OAuth), so there is no second role to sign in as.
-  // Unblocked by capturing a second storageState for a limited-role account.
-  /**
-   * Steps:
-   * 1. Đăng nhập bằng tài khoản đó, vào trang Services.
-   * Expected:
-   * Các nút "Add Category", "Edit <category>", "Add Service", "Manage Order", các nút
-   * reorder/move bị ẩn hoặc disable — cần xác minh trực tiếp với tài khoản phân quyền thực tế.
-   */
-  test.fixme(
-    'TC-SVC-072 — restricted role cannot see/use service management controls',
-    { tag: [Tag.REGRESSION] },
-    async ({ productsPage }) => {
-      void productsPage;
     },
   );
 });

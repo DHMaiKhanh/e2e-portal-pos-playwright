@@ -38,6 +38,10 @@ import {
  * positive cases to a day with rows so they run instead of skipping on "today".
  */
 const DAILY_DATA_DATE = '2026-08-18';
+/** 52 orders → 2 pages of 30 on store 100004 (verified 2026-10-20). */
+const MULTI_PAGE_DATE = '2026-08-05';
+/** Another traded day in the same month (39 orders). */
+const OTHER_DATA_DAY = 4;
 
 test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
   test.beforeEach(async ({ incomePage }) => {
@@ -87,10 +91,10 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
 
       const total = await incomePage.totalResults();
       expect(Number.isNaN(total)).toBe(false);
-      test.skip(
+      expect(
         total === 0,
         'that date holds no orders on DEV, so no "<N> orders" counter is rendered to compare',
-      );
+      ).toBeFalsy();
 
       await expect(incomePage.orderCountLabel).toBeVisible();
       expect(await incomePage.orderCount()).toBe(total);
@@ -107,21 +111,28 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
    *  dòng có style phân biệt (nền/chữ đỏ) — và thông tin refund **không chỉ**
    *  thể hiện bằng màu (có chữ `(Refund)`).
    *
-   * // TODO(manual/setup): needs a day known to contain a refunded order — the
-   * Daily tab shows exactly one day at a time and DEV refund data moves, so
-   * there is no date that can be hard-coded here. The "nền/chữ đỏ" half of the
-   * Expected is a computed-style/visual claim the screen scan did not inventory
-   * a hook for, so it needs live verification too. Unblocked by pinning a
-   * refund date (or a mocked list response) and adding the distinguishing
-   * class/colour assertion.
+   * Pinned to {@link DAILY_DATA_DATE} (2026-08-18), which holds six
+   * ` (Refund)` rows (verified 2026-10-20). The colour half is visual and is
+   * not asserted; the "not colour alone" half is — the suffix and the sign.
    */
-  test.fixme(
+  test(
     'TC-INC-051 — refund rows carry the " (Refund)" suffix and negative amounts',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
-      // Best-effort arrange: the locator that will drive the case once a refund
-      // date is pinned. Nothing is asserted, so the scaffold cannot fail.
-      await incomePage.refundRows.count();
+      await incomePage.gotoWithQuery({ tab: 'daily', date: DAILY_DATA_DATE });
+      await incomePage.waitForDataSettled();
+
+      const rows = await incomePage.dailyRows();
+      const refunds = rows.filter((row) => row.isRefund);
+      expect(refunds.length, `no refund rows on ${DAILY_DATA_DATE}`).toBeGreaterThan(0);
+      for (const row of refunds) {
+        expect(row.orderCode, 'refund code suffix').toMatch(/^#OD\d{6}-\d{8} \(Refund\)$/);
+        // Money columns go negative (typographic minus since 2026-10-13).
+        expect(row.saleRefund, `${row.orderCode} Sale/Refund`).toBeLessThan(0);
+        expect(row.total, `${row.orderCode} Total`).toBeLessThan(0);
+      }
+      // ...and the suffix is real text in the cell, not only a colour cue.
+      await expect(incomePage.refundRows.first()).toContainText('(Refund)');
     },
   );
 
@@ -144,10 +155,10 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
         incomePage.orderDetailsTable,
         IncomeDailyColumn.ORDER,
       );
-      test.skip(
+      expect(
         codes.length === 0,
         'the selected day holds no orders, so there is no code to check',
-      );
+      ).toBeFalsy();
 
       for (const code of codes) {
         expect(code).toMatch(INCOME_ORDER_CODE_PATTERN);
@@ -178,7 +189,10 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
         incomePage.columnValues(table, IncomeDailyColumn.TIP),
         incomePage.columnValues(table, IncomeDailyColumn.TOTAL),
       ]);
-      test.skip(sale.length === 0, 'that date holds no orders on DEV, so there is no row to sum');
+      expect(
+        sale.length === 0,
+        'that date holds no orders on DEV, so there is no row to sum',
+      ).toBeFalsy();
 
       expect(tax).toHaveLength(sale.length);
       expect(tip).toHaveLength(sale.length);
@@ -234,14 +248,15 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
       await incomePage.waitForDataSettled();
 
       const [from, to, total] = await incomePage.resultsRange();
-      test.skip(total > 0, `DEV unexpectedly holds ${total} orders on that date`);
+      expect(total > 0, `DEV unexpectedly holds ${total} orders on that date`).toBeFalsy();
 
       expect([from, to, total]).toEqual([0, 0, 0]);
       // `DataTable.rows` excludes the single placeholder row the app renders in
       // place of data, so an empty body reports zero rows.
       expect(await incomePage.orderDetailsTable.rowCount()).toBe(0);
-      await expect(incomePage.previousPageButton).toBeDisabled();
-      await expect(incomePage.nextPageButton).toBeDisabled();
+      // Since 2026-10-13 an empty day renders no pagination at all (only the
+      // "No orders for this day yet." sentence) — absent arrows count as disabled.
+      expect(await incomePage.paginationDisabled()).toEqual({ previous: true, next: true });
     },
   );
 
@@ -265,10 +280,10 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
       // Page 1 is a lower boundary whatever the data volume is.
       await expect(incomePage.previousPageButton).toBeDisabled();
 
-      test.skip(
+      expect(
         totalPages > 1,
         `today's orders span ${totalPages} pages — no single-page day to assert the upper boundary on`,
-      );
+      ).toBeFalsy();
       await expect(incomePage.nextPageButton).toBeDisabled();
       await expect(incomePage.pageIndicator).toHaveText(/^\s*1\s*\/\s*1\s*$/);
     },
@@ -289,14 +304,14 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
     'TC-INC-057 — Next advances the page, the footer range and the URL, with disjoint rows',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage, page }) => {
-      await incomePage.gotoWithQuery({ tab: 'daily', date: DAILY_DATA_DATE });
+      await incomePage.gotoWithQuery({ tab: 'daily', date: MULTI_PAGE_DATE });
       await incomePage.waitForDataSettled();
 
       const [, totalPages] = await incomePage.pagePosition();
-      test.skip(
+      expect(
         totalPages <= 1,
-        'today holds a single page of orders, so there is no page boundary to cross',
-      );
+        `${MULTI_PAGE_DATE} no longer spans more than one page of orders`,
+      ).toBeFalsy();
 
       const firstCodes = await incomePage.columnValues(
         incomePage.orderDetailsTable,
@@ -335,14 +350,14 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
     'TC-INC-058 — Previous restores page 1 with its original rows',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage }) => {
-      await incomePage.gotoWithQuery({ tab: 'daily', date: DAILY_DATA_DATE });
+      await incomePage.gotoWithQuery({ tab: 'daily', date: MULTI_PAGE_DATE });
       await incomePage.waitForDataSettled();
 
       const [, totalPages] = await incomePage.pagePosition();
-      test.skip(
+      expect(
         totalPages <= 1,
-        'today holds a single page of orders, so Previous has no earlier page to return to',
-      );
+        `${MULTI_PAGE_DATE} no longer spans more than one page of orders`,
+      ).toBeFalsy();
 
       const firstCodes = await incomePage.columnValues(
         incomePage.orderDetailsTable,
@@ -368,19 +383,31 @@ test.describe('Tab Daily — bảng Order Details — Income Reports', () => {
    * Expected:
    *  Bảng về trang 1 (`Showing 1 to …`), không giữ lại `page` cũ gây bảng rỗng.
    *
-   * // TODO(manual/setup): needs a day whose order count exceeds the page size
-   * so that page 2 exists at all — the Daily tab reports one day at a time and
-   * DEV volume moves day to day, so the precondition cannot be arranged from
-   * the test. It also has to survive picking a *different* day in the calendar,
-   * which changes with the run date. Unblocked by pinning a high-volume date
-   * (or mocking a multi-page list response) and driving the picker from it.
+   * Pinned to {@link MULTI_PAGE_DATE} (2 pages) and then a different traded
+   * day of the same month picked through the calendar.
    */
-  test.fixme(
+  test(
     'TC-INC-059 — changing the date resets the table to page 1',
     { tag: [Tag.REGRESSION] },
-    async ({ incomePage }) => {
-      // Best-effort arrange: read the page position the case would reset.
-      await incomePage.pagePosition();
+    async ({ incomePage, page }) => {
+      await incomePage.gotoWithQuery({ tab: 'daily', date: MULTI_PAGE_DATE });
+      await incomePage.waitForDataSettled();
+      const [, totalPages] = await incomePage.pagePosition();
+      expect(
+        totalPages <= 1,
+        `${MULTI_PAGE_DATE} no longer spans more than one page of orders`,
+      ).toBeFalsy();
+
+      await incomePage.goToNextPage();
+      expect((await incomePage.pagePosition())[0]).toBe(2);
+
+      // Step 2: pick another day in the calendar.
+      await incomePage.selectDay(OTHER_DATA_DAY);
+      await expect(page).toHaveURL(/[?&]date=2026-08-04/);
+
+      expect((await incomePage.pagePosition())[0], 'a new date should reopen page 1').toBe(1);
+      expect((await incomePage.resultsRange())[0]).toBe(1);
+      expect(await incomePage.orderDetailsTable.rowCount()).toBeGreaterThan(0);
     },
   );
 });

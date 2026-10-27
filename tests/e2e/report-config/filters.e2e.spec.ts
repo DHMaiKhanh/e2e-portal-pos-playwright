@@ -3,11 +3,14 @@ import { Tag } from '@/types/testTags';
 import { REPORT_CONFIG_SCREENS } from '@pages/report-config/ReportConfigPage';
 
 /**
- * Filters are Radix selects (`button[role=combobox][aria-label=…]`). URL params
- * verified on DEV 2026-10-13: Pages `variant=web|pos|mobile`, Blocks
- * `blockKind=table|summary|chart|detail`, Sources/Columns `type=<snake_case>`,
- * Columns `kind=column|derived|…` (Column (Leaf) → `column`). Sources/Columns forward them to the API as
- * `type[]=` / `kind[]=`.
+ * Filters are filter chips (`[data-slot="pos-filter-chip"]`, aria-label "<label>"
+ * → "<label>: <value>" once set) opening a `listbox "Suggestions"`; there is no
+ * "All …" option any more — a set chip gets a sibling "Clear … filter" button.
+ * URL params verified on DEV 2026-10-20: Pages `variant=web|pos|mobile`, Blocks
+ * `blockKind=table|summary|chart|detail`, Sources/Columns `type=<slug>`
+ * (Store Daily Income → `store`), Columns `kind=column|derived|…`
+ * (Database column → `column`, Formula → `derived`). Sources/Columns forward
+ * them to the API as `type[]=` / `kind[]=`.
  */
 test.describe('Bộ lọc (Filters) — Report Configuration', () => {
   const optionsCase = (id: string, screen: 'pages' | 'blocks' | 'sources' | 'columns') => {
@@ -20,7 +23,7 @@ test.describe('Bộ lọc (Filters) — Report Configuration', () => {
         for (const f of rc.spec.filters) {
           expect(await rc.openFilter(f.label), f.label).toEqual([...f.options]);
           await page.keyboard.press('Escape');
-          await expect(page.getByRole('option')).toHaveCount(0);
+          await expect(rc.listbox).toHaveCount(0);
         }
       },
     );
@@ -41,8 +44,10 @@ test.describe('Bộ lọc (Filters) — Report Configuration', () => {
       await reportConfigPage.selectFilter('Mobile');
       await expect(page).toHaveURL(/variant=mobile/);
       expect(await reportConfigPage.totalResults()).toBeLessThanOrEqual(before);
-      for (const layouts of await reportConfigPage.columnValues(1))
-        expect(layouts).toContain('Mobile');
+      // Only the first two layout badges are drawn; the rest collapse into "+N".
+      const layouts = await reportConfigPage.columnValues(reportConfigPage.columnIndex('Layouts'));
+      expect(layouts.length).toBeGreaterThan(0);
+      for (const l of layouts) expect(l).toMatch(/Mobile|\+\d+/);
     },
   );
 
@@ -60,7 +65,7 @@ test.describe('Bộ lọc (Filters) — Report Configuration', () => {
       await rc.goto();
       await rc.selectFilter('Chart');
       await expect(page).toHaveURL(/blockKind=chart/);
-      const kinds = await rc.columnValues(rc.columnIndex('KIND'));
+      const kinds = await rc.columnValues(rc.columnIndex('Kind'));
       expect(kinds.length).toBeGreaterThan(0);
       expect(new Set(kinds)).toEqual(new Set(['Chart']));
     },
@@ -82,7 +87,7 @@ test.describe('Bộ lọc (Filters) — Report Configuration', () => {
       await rc.selectFilter('Store Daily Income');
       expect((await req).url()).toMatch(/type%5B%5D=[a-z_]+/);
       await expect(page).toHaveURL(/[?&]type=[a-z_]+/);
-      const types = await rc.columnValues(rc.columnIndex('TYPE'));
+      const types = await rc.columnValues(rc.columnIndex('Type'));
       expect(types.length).toBeGreaterThan(0);
       expect(new Set(types)).toEqual(new Set(['Store Daily Income']));
     },
@@ -95,16 +100,14 @@ test.describe('Bộ lọc (Filters) — Report Configuration', () => {
    * TC-RCF-047 — Columns: lọc Kind = Derived (Formula)
    */
   test(
-    'TC-RCF-047 — Columns: Kind=Derived (Formula) keeps only derived columns (kind=derived)',
+    'TC-RCF-047 — Columns: Kind=Formula keeps only derived columns (kind=derived)',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportConfigPage, page }) => {
       const rc = reportConfigPage.on('columns');
       await rc.goto();
-      await rc.selectFilter('Derived (Formula)', 'Filter by kind');
+      await rc.selectFilter('Formula', 'Filter by kind');
       await expect(page).toHaveURL(/kind=derived/);
-      expect(new Set(await rc.columnValues(rc.columnIndex('KIND')))).toEqual(
-        new Set(['Derived (Formula)']),
-      );
+      expect(new Set(await rc.columnValues(rc.columnIndex('Kind')))).toEqual(new Set(['Formula']));
     },
   );
 
@@ -118,15 +121,13 @@ test.describe('Bộ lọc (Filters) — Report Configuration', () => {
       const rc = reportConfigPage.on('columns');
       await rc.goto();
       await rc.selectFilter('Payroll', 'Filter by type');
-      await rc.selectFilter('Column (Leaf)', 'Filter by kind');
+      await rc.selectFilter('Database column', 'Filter by kind');
       await expect(page).toHaveURL(/type=[a-z_]+/);
       await expect(page).toHaveURL(/kind=column/);
-      const n = await rc.table.rows.count();
-      for (let i = 0; i < n; i++) {
-        const cells = await rc.row(i).getByRole('cell').allInnerTexts();
-        expect(cells[1].trim()).toBe('Payroll');
-        expect(cells[2].trim()).toBe('Column (Leaf)');
-      }
+      const types = await rc.columnValues(rc.columnIndex('Type'));
+      expect(types.length).toBeGreaterThan(0);
+      expect(new Set(types)).toEqual(new Set(['Payroll']));
+      expect(new Set(await rc.columnValues(rc.columnIndex('Kind')))).toEqual(new Set(['Column']));
     },
   );
 
@@ -159,22 +160,23 @@ test.describe('Bộ lọc (Filters) — Report Configuration', () => {
       const rc = reportConfigPage.on('blocks');
       await rc.goto();
       await rc.selectFilter('Table');
-      await rc.search('demo');
+      // Pinned to existing DEV data: store 100004 has several "Payroll …" table blocks.
+      await rc.search('payroll');
       const n = await rc.table.rows.filter({ visible: true }).count();
       expect(n).toBeGreaterThan(0);
       const rows = await rc.visibleRows.allInnerTexts();
       for (const r of rows) {
-        expect(r.toLowerCase()).toContain('demo');
+        expect(r.toLowerCase()).toContain('payroll');
         expect(r).toContain('Table');
       }
     },
   );
 
   /**
-   * TC-RCF-051 — Chọn lại option mặc định bỏ param và khôi phục tổng
+   * TC-RCF-051 — Xoá bộ lọc ("Clear … filter") bỏ param và khôi phục tổng
    */
   test(
-    'TC-RCF-051 — picking the default option again clears the param and restores the total',
+    'TC-RCF-051 — clearing the filter chip drops the param and restores the total',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportConfigPage, page }) => {
       const rc = reportConfigPage.on('blocks');
@@ -182,7 +184,8 @@ test.describe('Bộ lọc (Filters) — Report Configuration', () => {
       const total = await rc.totalResults();
       await rc.selectFilter('Chart');
       expect(await rc.totalResults()).toBeLessThan(total);
-      await rc.selectFilter('All kinds');
+      await rc.clearFilter();
+      expect(await rc.filterValue()).toBe('');
       expect(page.url()).not.toContain('blockKind=');
       expect(await rc.totalResults()).toBe(total);
     },

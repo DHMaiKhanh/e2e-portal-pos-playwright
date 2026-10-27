@@ -11,6 +11,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, execFile } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import {
+  loadNotify,
+  saveNotify,
+  publicNotify,
+  mergeNotify,
+  sendNotifications,
+  sendTest,
+} from './notify.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(HERE, '../..');
@@ -19,6 +27,7 @@ const DATA_DIR = path.join(ROOT, 'reports', 'gui-runs');
 const HISTORY_FILE = path.join(DATA_DIR, 'history.json');
 const DURATIONS_FILE = path.join(DATA_DIR, 'durations.json');
 const SCHEDULE_FILE = path.join(DATA_DIR, 'schedule.json');
+const NOTIFY_FILE = path.join(DATA_DIR, 'notify.json');
 const PW_CLI = path.join(ROOT, 'node_modules', 'playwright', 'cli.js');
 const REPORTER = path.join(HERE, 'live-reporter.cjs');
 const PORT = Number(process.env.GUI_PORT ?? 4782);
@@ -146,6 +155,26 @@ async function getTests(env, refresh) {
 const clients = new Set();
 let run = null; // current run state
 let lastFailed = readJson(HISTORY_FILE, [])[0]?.failedKeys ?? [];
+let notify = loadNotify(NOTIFY_FILE);
+
+/**
+ * Human-friendly {title, screen} for a result key, using the cached test tree
+ * (so Discord/Gmail show the test-case name, not a file:line path). Falls back
+ * to parsing the key when the tree for that env was never listed.
+ */
+function friendlyOf(env, key) {
+  const tree = listCache.get(env)?.data ?? listCache.get(env);
+  if (tree?.features) {
+    for (const f of tree.features) {
+      for (const file of f.files) {
+        const t = file.tests.find((x) => x.key === key);
+        if (t) return { title: t.title, screen: f.title };
+      }
+    }
+  }
+  const m = key.match(/^(.+?):(\d+):(.+)$/);
+  return { title: m ? m[3] : key, screen: m ? m[1].split('/').at(-2) ?? m[1] : '' };
+}
 
 function broadcast(event) {
   const line = `data: ${JSON.stringify(event)}\n\n`;
@@ -182,7 +211,7 @@ function buildFilters(selectedKeys, tree) {
   return filters;
 }
 
-async function startRun({ keys, options = {}, trigger = 'manual' }) {
+async function startRun({ keys, options = {}, trigger = 'manual', pass = 1 }) {
   if (run?.proc) throw new Error('A run is already in progress');
   const env = options.env ?? 'stage';
   const tree = await getTests(env, false);
@@ -192,7 +221,7 @@ async function startRun({ keys, options = {}, trigger = 'manual' }) {
 
   const args = [PW_CLI, 'test', ...buildFilters(selected, tree)];
   args.push(`--reporter=list,html,json,${REPORTER}`);
-  args.push(`--workers=${clamp(options.workers, 1, 16, 8)}`);
+  args.push(`--workers=${clamp(options.workers, 1, 16, 4)}`);
   args.push(`--retries=${clamp(options.retries, 0, 5, 0)}`);
   if (options.repeatEach > 1) args.push(`--repeat-each=${clamp(options.repeatEach, 1, 20, 1)}`);
   if (options.headed) args.push('--headed');
@@ -214,6 +243,7 @@ async function startRun({ keys, options = {}, trigger = 'manual' }) {
   run = {
     id: Date.now().toString(36),
     trigger,
+    pass,
     env,
     options,
     selectedKeys: selected,
@@ -269,7 +299,14 @@ function handleReporterEvent(e) {
           : e.status === 'skipped'
             ? 'skipped'
             : 'failed';
-    const r = { status, duration: e.duration, retry: e.retry, errors: e.errors, attachments: e.attachments };
+    const r = {
+      status,
+      duration: e.duration,
+      retry: e.retry,
+      errors: e.errors,
+      attachments: e.attachments,
+      steps: e.steps, // step-by-step replay (feature 6); undefined for plain passes
+    };
     run.results[e.key] = r;
     broadcast({ type: 'testEnd', key: e.key, result: r });
   }
@@ -308,7 +345,44 @@ function finishRun(code) {
   writeJson(HISTORY_FILE, history.slice(0, MAX_HISTORY));
   if (!stopped) lastFailed = failedKeys;
   run.proc = null;
-  broadcast({ type: 'runEnd', entry: summary(entry) });
+
+  // Auto 2nd pass: after a first run that left failures, re-run *just* those
+  // cases once more (no per-test retries). Network flake on the shared remote
+  // Portal usually clears on a clean second attempt, so whatever is still red
+  // after pass 2 is a real failure. A pass-2 run never spawns a pass 3, and the
+  // notification fires only on the final pass. `rerunPending` tells the UI not to
+  // declare the run "done" yet.
+  const opts = run.options ?? {};
+  const willRerun = !stopped && (run.pass ?? 1) === 1 && opts.autoRerun && failedKeys.length > 0;
+  broadcast({ type: 'runEnd', entry: summary(entry), rerunPending: willRerun });
+  if (willRerun) {
+    const rerunKeys = failedKeys.slice();
+    broadcast({ type: 'log', text: `\n[auto-rerun] Gom ${rerunKeys.length} case lỗi — chạy lại lần 2…\n` });
+    setTimeout(() => {
+      startRun({ keys: rerunKeys, options: opts, trigger: 'rerun', pass: 2 }).catch((e) =>
+        broadcast({ type: 'log', text: `\n[auto-rerun] lỗi: ${e.message}\n` }),
+      );
+    }, 400);
+  } else {
+    fireNotifications(entry);
+  }
+}
+
+/** Push the summary to Discord/Gmail if configured; report the outcome in the log. */
+function fireNotifications(entry) {
+  if (!notify.discord.enabled && !notify.gmail.enabled) return;
+  const failures = entry.failedKeys.map((k) => {
+    const f = friendlyOf(entry.env, k);
+    return { ...f, error: entry.results[k]?.errors?.[0]?.split('\n')[0] ?? '' };
+  });
+  sendNotifications({ cfg: notify, entry, failures, link: `http://localhost:${PORT}` })
+    .then(({ skipped, results }) => {
+      if (skipped) return;
+      for (const r of results) {
+        broadcast({ type: 'log', text: `\n[notify:${r.channel}] ${r.ok ? 'đã gửi ✓' : 'lỗi: ' + r.error}\n` });
+      }
+    })
+    .catch((e) => broadcast({ type: 'log', text: `\n[notify] ${e.message}\n` }));
 }
 
 function stopRun() {
@@ -325,6 +399,7 @@ const publicRun = () =>
     id: run.id,
     env: run.env,
     trigger: run.trigger,
+    pass: run.pass,
     options: run.options,
     command: run.command,
     startedAt: run.startedAt,
@@ -467,6 +542,24 @@ const server = http.createServer(async (req, res) => {
         writeJson(SCHEDULE_FILE, schedule);
       }
       return send(res, 200, schedule);
+    }
+
+    if (p === '/api/notify') {
+      if (req.method === 'POST') {
+        notify = mergeNotify(notify, await readBody(req));
+        saveNotify(NOTIFY_FILE, notify);
+      }
+      return send(res, 200, publicNotify(notify));
+    }
+
+    if (p === '/api/notify/test' && req.method === 'POST') {
+      const { channel } = await readBody(req);
+      try {
+        await sendTest({ cfg: notify, channel, link: `http://localhost:${PORT}` });
+        return send(res, 200, { ok: true });
+      } catch (e) {
+        return send(res, 200, { ok: false, error: e.message });
+      }
     }
 
     if (p === '/api/file') {

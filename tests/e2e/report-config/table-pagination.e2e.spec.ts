@@ -2,8 +2,9 @@ import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
 
 /**
- * Pagination (DEV, 2026-10-13): page size fixed at 30, `?page=N` in the URL,
- * footer "Showing X to Y of Z results" + "n / m" indicator. Sources/Columns page
+ * Pagination (DEV, re-verified 2026-10-20): page size fixed at 30, `?page=N` in
+ * the URL, `navigation "Pagination"` footer "X–Y of Z" + "n / m" indicator and
+ * "Previous page" / "Next page" buttons. Sources/Columns page
  * on the server (`page=N`), Pages/Blocks in memory. Two defects are pinned here
  * with annotations (assert current behaviour, flag it in the report):
  *  - D1 Blocks renders every row (90) although the footer says 1–30 and Next
@@ -49,14 +50,14 @@ test.describe('Bảng & phân trang (Table / Pagination) — Report Configuratio
       const req = page.waitForRequest((r) => /report_columns\.jsonld\?page=2/.test(r.url()));
       await rc.nextButton.click();
       await req;
-      await expect(rc.resultsFooter).toHaveText(`Showing 31 to 60 of ${total} results`);
+      await expect(rc.resultsFooter).toHaveText(`31–60 of ${total}`);
       await expect(rc.pageIndicator).toHaveText(new RegExp(`^2\\s*/\\s*${Math.ceil(total / 30)}$`));
       await expect(page).toHaveURL(/page=2/);
       await expect(rc.prevButton).toBeEnabled();
       await expect.poll(() => rc.nameAndSlug(0)).not.toEqual(firstOnPage1);
 
       await rc.prevButton.click();
-      await expect(rc.resultsFooter).toHaveText(`Showing 1 to 30 of ${total} results`);
+      await expect(rc.resultsFooter).toHaveText(`1–30 of ${total}`);
       await expect(page).toHaveURL(/page=1/);
     },
   );
@@ -114,7 +115,7 @@ test.describe('Bảng & phân trang (Table / Pagination) — Report Configuratio
       if (shown !== to - from + 1) {
         test.info().annotations.push({
           type: 'defect',
-          description: `D1: Blocks footer "Showing ${from} to ${to} of ${total}" but ${shown} rows are rendered`,
+          description: `D1: Blocks footer "${from}–${to} of ${total}" but ${shown} rows are rendered`,
         });
       }
       // Current behaviour: all rows rendered (≥ the page slice).
@@ -132,12 +133,10 @@ test.describe('Bảng & phân trang (Table / Pagination) — Report Configuratio
       const rc = reportConfigPage.on('blocks');
       await rc.goto();
       const { total } = await rc.footerRange();
-      test.skip(total <= 30, 'Blocks fits on one page');
+      expect(total <= 30, 'Blocks fits on one page').toBeFalsy();
       const first = await rc.visibleRows.first().innerText();
       await rc.nextButton.click();
-      await expect(rc.resultsFooter).toHaveText(
-        `Showing 31 to ${Math.min(60, total)} of ${total} results`,
-      );
+      await expect(rc.resultsFooter).toHaveText(`31–${Math.min(60, total)} of ${total}`);
       await expect(page).toHaveURL(/page=2/);
       const firstAfter = await rc.visibleRows.first().innerText();
       if (firstAfter === first) {
@@ -182,11 +181,13 @@ test.describe('Bảng & phân trang (Table / Pagination) — Report Configuratio
       await rc.goto();
       await expect(rc.visibleRows).toHaveCount(30);
       await expect(page.locator('select:visible')).toHaveCount(0);
-      // Only the filter comboboxes exist — none of them is a page-size picker.
-      const combos = await page
-        .getByRole('combobox')
+      await expect(page.getByRole('combobox')).toHaveCount(0);
+      await expect(rc.pagination.getByText(/per page|rows/i)).toHaveCount(0);
+      // Only the two filter chips exist — none of them is a page-size picker.
+      const chips = await page
+        .locator('[data-slot="pos-filter-chip"]')
         .evaluateAll((cs) => cs.map((c) => c.getAttribute('aria-label')));
-      expect(combos).toEqual(['Filter by type', 'Filter by kind']);
+      expect(chips).toEqual(['Filter by type', 'Filter by kind']);
     },
   );
 });

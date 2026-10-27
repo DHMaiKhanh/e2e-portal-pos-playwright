@@ -19,7 +19,7 @@ test.describe('Reports — sidebar navigation', () => {
     async ({ reportPagesPage: rp }) => {
       await expect(rp.reportsGroupButton).toBeVisible();
       await expect(rp.reportsGroupButton).toHaveAttribute('aria-expanded', 'false');
-      await expect(rp.reportLinks.filter({ visible: true })).toHaveCount(0);
+      await expect(rp.openReportLinks).toHaveCount(0);
     },
   );
 
@@ -77,34 +77,24 @@ test.describe('Reports — sidebar navigation', () => {
     async ({ reportPagesPage: rp }) => {
       await rp.expandReportsGroup();
       await expect(rp.reportLinks.first()).toBeVisible();
-      expect(await rp.reportLinks.filter({ visible: true }).count()).toBeGreaterThanOrEqual(RPT_DATA_PAGES.length);
+      expect(await rp.openReportLinks.count()).toBeGreaterThanOrEqual(RPT_DATA_PAGES.length);
       await rp.reportsGroupButton.click();
       await expect(rp.reportsGroupButton).toHaveAttribute('aria-expanded', 'false');
-      await expect(rp.reportLinks.filter({ visible: true })).toHaveCount(0);
+      await expect(rp.openReportLinks).toHaveCount(0);
     },
   );
 
   test(
-    "TC-RPT-014 — Overview's Today's Summary 'View All' opens Income Summary",
+    "TC-RPT-014 — Overview's summary 'View report' link opens Income Summary",
     { tag: [Tag.REGRESSION, Tag.SMOKE] },
     async ({ reportPagesPage: rp, page }) => {
       const viewAll = page
-        .getByRole('link', { name: 'View All' })
+        .getByRole('link', { name: /^View (?:All|report)$/i })
         .and(page.locator(`a[href="${reportPageUrl(ReportPageSlug.INCOME_SUMMARY)}"]`));
       await expect(viewAll).toBeVisible({ timeout: Timeouts.LONG });
       await viewAll.click();
       await expect(page).toHaveURL(rptUrlPattern(ReportPageSlug.INCOME_SUMMARY), { timeout: Timeouts.LONG });
       await expect(rp.pageTitle).toHaveText('Income Summary', { timeout: Timeouts.LONG });
-    },
-  );
-
-  test(
-    'TC-RPT-015 — the legacy screen is labelled "Income Reports (Legacy)" and still links to /income',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ reportPagesPage: rp }) => {
-      const legacy = rp.sidebar.item('Income Reports (Legacy)');
-      await expect(legacy).toBeVisible();
-      await expect(legacy).toHaveAttribute('href', Urls.INCOME);
     },
   );
 });

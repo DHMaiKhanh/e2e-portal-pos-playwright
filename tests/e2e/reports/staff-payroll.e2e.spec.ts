@@ -26,10 +26,15 @@ async function periodOptions(rp: ReportPagesPage): Promise<string[]> {
   await rp.payrollPeriodCombobox.click();
   const options = rp.page.getByRole('option');
   await expect(options.first()).toBeVisible();
-  return (await options.allInnerTexts()).map((t) => t.split('\n')[0].trim());
+  return (await options.locator('[data-slot="pos-combobox-label"]').allInnerTexts()).map((t) => t.trim());
 }
 
-/** Click the first row with orders > 0 (falls back to the first row) and return its name. */
+/**
+ * Open the breakdown dialog of the busiest commission staff (per-day table +
+ * Staff Commission rows; salary-type staff show Working Days instead) and
+ * return its name. Since 2026-10-20 the breakdown is a dialog titled with the
+ * staff name ("By Staff · Breakdown"), not a "Thank you, <name>!" panel.
+ */
 async function openBreakdown(rp: ReportPagesPage): Promise<string> {
   await rp.clickSort('Orders'); // desc → busiest staff first
   await expect
@@ -38,16 +43,21 @@ async function openBreakdown(rp: ReportPagesPage): Promise<string> {
       return v.length > 0 && v.every((x, i) => i === 0 || v[i - 1] >= x);
     })
     .toBe(true);
-  const name = (await rp.columnTexts(0))[0];
-  await rp.dataRows().first().click();
-  await expect(rp.page.getByText(`Thank you, ${name}!`)).toBeVisible({ timeout: Timeouts.LONG });
-  // The per-day table and the money rows arrive after the header.
-  await expect
-    .poll(async () => /\nPay 2\n[\s\S]*?-?\$[\d,]+\.\d{2}/.test(await rp.rightPanelText()), {
-      timeout: Timeouts.LONG,
-    })
-    .toBe(true);
-  return name;
+  const names = await rp.columnTexts(0);
+  for (let i = 0; i < Math.min(5, names.length); i++) {
+    await rp.dataRows().nth(i).click();
+    await expect(rp.breakdownDialog.getByRole('heading', { name: names[i] }).first()).toBeVisible({ timeout: Timeouts.LONG });
+    // The money rows arrive after the header.
+    await expect
+      .poll(async () => /\nPay 2\s*\n(?:\([^\n]*\)\n)?\s*[-−]?\$[\d,]+\.\d{2}/.test(await rp.rightPanelText()), {
+        timeout: Timeouts.LONG,
+      })
+      .toBe(true);
+    if ((await rp.rightPanelText()).includes('Staff Commission')) return names[i];
+    await rp.page.keyboard.press('Escape');
+    await expect(rp.breakdownDialog).toBeHidden();
+  }
+  throw new Error('No commission staff among the five busiest rows');
 }
 
 test.describe('Reports › Staff Payroll', () => {
@@ -56,9 +66,10 @@ test.describe('Reports › Staff Payroll', () => {
     { tag: [Tag.REGRESSION, Tag.SMOKE, Tag.UI] },
     async ({ reportPagesPage: rp, page }) => {
       await rp.openWithData(SLUG);
-      await expect(rp.payrollPeriodCombobox).toContainText(RPT_TEXT.CURRENT_PERIOD);
-      await expect(page.getByText('By Staff (live)', { exact: true })).toBeVisible();
-      await expect(rp.payrollPeriodHeading).toHaveText(/^\([A-Z][a-z]{2} \d{1,2}, \d{4} - [A-Z][a-z]{2} \d{1,2}, \d{4}\)$/);
+      // 2026-10-20: the current period is flagged by a "Live" badge in the "By Staff" card title.
+      await expect(rp.liveBadge).toBeVisible();
+      await expect(page.locator('[data-slot="pos-card-title"]').filter({ hasText: /^By Staff/ })).toBeVisible();
+      await expect(rp.payrollPeriodValue).toHaveText(PERIOD_RANGE);
       await expect(page.getByText(RPT_TEXT.ESTIMATED)).toBeVisible();
       expect((await rp.headerLabels()).map((h) => h.toLowerCase())).toEqual(
         RPT_COLUMNS.staffPayroll.map((h) => h.toLowerCase()),
@@ -90,9 +101,11 @@ test.describe('Reports › Staff Payroll', () => {
       const labels = await periodOptions(rp);
       await page.getByRole('option').nth(1).click();
       await expect.poll(() => rp.param('period_id')).not.toBe(currentId);
-      await expect(rp.payrollPeriodCombobox).toHaveText(labels[1]);
-      await expect(rp.payrollPeriodHeading).toHaveText(`(${labels[1]})`);
-      await expect(page.getByText('By Staff', { exact: true })).toBeVisible({ timeout: Timeouts.LONG });
+      await expect(rp.payrollPeriodValue).toHaveText(labels[1]);
+      await expect(page.locator('[data-slot="pos-card-title"]').filter({ hasText: /^By Staff/ })).toBeVisible({
+        timeout: Timeouts.LONG,
+      });
+      await expect(rp.liveBadge).toBeHidden();
       await expect(page.getByText(RPT_TEXT.ESTIMATED)).toBeHidden();
     },
   );
@@ -104,7 +117,7 @@ test.describe('Reports › Staff Payroll', () => {
       const bogus = '00000000-0000-0000-0000-000000000000';
       await rp.openWithData(SLUG, { period_id: bogus });
       await expect.poll(() => rp.param('period_id'), { timeout: Timeouts.LONG }).not.toBe(bogus);
-      await expect(rp.payrollPeriodCombobox).toContainText(RPT_TEXT.CURRENT_PERIOD);
+      await expect(rp.liveBadge).toBeVisible();
     },
   );
 
@@ -123,7 +136,7 @@ test.describe('Reports › Staff Payroll', () => {
       before = await rp.footerText();
       await rp.staffSearch.fill('zzzz-no-such-staff-xyz');
       await expect(rp.emptyRow).toBeVisible({ timeout: Timeouts.MEDIUM });
-      await expect(rp.resultsFooter).toHaveText('Showing 0 to 0 of 0 results');
+      await rp.expectTotal(0);
     },
   );
 
@@ -153,11 +166,11 @@ test.describe('Reports › Staff Payroll', () => {
     async ({ reportPagesPage: rp, page }) => {
       await rp.openWithData(SLUG);
       const { total } = await rp.footerCounts();
-      test.skip(total <= RPT_PAGE_SIZE, 'Single page of staff');
+      expect(total <= RPT_PAGE_SIZE, 'Single page of staff').toBeFalsy();
       expect(await rp.dataRows().count()).toBe(RPT_PAGE_SIZE);
       await rp.nextButton.click();
       await expect(page).toHaveURL(/[?&]page=2\b/);
-      await expect(rp.resultsFooter).toHaveText(`Showing 31 to ${Math.min(60, total)} of ${total} results`, {
+      await expect(rp.paginationRange).toHaveText(`31–${Math.min(60, total)} of ${total}`, {
         timeout: Timeouts.MEDIUM,
       });
     },
@@ -174,7 +187,7 @@ test.describe('Reports › Staff Payroll', () => {
       // Commission staff (busiest first after the Orders sort) get the per-day table.
       for (const h of ['DATE', 'SALE', 'REFUND', 'SUPPLY FEE', 'TIP']) expect(text.toUpperCase()).toContain(h);
       for (const label of RPT_PAYROLL_BREAKDOWN_ROWS) expect(text, label).toContain(label);
-      await expect(page.getByRole('button', { name: 'Print', exact: true })).toBeVisible();
+      await expect(rp.breakdownDialog.getByRole('button', { name: 'Print', exact: true })).toBeVisible();
     },
   );
 
@@ -186,7 +199,7 @@ test.describe('Reports › Staff Payroll', () => {
       await openBreakdown(rp);
       const text = await rp.rightPanelText();
       const val = (label: string): number => {
-        const m = new RegExp(`\\n${label.replace(/[()]/g, '\\$&')}\\n(?:\\([^\\n]*\\)\\n)?(-?\\$[\\d,]+\\.\\d{2})`).exec(text);
+        const m = new RegExp(`\\n${label.replace(/[()]/g, '\\$&')}\\s*\\n(?:\\([^\\n]*\\)\\n)?([-−]?\\$[\\d,]+\\.\\d{2})`).exec(text);
         return m ? rptAmount(m[1]) : Number.NaN;
       };
       expect(val('Sale') - val('Refund')).toBeCloseTo(val('Subtotal'), 1);
@@ -211,9 +224,9 @@ test.describe('Reports › Staff Payroll', () => {
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp }) => {
       await rp.openWithData(SLUG);
-      await openBreakdown(rp);
-      const rowTotal = rptAmount((await rp.columnTexts(5))[0]);
-      const m = /\nTotal Income\n(?:\([^\n]*\)\n)?(-?\$[\d,]+\.\d{2})/.exec(await rp.rightPanelText());
+      const name = await openBreakdown(rp);
+      const rowTotal = rptAmount((await rp.columnTexts(5))[(await rp.columnTexts(0)).indexOf(name)]);
+      const m = /\nTotal Income\s*\n(?:\([^\n]*\)\n)?([-−]?\$[\d,]+\.\d{2})/.exec(await rp.rightPanelText());
       expect(m, 'Total Income in breakdown').not.toBeNull();
       expect(rptAmount(m![1])).toBeCloseTo(rowTotal, 2);
     },
@@ -229,12 +242,13 @@ test.describe('Reports › Staff Payroll', () => {
           [...r.querySelectorAll('td')].slice(1).every((td) => /^(?:0|\$0\.00)$/.test((td.textContent ?? '').trim())),
         ),
       );
-      test.skip(zeroIdx < 0, 'No all-zero staff row on the first page');
+      expect(zeroIdx < 0, 'No all-zero staff row on the first page').toBeFalsy();
       const name = (await rp.columnTexts(0))[zeroIdx];
       await rp.dataRows().nth(zeroIdx).click();
-      await expect(page.getByText(`Thank you, ${name}!`)).toBeVisible({ timeout: Timeouts.LONG });
-      await expect(page.getByText('This staff has no figures for the selected period yet.')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Print', exact: true })).toHaveCount(0);
+      await expect(rp.breakdownDialog.getByRole('heading', { name }).first()).toBeVisible({ timeout: Timeouts.LONG });
+      await expect(rp.breakdownDialog.getByText('No data', { exact: true }).first()).toBeVisible();
+      await expect(rp.breakdownDialog.getByText('Nothing was recorded for this selection.')).toBeVisible();
+      await expect(rp.breakdownDialog.getByRole('button', { name: 'Print', exact: true })).toHaveCount(0);
     },
   );
 });

@@ -399,3 +399,17 @@ Các case chạm defect **assert hành vi hiện tại + ghi annotation `defect`
 - Lần chạy đầu: 5 fail do test (URL `kind=column` cho `Column (Leaf)`, alertdialog giữ mở khi xoá lỗi che bảng khỏi role query, chờ dòng đổi sau Next, timing bàn phím Radix, D10) → đã sửa; lần 2 xanh toàn bộ.
 - Không có dữ liệu cấu hình nào bị ghi: mọi request non-GET tới `volt-pos.*` bị abort hoặc mock tại trình duyệt.
 - Lần chạy 3 (sau khi tăng thời gian chờ redirect cho TC-RCF-160 — từng flaky 1 lần do redirect `/login` chậm khi chạy song song): **91 passed, 0 failed, 5 skipped**.
+
+---
+
+## Linear — Task & Bug liên quan
+
+> Nguồn: Linear team VP, label `Portal` — lấy ngày 2026-10-20. Bỏ Canceled, TechDebt/CI và Restaurant Portal.
+> Thứ tự: Bug → đang QC/Review → đã Prod/Done → Todo/Backlog. **4 issue.**
+
+| ID                                                  | Loại    | Tiêu đề                                                                                        | Trạng thái          | Ưu tiên | Test hiện có                          | E2E được? | Ghi chú                                                |
+| --------------------------------------------------- | ------- | ---------------------------------------------------------------------------------------------- | ------------------- | ------- | ------------------------------------- | --------- | ------------------------------------------------------ |
+| [VP-4756](https://linear.app/fastboy/issue/VP-4756) | Enh     | [PORTAL] enhance: Report V4 configuration in one Internal area, settings style                 | QC Testing          | High    | Chưa (spec cũ có thể vỡ do đổi route) | Có        | Gom cấu hình Report V4 vào khu Internal                |
+| [VP-1870](https://linear.app/fastboy/issue/VP-1870) | Task    | [Portal/POS/B.App] Report Template Configuration                                               | Verified Production | Urgent  | Một phần — `report-config/*`          | Có        | Ẩn/hiện field trên report (Portal/POS/B.App)           |
+| [VP-1991](https://linear.app/fastboy/issue/VP-1991) | Feature | [Portal] Report Template Configuration                                                         | Verified Production | High    | Một phần — `report-config/*`          | Có        | Phần Portal của VP-1870 (cha: VP-1870)                 |
+| [VP-3977](https://linear.app/fastboy/issue/VP-3977) | Task    | [Portal] Report Config page is gated by a hardcoded email allowlist, not by report_config.view | Done                | Medium  | Một phần — `report-config/security`   | Có        | Gate theo `report_config.view` thay vì allowlist email |

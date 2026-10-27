@@ -23,7 +23,7 @@ import { addDays, toIsoDate } from '@utils/dateUtils';
  * ------------------------------------------------------------------------- */
 
 /** `document.title` for the screen. */
-export const INCOME_PAGE_TITLE = 'Income Reports | Portal';
+export const INCOME_PAGE_TITLE = 'Income reports | Portal';
 
 /** The on-page label. Rendered as loose text, not a heading. */
 export const INCOME_SCREEN_LABEL = 'Income Reports (Legacy)';
@@ -40,9 +40,9 @@ export const IncomeTab = {
 
 /** The tab strip, in render order: `role="tab"` on `<button>` elements. */
 export const INCOME_TABS = [
-  { value: IncomeTab.DAILY, label: 'Daily Sale Report' },
-  { value: IncomeTab.SUMMARY, label: 'Income Summary' },
-  { value: IncomeTab.STAFF, label: 'Staff Income' },
+  { value: IncomeTab.DAILY, label: 'Daily sale report' },
+  { value: IncomeTab.SUMMARY, label: 'Income summary' },
+  { value: IncomeTab.STAFF, label: 'Staff income' },
 ] as const;
 
 export type IncomeTabValue = (typeof INCOME_TABS)[number]['value'];
@@ -76,31 +76,31 @@ export function incomeTabLabel(tab: IncomeTabValue): string {
  */
 export const INCOME_KPI_CARDS = [
   {
-    label: 'Total Orders',
+    label: 'Total orders',
     stat: 'totalOrders',
-    chartTitle: 'Total Orders by Hour',
+    chartTitle: 'Total orders by Hour',
     tooltip: 'Total number of orders (exclude refunds, and manual refunds).',
   },
   {
-    label: 'Sale Income',
+    label: 'Sale income',
     stat: 'saleIncome',
-    chartTitle: 'Sale Income by Hour',
+    chartTitle: 'Sale income by Hour',
     legend: 'Sale',
     tooltip:
       'Total sale amount of the order, including refund/partial refund values after discount is applied, excluding Tax and Tip.',
   },
   {
-    label: 'Total Tip',
+    label: 'Total tip',
     stat: 'totalTip',
-    chartTitle: 'Total Tip by Hour',
+    chartTitle: 'Total tip by Hour',
     legend: 'Total Tips',
     emptyState: 'No total tip recorded for this day yet.',
     tooltip: 'Total tips received, not included in sales revenue but counted in collected amounts.',
   },
   {
-    label: 'Total Payment',
+    label: 'Total payment',
     stat: 'totalPayment',
-    chartTitle: 'Total Payment by Hour',
+    chartTitle: 'Total payment by Hour',
     tooltip: 'The final revenue includes Gift Card Redemption.',
   },
 ] as const;
@@ -144,7 +144,7 @@ export const IncomeDailyColumn = {
 } as const;
 
 /** Summary `Total Income Table` headers (title case in the DOM, upper-cased by CSS). */
-export const INCOME_SUMMARY_COLUMNS = ['Date', 'Sale', 'Tip', 'Tax', 'Total Payment'] as const;
+export const INCOME_SUMMARY_COLUMNS = ['Date', 'Sale', 'Tip', 'Tax', 'Total payment'] as const;
 
 export const IncomeSummaryColumn = {
   DATE: 0,
@@ -156,12 +156,12 @@ export const IncomeSummaryColumn = {
 
 /** Staff Income headers — these really are upper-case in the DOM. */
 export const INCOME_STAFF_COLUMNS = [
-  'STAFF',
-  'ORDERS',
-  'SUBTOTAL',
-  'SUPPLY FEE',
-  'TIP',
-  'TOTAL INCOME',
+  'Staff',
+  'Orders',
+  'Subtotal',
+  'Supply fee',
+  'Tip',
+  'Total income',
 ] as const;
 
 export const IncomeStaffColumn = {
@@ -177,134 +177,140 @@ export const IncomeStaffColumn = {
 export const INCOME_STAFF_PAGE_SIZE = 30;
 
 /** Daily right-rail `INCOME DETAIL` rows, in order. */
-export const INCOME_DETAIL_ROWS = ['Sale', 'Tip', 'Tax Collected', 'Total Payment'] as const;
+export const INCOME_DETAIL_ROWS = ['Sale', 'Tip', 'Tax collected', 'Total payment'] as const;
 
 /** Daily right-rail `PAYMENT DETAIL` rows, in order. */
 export const INCOME_PAYMENT_DETAIL_ROWS = [
   'Card',
   'Cash',
   'Others',
-  'Amount Collected',
-  'Gift Card Redemption',
-  'Total Payment',
+  'Amount collected',
+  'Gift card redemption',
+  'Total payment',
 ] as const;
 
 /** Summary chart legend — four series. */
 export const INCOME_SUMMARY_CHART_SERIES = [
-  'Total Income',
-  'Gross Income',
-  'Net Income',
-  'Total Tip',
+  'Total income',
+  'Gross income',
+  'Net income',
+  'Total tip',
 ] as const;
 
 /**
- * Group headings inside the Summary right panel, in order.
+ * Card titles of the Summary right panel, in order (verified 2026-10-20).
  *
- * Upper-case *in the rendered text*, which matters: `SUPPLY FEE` the heading
- * and `Total Supply Fee` the row are told apart by case, so the section
- * slicers below match these case-sensitively.
+ * Since the 2026-10-13 design-system refactor every group is a `pos-card` whose
+ * header carries the title plus the group total, and whose body is a real
+ * `<dl>` (`dt` label / `dd` value). `Split pay` is no longer a card of its own:
+ * it is an `h4` sub-heading INSIDE the `Staff payout` card — the page object
+ * reads the rows after that heading. `Payment details` is a new first group.
+ * Titles are sentence case in the DOM.
  */
 export const INCOME_SUMMARY_PANEL_GROUPS = [
-  'SALE DETAILS',
-  'SUPPLY FEE',
-  'STAFF PAYOUT',
-  'SPLIT PAY',
-  'SALON EARNINGS',
+  'Payment details',
+  'Sale details',
+  'Supply fee',
+  'Staff payout',
+  'Split pay',
+  'Salon earnings',
 ] as const;
 
 export type IncomeSummaryGroup = (typeof INCOME_SUMMARY_PANEL_GROUPS)[number];
 
 export const INCOME_SALE_DETAILS_ROWS = [
-  'Total Sale',
-  'Service Sale',
-  'Product Sale',
-  'Gift Card Sale',
-  'Total Refund',
-  'Service Refund',
-  'Product Refund',
+  'Total sale',
+  'Service sale',
+  'Product sale',
+  'Gift card sale',
+  'Total refund',
+  'Service refund',
+  'Product refund',
   'Subtotal',
-  'Total Discount',
+  'Total discount',
   'Discount',
-  'Discount Reversed',
-  'Service Fee',
-  'Cash Discount',
-  'Net Total',
+  'Discount reversed',
+  'Service fee',
+  'Cash discount',
+  'Net total',
   'Tip',
-  'Tax Collected',
-  'TOTAL PAYMENT',
+  'Tax collected',
+  'Total payment',
 ] as const;
 
 export const INCOME_SUPPLY_FEE_ROWS = [
-  'Total Supply Fee',
-  'Staff Supply Share',
-  'Salon Supply Share',
+  'Total supply fee',
+  'Staff supply share',
+  'Salon supply share',
 ] as const;
 
+/** `Staff payout` rows BEFORE the `Split pay` sub-heading. */
 export const INCOME_STAFF_PAYOUT_ROWS = [
-  'Total Service',
-  'Staff Supply Share',
-  'Staff Commission',
+  'Total service',
+  'Staff supply share',
+  'Staff commission',
   'Tip',
   'Clean up fee',
-  'Staff Discount Charge',
-  'Staff Card Charge Commission',
-  'Staff Card Charge Tip',
-  'Staff Salary',
-  'TOTAL STAFF PAYOUT',
+  'Staff discount charge',
+  'Staff card charge commission',
+  'Staff card charge tip',
+  'Staff salary',
+  'Total staff payout',
 ] as const;
 
 export const INCOME_SPLIT_PAY_ROWS = ['Pay 1', 'Pay 2'] as const;
 
 export const INCOME_SALON_EARNINGS_ROWS = [
-  'Total Service',
-  'Salon Supply Share',
-  'Salon Commission',
-  'Product Sale',
-  'Product Refund',
-  'Total Discount',
+  'Total service',
+  'Salon supply share',
+  'Salon commission',
+  'Product sale',
+  'Product refund',
+  'Total discount',
   'Discount',
-  'Discount Reversed',
-  'Service Fee',
-  'Cash Discount',
-  'Net Earnings',
-  'Staff Supply Share',
+  'Discount reversed',
+  'Service fee',
+  'Cash discount',
+  'Net earnings',
+  'Staff supply share',
   'Clean up fee',
-  'Staff Discount Charge',
-  'Staff Card Charge Commission',
-  'Staff Card Charge Tip',
-  'Staff Salary',
-  'TOTAL EARNINGS',
+  'Staff discount charge',
+  'Staff card charge commission',
+  'Staff card charge tip',
+  'Staff salary',
+  'Total earnings',
+  'Tax collected',
 ] as const;
 
-/** Staff tab `STAFF SUMMARY` rows, in order. First two are counts, not money. */
+/** Staff tab `Staff summary` rows, in order. First two are counts, not money. */
 export const INCOME_STAFF_SUMMARY_ROWS = [
-  'Total Staff',
-  'Total Orders',
-  'Total Subtotal',
-  'Total Supply Fee',
-  'Total Tip',
-  'TOTAL INCOME',
+  'Total staff',
+  'Total orders',
+  'Total subtotal',
+  'Total supply fee',
+  'Total tip',
+  'Total income',
 ] as const;
 
-/** Section headings inside the `Order detail #OD…` dialog. */
+/** Section titles inside the `Order detail` dialog (sentence case since 2026-10-13). */
 export const INCOME_ORDER_DETAIL_SECTIONS = [
-  'Order Information',
-  'Service Details',
-  'Payment Details',
-  'Activity Log',
+  'Order information',
+  'Service details',
+  'Payment details',
+  'Activity log',
 ] as const;
 
-/** `Order Information` field labels. */
+/** `Order information` field labels. */
 export const INCOME_ORDER_INFORMATION_FIELDS = [
   'Order ID',
-  'Order Date',
+  'Order date',
   'Merchant',
   'WHMCS ID',
   'Customer',
-  'Order Note',
+  'Order note',
 ] as const;
 
-/** `Activity Log` sub-tabs, in order. */
+/** `Activity log` subject filter (a radiogroup), in order. */
 export const INCOME_ACTIVITY_LOG_TABS = [
   'All',
   'Order',
@@ -328,12 +334,17 @@ export const INCOME_EMPTY_STATES = {
   UNAVAILABLE: 'POS is unavailable right now',
 } as const;
 
-/** Sidebar `Operations` group: label + store-scoped href. */
+/**
+ * Sidebar `Operations` group: label + store-scoped href.
+ *
+ * Since the 2026-10-13 refactor the legacy Income screen is NOT in the sidebar
+ * any more (reports moved under `Reports` / `Reports V4`); `/income` is only
+ * reachable by URL.
+ */
 export const INCOME_SIDEBAR_OPERATIONS = [
   { label: 'Overview', href: Urls.DASHBOARD },
   { label: 'Orders', href: Urls.ORDERS },
   { label: 'Batches', href: Urls.BATCH_HISTORY },
-  { label: 'Income Reports (Legacy)', href: Urls.INCOME },
   { label: 'Payroll', href: Urls.PAYROLL },
 ] as const;
 
@@ -347,10 +358,7 @@ export const INCOME_SIDEBAR_MANAGEMENT = [
 
 /**
  * Sidebar `Internal` group — admin routes, not store-scoped but carrying the
- * `nail` vertical segment (`/pos/nail/admin/...`). The former `Monitor`,
- * `Versions` and admin `Settings` links are no longer anchors — the group now
- * exposes `System` / `Users & Roles` buttons instead — so only the five real
- * links remain inventoried here.
+ * `nail` vertical segment (`/pos/nail/admin/...`).
  */
 export const INCOME_SIDEBAR_INTERNAL = [
   { label: 'Merchants', href: Urls.MERCHANTS },
@@ -360,19 +368,26 @@ export const INCOME_SIDEBAR_INTERNAL = [
   { label: 'Devices', href: `${posAdminBase}/devices` },
 ] as const;
 
-/** Icon-rail buttons (aria-label only, no text). */
-export const INCOME_PRODUCT_RAIL_BUTTONS = ['POS', 'Payment', 'Business', 'Gift Card'] as const;
+/** Top-of-sidebar named buttons (the old icon rail became one `Switch app` menu). */
+export const INCOME_PRODUCT_RAIL_BUTTONS = ['Switch app'] as const;
 
 /* ------------------------------- formats -------------------------------- */
 
-/** `$1,234.56` / `-$68.22` — a whole cell. */
-export const INCOME_CURRENCY_PATTERN = /^-?\$\d{1,3}(?:,\d{3})*\.\d{2}$/;
+/**
+ * `$1,234.56` / `-$68.22` / `−$68.22` — a whole cell.
+ *
+ * Since the 2026-10-13 refactor negatives in tables, KPI cards and the Daily
+ * rail use the typographic minus `−` (U+2212) while the `<dl>` panels still
+ * print an ASCII `-`, and the Salon-earnings add-backs carry a `+`. All three
+ * signs are accepted.
+ */
+export const INCOME_CURRENCY_PATTERN = /^[-−+]?\$\d{1,3}(?:,\d{3})*\.\d{2}$/;
 
 /** The same, unanchored — for `toContainText` / text-slice matching. */
-export const INCOME_CURRENCY_TEXT_PATTERN = /-?\$[\d,]+\.\d{2}/;
+export const INCOME_CURRENCY_TEXT_PATTERN = /[-−+]?\$[\d,]+\.\d{2}/;
 
 /** `5,324` — a count with thousands separators. */
-export const INCOME_COUNT_PATTERN = /^-?\d{1,3}(?:,\d{3})*$/;
+export const INCOME_COUNT_PATTERN = /^[-−]?\d{1,3}(?:,\d{3})*$/;
 
 /** `-95%` / `+14%` on the KPI badges. */
 export const INCOME_PERCENT_BADGE_PATTERN = /[+-]?\d+%/;
@@ -383,17 +398,21 @@ export const INCOME_ORDER_CODE_PATTERN = /^#OD\d{6}-\d{8}(?: \(Refund\))?$/;
 /** `Aug 21, 2026`. */
 export const INCOME_DATE_LABEL_PATTERN = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/;
 
-/** `Aug 1, 2026 - Aug 21, 2026`. */
+/**
+ * A compact range label (verified 2026-10-20, EN DASH separator):
+ * `Aug 1 – 21, 2026` (same month), `Jun 1 – Aug 21, 2026` (same year),
+ * `Dec 1, 2025 – Jan 5, 2026` (cross-year).
+ */
 export const INCOME_DATE_RANGE_LABEL_PATTERN =
-  /^[A-Z][a-z]{2} \d{1,2}, \d{4} - [A-Z][a-z]{2} \d{1,2}, \d{4}$/;
+  /^[A-Z][a-z]{2} \d{1,2}(?:, \d{4})? – (?:[A-Z][a-z]{2} )?\d{1,2}, \d{4}$/;
 
 /**
  * Every label the date trigger can carry: `Today` (default), a single date, a
- * range, or `Pick a date range` once filters are cleared. This is also how the
- * trigger is *found* — it has no accessible name of its own.
+ * compact range, a bare year (`2026` — Week/Month periods), or
+ * `Pick a date range` once filters are cleared.
  */
 export const INCOME_DATE_TRIGGER_PATTERN =
-  /^(?:Today|Pick a date range|[A-Z][a-z]{2} \d{1,2}, \d{4}(?: - [A-Z][a-z]{2} \d{1,2}, \d{4})?)$/;
+  /^(?:Today|Pick a date range|\d{4}|[A-Z][a-z]{2} \d{1,2}, \d{4}|[A-Z][a-z]{2} \d{1,2}(?:, \d{4})? – (?:[A-Z][a-z]{2} )?\d{1,2}, \d{4})$/;
 
 /** `Week 23 (Jun 1 – Jun 7, 2026)` — note the EN DASH inside the parentheses. */
 export const INCOME_WEEK_LABEL_PATTERN =
@@ -409,8 +428,8 @@ export const INCOME_TIMESTAMP_PATTERN =
 /** `9 AM` … `7 PM` — chart X axis. */
 export const INCOME_HOUR_AXIS_PATTERN = /^\d{1,2} (?:AM|PM)$/;
 
-/** `Showing 1 to 30 of 244 results`. */
-export const INCOME_RESULTS_FOOTER_PATTERN = /showing \d+ to \d+ of \d+ results/i;
+/** `1–30 of 244` (EN DASH) — the pagination nav's range text since 2026-10-13. */
+export const INCOME_RESULTS_FOOTER_PATTERN = /^\s*[\d,]+\s*[–-]\s*[\d,]+ of [\d,]+\s*$/;
 
 /** `1 / 9` between Previous and Next. */
 export const INCOME_PAGE_INDICATOR_PATTERN = /^\s*\d+\s*\/\s*\d+\s*$/;
@@ -438,8 +457,11 @@ export const INCOME_PAYMENT_COUNT_PATTERN = /^\d+ payments?$/;
 export const INCOME_RECEIVED_CHANGE_PATTERN =
   /Received:\s*-?\$[\d,]+\.\d{2}[^A-Za-z]*Change:\s*-?\$[\d,]+\.\d{2}/;
 
-/** `Order detail #OD260820-40932030` — the dialog title. */
-export const INCOME_ORDER_DIALOG_TITLE_PATTERN = /^Order detail #OD\d{6}-\d{8}$/;
+/**
+ * The dialog title. Since 2026-10-13 the heading is just `Order detail` and the
+ * `#OD…` code sits on its own line beneath it.
+ */
+export const INCOME_ORDER_DIALOG_TITLE_PATTERN = /^Order detail$/;
 
 /** The weekday header row of the one-month calendar, in order. */
 export const INCOME_CALENDAR_WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'] as const;
@@ -489,7 +511,9 @@ export const INCOME_VIEWPORTS = {
 export const INCOME_LOGIN_URL_PATTERN = /\/login/;
 
 /** Store ids for the bad-route cases: one that does not exist, one not numeric. */
-export const INCOME_BAD_STORE_IDS = { missing: '999999', nonNumeric: 'abc' } as const;
+// `999999` is a REAL merchant on DEV ("Fastboy Markerting #999999", verified
+// 2026-10-20), so the missing-store id is one no merchant uses.
+export const INCOME_BAD_STORE_IDS = { missing: '987654321', nonNumeric: 'abc' } as const;
 
 /** Payloads the XSS cases feed the staff search box and the `search=` param. */
 export const INCOME_XSS_PAYLOADS = [
@@ -527,9 +551,25 @@ export function incomeDateLabel(date: Date | string = new Date()): string {
   return value.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-/** `Aug 1, 2026 - Aug 21, 2026` — the range trigger's label. */
+/**
+ * The range trigger's compact label (EN DASH, verified 2026-10-20):
+ * `Aug 1 – 21, 2026`, `Jun 1 – Aug 21, 2026`, `Dec 1, 2025 – Jan 5, 2026`.
+ * A single-day range reads like a single date.
+ */
 export function incomeDateRangeLabel(after: Date | string, before: Date | string): string {
-  return `${incomeDateLabel(after)} - ${incomeDateLabel(before)}`;
+  const from = typeof after === 'string' ? new Date(`${after}T00:00:00`) : after;
+  const to = typeof before === 'string' ? new Date(`${before}T00:00:00`) : before;
+  const month = (d: Date): string => d.toLocaleDateString('en-US', { month: 'short' });
+  if (from.getFullYear() !== to.getFullYear()) {
+    return `${incomeDateLabel(from)} – ${incomeDateLabel(to)}`;
+  }
+  if (from.getMonth() === to.getMonth() && from.getDate() === to.getDate()) {
+    return incomeDateLabel(from);
+  }
+  if (from.getMonth() === to.getMonth()) {
+    return `${month(from)} ${from.getDate()} – ${to.getDate()}, ${to.getFullYear()}`;
+  }
+  return `${month(from)} ${from.getDate()} – ${month(to)} ${to.getDate()}, ${to.getFullYear()}`;
 }
 
 /* ---------------------------- value parsing ----------------------------- */
@@ -554,7 +594,9 @@ export interface IncomeValueRow {
  * everywhere else (it would split `Pay 1 $87.20` on the `1`).
  */
 export function parseIncomeRows(section: string, opts?: { counts?: boolean }): IncomeValueRow[] {
-  const value = opts?.counts ? /(-?\$[\d,]+\.\d{2}|-?\d[\d,]*)/g : /(-?\$[\d,]+\.\d{2})/g;
+  const value = opts?.counts
+    ? /([-−+]?\$[\d,]+\.\d{2}|[-−]?\d[\d,]*)/g
+    : /([-−+]?\$[\d,]+\.\d{2})/g;
   const rows: IncomeValueRow[] = [];
   let cursor = 0;
   let match: RegExpExecArray | null;
@@ -572,16 +614,23 @@ export function parseIncomeRows(section: string, opts?: { counts?: boolean }): I
  * glues the heading onto the first row (`"STAFF SUMMARY Total Staff"`).
  */
 export function incomeRowValue(rows: IncomeValueRow[], label: string): string {
+  // Case-insensitive: the panels went sentence case on 2026-10-13
+  // (`Tax collected`, `Total payment`), while older call sites still say
+  // `Tax Collected` / `TOTAL PAYMENT`.
+  const wanted = label.toLowerCase();
   return (
-    rows.find((row) => row.label === label)?.value ??
-    rows.find((row) => row.label.endsWith(label))?.value ??
+    rows.find((row) => row.label.toLowerCase() === wanted)?.value ??
+    rows.find((row) => row.label.toLowerCase().endsWith(wanted))?.value ??
     ''
   );
 }
 
-/** `-$1,234.56` → `-1234.56`; `5,324` → `5324`; unparseable → `NaN`. */
+/**
+ * `-$1,234.56` / `−$1,234.56` → `-1234.56`; `+$15.69` → `15.69`;
+ * `5,324` → `5324`; unparseable → `NaN`.
+ */
 export function parseIncomeAmount(text: string): number {
-  const cleaned = (text ?? '').replace(/[\s$,]/g, '');
+  const cleaned = (text ?? '').replace(/[\s$,+]/g, '').replace(/−/g, '-');
   if (!/^-?\d+(?:\.\d+)?$/.test(cleaned)) return Number.NaN;
   return Number(cleaned);
 }
@@ -647,15 +696,23 @@ export class IncomePage extends BasePage {
     super(page);
     this.sidebar = new Sidebar(page);
     this.orderDetailDialog = new OrderDetailDialog(page);
-    this.homeLink = page.getByRole('link', { name: 'FastboyPay home' });
+    // The old icon-rail logo link is gone since the 2026-10-13 refactor; the
+    // top of the sidebar is now the `Switch app` menu button.
+    this.homeLink = page.getByRole('button', { name: 'Switch app' });
     // Located by its popup attribute, not role/name: opening the menu makes Radix
     // mark the rest of the page `aria-hidden`, which drops the trigger out of the
     // accessibility tree — a `getByRole` lookup then cannot read its
     // `aria-expanded` while the menu is open. A CSS attribute locator still can
     // (this mirrors how `storeSwitcherButton` is reached).
-    this.userMenuButton = page.locator('button[aria-haspopup="menu"]').first();
-    this.storeSwitcherButton = page.locator('button[aria-haspopup="dialog"]').first();
-    this.toggleSidebarButton = page.getByRole('button', { name: 'Toggle Sidebar' });
+    // Two exist (a hidden mobile-header copy and the sidebar one): take the visible.
+    this.userMenuButton = page
+      .locator('button[aria-label="Open user menu"]')
+      .filter({ visible: true })
+      .first();
+    this.storeSwitcherButton = page
+      .locator('button[data-slot="pos-switcher"][data-kind="merchant"]')
+      .first();
+    this.toggleSidebarButton = this.sidebar.toggle;
     this.notificationsRegion = page.getByRole('region', { name: /notifications/i });
   }
 
@@ -677,7 +734,19 @@ export class IncomePage extends BasePage {
       0,
       { timeout: Timeouts.NAVIGATION },
     );
-    await expect(this.resultsFooter).toBeVisible({ timeout: Timeouts.NAVIGATION });
+    // Since 2026-10-13 an empty result renders NO pagination at all — only the
+    // table's empty-state sentence — so either one means the data has arrived.
+    await expect(this.resultsFooter.or(this.tableEmptyState).first()).toBeVisible({
+      timeout: Timeouts.NAVIGATION,
+    });
+  }
+
+  /** The table empty-state sentence of whichever tab is showing. */
+  get tableEmptyState(): Locator {
+    return this.page
+      .getByText(/^(?:No orders for this (?:day|period) yet\.|No staff income found\.|No data.*)$/i)
+      .filter({ visible: true })
+      .first();
   }
 
   // ---- navigation --------------------------------------------------------
@@ -740,7 +809,8 @@ export class IncomePage extends BasePage {
    * match.
    */
   get pageTitle(): Locator {
-    return this.page.getByText(INCOME_SCREEN_LABEL, { exact: true }).last();
+    // A real `h1` since the 2026-10-13 refactor.
+    return this.page.getByRole('heading', { level: 1, name: INCOME_SCREEN_LABEL, exact: true });
   }
 
   /** The tab strip. `.first()` because the order dialog has a tablist too. */
@@ -754,7 +824,8 @@ export class IncomePage extends BasePage {
   }
 
   tab(name: string | RegExp): Locator {
-    return this.page.getByRole('tab', { name });
+    const pattern = typeof name === 'string' ? new RegExp(`^${escapeRegExp(name)}$`, 'i') : name;
+    return this.tabList.getByRole('tab', { name: pattern });
   }
 
   /** The tab carrying `aria-selected="true"`. */
@@ -830,8 +901,11 @@ export class IncomePage extends BasePage {
    * family also keeps the sidebar's store switcher (same `aria-haspopup`) out.
    */
   get dateTrigger(): Locator {
+    // Since 2026-10-13 the trigger is the panel's `popover-trigger` filter
+    // button; the label-pattern lookup is kept as a fallback.
     return this.page
-      .getByRole('button', { name: INCOME_DATE_TRIGGER_PATTERN })
+      .locator('button[data-slot="popover-trigger"]')
+      .or(this.page.getByRole('button', { name: INCOME_DATE_TRIGGER_PATTERN }))
       .filter({ visible: true })
       .first();
   }
@@ -918,38 +992,61 @@ export class IncomePage extends BasePage {
 
   get previousPageButton(): Locator {
     return this.page
-      .getByRole('button', { name: /^previous$/i })
+      .getByRole('button', { name: /^previous(?: page)?$/i })
       .filter({ visible: true })
       .first();
   }
 
   get nextPageButton(): Locator {
     return this.page
-      .getByRole('button', { name: /^next$/i })
+      .getByRole('button', { name: /^next(?: page)?$/i })
       .filter({ visible: true })
       .first();
   }
 
-  /** `Showing 1 to 30 of 244 results`. */
+  /** `1–30 of 244` inside `navigation "Pagination"`. */
   get resultsFooter(): Locator {
-    return this.page.getByText(INCOME_RESULTS_FOOTER_PATTERN).filter({ visible: true }).first();
+    return this.page
+      .getByRole('navigation', { name: 'Pagination' })
+      .getByText(INCOME_RESULTS_FOOTER_PATTERN)
+      .filter({ visible: true })
+      .first();
   }
 
   /** `1 / 9`. */
   get pageIndicator(): Locator {
-    return this.page.getByText(INCOME_PAGE_INDICATOR_PATTERN).filter({ visible: true }).first();
+    return this.page
+      .getByRole('navigation', { name: 'Pagination' })
+      .getByText(INCOME_PAGE_INDICATOR_PATTERN)
+      .filter({ visible: true })
+      .first();
   }
 
-  /** `Z` out of `Showing X to Y of Z results`, `NaN` when unreadable. */
+  /**
+   * `Z` out of `X–Y of Z`; `0` when the tab shows its empty state (no
+   * pagination is rendered for an empty result), `NaN` when unreadable.
+   */
   async totalResults(): Promise<number> {
+    if (!(await this.resultsFooter.isVisible().catch(() => false))) {
+      if (await this.tableEmptyState.isVisible().catch(() => false)) return 0;
+    }
     const text = (await this.resultsFooter.textContent()) ?? '';
-    return Number(text.replace(/,/g, '').match(/of (\d+) results/i)?.[1] ?? Number.NaN);
+    return Number(text.replace(/,/g, '').match(/of (\d+)/i)?.[1] ?? Number.NaN);
   }
 
-  /** `[X, Y, Z]` out of `Showing X to Y of Z results`. */
+  /**
+   * `[X, Y, Z]` out of `X–Y of Z`; `[0, 0, 0]` for an empty result, which since
+   * 2026-10-13 renders the table's empty-state sentence and no pagination.
+   */
   async resultsRange(): Promise<[number, number, number]> {
+    if (!(await this.resultsFooter.isVisible().catch(() => false))) {
+      await expect(this.resultsFooter.or(this.tableEmptyState).first()).toBeVisible({
+        timeout: Timeouts.NAVIGATION,
+      });
+      if (await this.tableEmptyState.isVisible().catch(() => false)) return [0, 0, 0];
+    }
     const text = ((await this.resultsFooter.textContent()) ?? '').replace(/,/g, '');
-    const m = text.match(/showing (\d+) to (\d+) of (\d+) results/i);
+    const m = text.match(/(\d+)\s*[–-]\s*(\d+) of (\d+)/);
     return [Number(m?.[1]), Number(m?.[2]), Number(m?.[3])];
   }
 
@@ -1056,26 +1153,46 @@ export class IncomePage extends BasePage {
   // ---- Daily tab: KPI cards ---------------------------------------------
 
   /** All four KPI cards — they are the buttons that say `vs Yesterday`. */
+  /**
+   * All four KPI cards.
+   *
+   * Since 2026-10-13 each card is a `section[data-slot="pos-stat"]` (label,
+   * figure, % chip, `vs Yesterday`, `About …` button) whose click target is an
+   * empty overlay `<button aria-pressed aria-label="<label>">` — see
+   * {@link kpiCardButton}. The section is what carries the card's text.
+   */
   get kpiCards(): Locator {
-    return this.page.getByRole('button', { name: /vs Yesterday/i }).filter({ visible: true });
+    return this.page.locator('section[data-slot="pos-stat"]').filter({ visible: true });
   }
 
-  /** One KPI card. Anchored at `^` so `About <label>` cannot match. */
+  /** One KPI card (the whole `section`). */
   kpiCard(label: IncomeKpiLabel): Locator {
+    return this.kpiCards.filter({ has: this.kpiCardButton(label) }).first();
+  }
+
+  /** The card's toggle button — exact label, so `About <label>` cannot match. */
+  kpiCardButton(label: IncomeKpiLabel): Locator {
     return this.page
-      .getByRole('button', { name: new RegExp(`^${escapeRegExp(label)}\\b`) })
+      .getByRole('button', { name: new RegExp(`^${escapeRegExp(label)}$`, 'i') })
       .filter({ visible: true })
       .first();
   }
 
-  /** The `aria-pressed="true"` card — the series the chart is showing. */
-  get selectedKpiCard(): Locator {
-    return this.kpiCards.and(this.page.locator('[aria-pressed="true"]'));
+  /** Alias kept for readability at call sites that want "the whole card". */
+  kpiCardSection(label: IncomeKpiLabel): Locator {
+    return this.kpiCard(label);
   }
 
-  /** The separate info button, `About Total Orders`. */
+  /** The selected card — its overlay button is `aria-pressed="true"`. */
+  get selectedKpiCard(): Locator {
+    return this.kpiCards.filter({ has: this.page.locator('button[aria-pressed="true"]') });
+  }
+
+  /** The separate info button, `About Total orders`. */
   kpiInfoButton(label: IncomeKpiLabel): Locator {
-    return this.page.getByRole('button', { name: `About ${label}`, exact: true });
+    return this.page.getByRole('button', {
+      name: new RegExp(`^About ${escapeRegExp(label)}$`, 'i'),
+    });
   }
 
   /** The tooltip a `About …` button opens. */
@@ -1086,7 +1203,16 @@ export class IncomePage extends BasePage {
 
   /** Show a KPI tooltip by hovering its info button, then return the tooltip. */
   async openKpiTooltip(label: IncomeKpiLabel): Promise<Locator> {
-    await this.kpiInfoButton(label).hover();
+    // A real pointer move to the button's centre (not `hover()`, whose
+    // actionability check would just time out): since 2026-10-13 the card's
+    // overlay toggle button (`pos-stat-hit`) sits on top of `About …` and
+    // swallows the pointer, so a mouse user never raises the tooltip. That is
+    // a product defect and this then fails on the tooltip assertion below.
+    const info = this.kpiInfoButton(label);
+    await info.scrollIntoViewIfNeeded();
+    const box = await info.boundingBox();
+    if (!box) throw new Error(`About ${label} button has no box`);
+    await this.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
     const tip = this.tooltip(incomeKpiCard(label).tooltip);
     await expect(tip).toBeVisible({ timeout: Timeouts.MEDIUM });
     return tip;
@@ -1099,7 +1225,7 @@ export class IncomePage extends BasePage {
     // empty far-past date, or a brand-new store) renders the value and
     // `vs Yesterday` with no `%` at all, so requiring the badge would miss the
     // figure entirely and read back as `NaN`.
-    return text.match(/(-?\$[\d,]+\.\d{2}|-?[\d,]+)(?:\s*[+-]?\d+%)?/)?.[1] ?? '';
+    return text.match(/([-−]?\$[\d,]+\.\d{2}|[-−]?[\d,]+)(?:\s*[+-]?\d+%)?/)?.[1] ?? '';
   }
 
   /** The card's comparison badge, e.g. `-95%`. */
@@ -1109,13 +1235,19 @@ export class IncomePage extends BasePage {
   }
 
   private async cardText(label: IncomeKpiLabel): Promise<string> {
-    return ((await this.kpiCard(label).innerText()) ?? '').replace(/\s+/g, ' ').trim();
+    const text = (await this.kpiCardSection(label).innerText()) ?? '';
+    // Drop the label itself so a digit in it can never be read as the figure.
+    return text
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(new RegExp(`^${escapeRegExp(label)}`, 'i'), '')
+      .trim();
   }
 
   /** Click a KPI card and wait for its `stat=` to land on the URL. */
   async selectKpiCard(label: IncomeKpiLabel): Promise<void> {
     const card = incomeKpiCard(label);
-    await this.kpiCard(label).click();
+    await this.kpiCardButton(label).click();
     await this.page.waitForURL(new RegExp(`stat=${card.stat}`), { timeout: Timeouts.NAVIGATION });
     await this.waitForDataSettled();
   }
@@ -1124,7 +1256,10 @@ export class IncomePage extends BasePage {
 
   /** `Order Details` card title. */
   get orderDetailsTitle(): Locator {
-    return this.page.getByText('Order Details', { exact: true }).filter({ visible: true }).first();
+    return this.page
+      .getByText(/^order details$/i)
+      .filter({ visible: true })
+      .first();
   }
 
   /** `3 orders` beside the title. */
@@ -1206,12 +1341,89 @@ export class IncomePage extends BasePage {
    * {@link parseIncomeRows}.
    */
   async incomeDetailRows(): Promise<IncomeValueRow[]> {
-    return parseIncomeRows(await this.section(/INCOME DETAIL/i, /PAYMENT DETAIL/i));
+    return this.cardRows('Income detail');
   }
 
-  /** `PAYMENT DETAIL` as `label → value` pairs. */
+  /** `Payment detail` as `label → value` pairs. */
   async paymentDetailRows(): Promise<IncomeValueRow[]> {
-    return parseIncomeRows(await this.section(/PAYMENT DETAIL/i));
+    return this.cardRows('Payment detail');
+  }
+
+  /** A visible `pos-card` by its title (the title text sits in the header). */
+  card(title: string): Locator {
+    return this.page
+      .locator('[data-slot="pos-card"]')
+      .filter({
+        has: this.page
+          .locator('[data-slot="pos-card-title"]')
+          .getByText(new RegExp(`^${escapeRegExp(title)}$`, 'i')),
+      })
+      .filter({ visible: true })
+      .first();
+  }
+
+  /** A card's header — the collapse toggle (`aria-expanded`). */
+  cardHeader(title: string): Locator {
+    return this.card(title).locator('[data-slot="pos-card-header"]').first();
+  }
+
+  /** A card's body (everything under the header). */
+  cardBody(title: string): Locator {
+    return this.card(title)
+      .locator('[data-slot="pos-collapsible-content"], [data-slot="pos-card-content"]')
+      .first();
+  }
+
+  /**
+   * One `pos-card` read as `label → value` pairs: first the card title with the
+   * total its header shows (when it shows one), then every `<dt>/<dd>` pair in
+   * order. `Split pay` is a sub-heading inside `Staff payout`, so it returns the
+   * items after that heading (and `Staff payout` the items before it).
+   */
+  async cardRows(title: string): Promise<IncomeValueRow[]> {
+    return this.page.evaluate((wanted: string) => {
+      const norm = (text: string | null | undefined): string =>
+        (text ?? '').replace(/\s+/g, ' ').trim();
+      const isSplit = wanted.toLowerCase() === 'split pay';
+      const cardTitle = isSplit ? 'staff payout' : wanted.toLowerCase();
+      const visible = (el: Element): boolean => el.getClientRects().length > 0;
+      const titleOf = (head: Element | null): string => {
+        if (!head) return '';
+        const money = head.querySelector('[data-slot="pos-money"]');
+        let text = norm(head.textContent);
+        if (money) text = norm(text.replace(norm(money.textContent), ''));
+        return text;
+      };
+      const card = Array.from(document.querySelectorAll('[data-slot="pos-card"]'))
+        .filter(visible)
+        .find(
+          (el) =>
+            titleOf(el.querySelector('[data-slot="pos-card-title"]')).toLowerCase() === cardTitle,
+        );
+      if (!card) return [];
+      const rows: Array<{ label: string; value: string }> = [];
+      const split = card.querySelector('h4');
+      const head = card.querySelector('[data-slot="pos-card-title"]');
+      const money = head?.querySelector('[data-slot="pos-money"]');
+      if (isSplit) {
+        rows.push({ label: norm(split?.textContent) || 'Split pay', value: '' });
+      } else if (money) {
+        rows.push({ label: titleOf(head), value: norm(money.textContent) });
+      }
+      for (const item of Array.from(card.querySelectorAll('[data-slot="pos-dl-item"]'))) {
+        if (split) {
+          const after = Boolean(
+            split.compareDocumentPosition(item) & Node.DOCUMENT_POSITION_FOLLOWING,
+          );
+          if (isSplit !== after) continue;
+        }
+        rows.push({
+          label: norm(item.querySelector('dt')?.textContent),
+          value: norm(item.querySelector('dd')?.textContent),
+        });
+      }
+      return rows.filter((row) => row.value !== '');
+    }, title);
   }
 
   /** One `INCOME DETAIL` value, e.g. `incomeDetailValue('Tax Collected')`. */
@@ -1235,10 +1447,17 @@ export class IncomePage extends BasePage {
    * with {@link incomePeriodValue} instead.
    */
   get incomePeriodCombobox(): Locator {
+    // Since 2026-10-13 a filter chip `<button aria-label="Income period: Day"
+    // aria-haspopup="dialog">` opening a `listbox` of options.
     return this.page
-      .getByRole('combobox', { name: /income period/i })
+      .getByRole('button', { name: /^income period/i })
       .filter({ visible: true })
       .first();
+  }
+
+  /** The chip's value text (`Day`), without the `Period` caption beside it. */
+  get incomePeriodValueLabel(): Locator {
+    return this.incomePeriodCombobox.locator('[data-slot="pos-filter-text"]');
   }
 
   /** The listbox options (`Day`, `Week`, `Month`) while the combobox is open. */
@@ -1248,12 +1467,12 @@ export class IncomePage extends BasePage {
 
   /** The value shown on the trigger, read through the attribute selector. */
   async incomePeriodValue(): Promise<string> {
-    const text = await this.page
-      .locator('[aria-label="Income period"]')
+    const label = await this.page
+      .locator('[aria-label^="Income period"]')
       .first()
-      .textContent()
+      .getAttribute('aria-label')
       .catch(() => '');
-    return (text ?? '').trim();
+    return (label ?? '').replace(/^income period:?\s*/i, '').trim();
   }
 
   async openIncomePeriod(): Promise<void> {
@@ -1271,7 +1490,7 @@ export class IncomePage extends BasePage {
   /** `Total Income Table` card title. */
   get totalIncomeTableTitle(): Locator {
     return this.page
-      .getByText('Total Income Table', { exact: true })
+      .getByText(/^total income table$/i)
       .filter({ visible: true })
       .first();
   }
@@ -1314,17 +1533,14 @@ export class IncomePage extends BasePage {
    */
   summaryGroupHeading(group: IncomeSummaryGroup): Locator {
     return this.page
-      .getByText(new RegExp(`^${escapeRegExp(group)}$`))
+      .getByText(new RegExp(`^${escapeRegExp(group)}$`, 'i'))
       .filter({ visible: true })
       .first();
   }
 
-  /** One breakdown group as `label → value` pairs, in render order. */
+  /** One breakdown group as `label → value` pairs, in render order (title first). */
   async summaryGroupRows(group: IncomeSummaryGroup): Promise<IncomeValueRow[]> {
-    const index = INCOME_SUMMARY_PANEL_GROUPS.indexOf(group);
-    const next = INCOME_SUMMARY_PANEL_GROUPS[index + 1];
-    const end = next === undefined ? undefined : new RegExp(escapeRegExp(next));
-    return parseIncomeRows(await this.section(new RegExp(escapeRegExp(group)), end));
+    return this.cardRows(group);
   }
 
   /** One value inside a breakdown group. */
@@ -1404,7 +1620,7 @@ export class IncomePage extends BasePage {
 
   /** `STAFF SUMMARY` as `label → value` pairs; counts and money both parse. */
   async staffSummaryRows(): Promise<IncomeValueRow[]> {
-    return parseIncomeRows(await this.section(/STAFF SUMMARY/i), { counts: true });
+    return this.cardRows('Staff summary');
   }
 
   /** One `STAFF SUMMARY` value, e.g. `staffSummaryValue('Total Staff')`. */
@@ -1658,9 +1874,13 @@ export class IncomePage extends BasePage {
 
   /** Real `disabled` state of both pager buttons — the boundary cases' check. */
   async paginationDisabled(): Promise<{ previous: boolean; next: boolean }> {
+    // An empty result renders no pagination at all (since 2026-10-13): an
+    // absent arrow cannot be activated, so it counts as disabled.
+    const disabled = async (button: Locator): Promise<boolean> =>
+      (await button.count()) === 0 || (await button.isDisabled());
     return {
-      previous: await this.previousPageButton.isDisabled(),
-      next: await this.nextPageButton.isDisabled(),
+      previous: await disabled(this.previousPageButton),
+      next: await disabled(this.nextPageButton),
     };
   }
 
@@ -1704,12 +1924,12 @@ export class IncomePage extends BasePage {
 
   /** Whether a card is the charted series (`aria-pressed="true"`). */
   async isKpiCardSelected(label: IncomeKpiLabel): Promise<boolean> {
-    return (await this.kpiCard(label).getAttribute('aria-pressed')) === 'true';
+    return (await this.kpiCardButton(label).getAttribute('aria-pressed')) === 'true';
   }
 
   /** Focus a card without clicking — the keyboard-activation case. */
   async focusKpiCard(label: IncomeKpiLabel): Promise<void> {
-    await this.kpiCard(label).focus();
+    await this.kpiCardButton(label).focus();
   }
 
   /** Focus a card and activate it with the keyboard, then wait for `stat=`. */
@@ -2190,7 +2410,7 @@ export class IncomePage extends BasePage {
    * `textContent`-based locators.
    */
   async visibleText(): Promise<string> {
-    const main = this.page.locator('main');
+    const main = this.page.locator('main, #pos-main');
     const root = (await main.count()) > 0 ? main.first() : this.page.locator('body');
     return ((await root.innerText()) ?? '').replace(/\s+/g, ' ').trim();
   }
@@ -2222,7 +2442,10 @@ export class OrderDetailDialog {
     // (mobile) widths the title splits into a heading ("Order detail") and a
     // separate order-code line, so a `hasText: /order detail #OD/` filter stops
     // matching — the accessible name stays "Order detail" at every width.
-    return this.page.getByRole('dialog', { name: /order detail/i });
+    // `.last()`: Radix portals append, so while a previous dialog is still
+    // animating out the newest one is the last match (a bare locator would hit
+    // a strict-mode violation and read back as '').
+    return this.page.getByRole('dialog', { name: /order detail/i }).last();
   }
 
   async waitForReady(): Promise<void> {
@@ -2231,6 +2454,11 @@ export class OrderDetailDialog {
     // title-visibility gate flakes there. The title text is still asserted
     // directly by the desktop cases that care about it.
     await expect(this.root).toBeVisible({ timeout: Timeouts.MEDIUM });
+    // The body loads after the shell: wait for the order code line so text
+    // reads never sample a half-rendered dialog.
+    await expect(this.root.getByText(/^#OD\d{6}-\d{8}/).first()).toBeVisible({
+      timeout: Timeouts.LONG,
+    });
   }
 
   /** The dialog heading — `Order detail` (the `#OD…` code sits beside it). */
@@ -2251,12 +2479,12 @@ export class OrderDetailDialog {
 
   /** A section heading — see {@link INCOME_ORDER_DETAIL_SECTIONS}. */
   section(name: string): Locator {
-    return this.root.getByText(new RegExp(`^${escapeRegExp(name)}$`)).first();
+    return this.root.getByText(new RegExp(`^${escapeRegExp(name)}$`, 'i')).first();
   }
 
   /** A field label — see {@link INCOME_ORDER_INFORMATION_FIELDS}. */
   field(label: string): Locator {
-    return this.root.getByText(label, { exact: true }).first();
+    return this.root.getByText(new RegExp(`^${escapeRegExp(label)}$`, 'i')).first();
   }
 
   /**
@@ -2267,11 +2495,11 @@ export class OrderDetailDialog {
    */
   async fieldValue(label: string, nextLabel?: string): Promise<string> {
     const text = await this.text();
-    const from = text.indexOf(label);
+    const from = text.toLowerCase().indexOf(label.toLowerCase());
     if (from < 0) return '';
     const rest = text.slice(from + label.length).trim();
     if (!nextLabel) return rest;
-    const to = rest.indexOf(nextLabel);
+    const to = rest.toLowerCase().indexOf(nextLabel.toLowerCase());
     return (to < 0 ? rest : rest.slice(0, to)).trim();
   }
 
@@ -2282,7 +2510,7 @@ export class OrderDetailDialog {
 
   /** `Items subtotal` row inside `Service Details`. */
   get itemsSubtotal(): Locator {
-    return this.root.getByText(/^items subtotal$/i).first();
+    return this.root.getByText(/^items subtotal/i).first();
   }
 
   /** `Times in UTC+7` note above the log. */
@@ -2301,7 +2529,11 @@ export class OrderDetailDialog {
   }
 
   activityLogTab(name: string): Locator {
-    return this.root.getByRole('tab', { name: new RegExp(`^${escapeRegExp(name)}$`, 'i') });
+    const pattern = new RegExp(`^${escapeRegExp(name)}$`, 'i');
+    return this.root
+      .getByRole('tab', { name: pattern })
+      .or(this.root.getByRole('radio', { name: pattern }))
+      .first();
   }
 
   /** `1 payment` / `2 payments` above the payment rows. */
@@ -2348,7 +2580,15 @@ export class OrderDetailDialog {
   async openActivityLogTab(name: string): Promise<void> {
     const tab = this.activityLogTab(name);
     await tab.click();
-    await expect(tab).toHaveAttribute('aria-selected', 'true', { timeout: Timeouts.MEDIUM });
+    // A radiogroup since 2026-10-13: selection is `aria-checked`, not `aria-selected`.
+    await expect
+      .poll(
+        async () =>
+          (await tab.getAttribute('aria-checked')) === 'true' ||
+          (await tab.getAttribute('aria-selected')) === 'true',
+        { timeout: Timeouts.MEDIUM },
+      )
+      .toBe(true);
   }
 
   /** Focusable controls inside the dialog — what the focus-trap case walks. */

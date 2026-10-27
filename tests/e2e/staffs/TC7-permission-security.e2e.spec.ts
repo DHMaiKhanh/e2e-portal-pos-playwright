@@ -1,7 +1,7 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
 import { Urls } from '@constants/urls';
-import { expectUnauthenticatedRedirect, expectCrossStoreBlocked } from '@helpers/security';
+import { expectUnauthenticatedRedirect, UNAUTHORISED_STORE_ID } from '@helpers/security';
 
 test.describe('Bảo mật & phân quyền (Security) — Staffs (chưa đăng nhập)', () => {
   test.use({ storageState: { cookies: [], origins: [] } });
@@ -27,23 +27,6 @@ test.describe('Bảo mật & phân quyền (Security) — Staffs (chưa đăng n
 });
 
 test.describe('Bảo mật & phân quyền (Security) — Staffs', () => {
-  // TODO(manual/setup): requires a separate limited-role test account. The suite holds a
-  // single captured admin session (scripts/capture-auth.mjs, Google OAuth) and there is no
-  // second role to sign in as. Unblocked by capturing a limited-role storageState.
-  /**
-   * TC-STF-081 — Tài khoản không có quyền quản lý Staffs
-   * Steps:
-   *  1. Đăng nhập tài khoản giới hạn, kiểm tra menu sidebar và truy cập URL trực tiếp.
-   * Expected:
-   *  Mục "Staffs" bị ẩn khỏi sidebar hoặc bị chặn khi truy cập URL trực tiếp
-   *  (redirect/thông báo lỗi quyền truy cập).
-   */
-  test.fixme(
-    'TC-STF-081 — tài khoản giới hạn không có quyền Staffs',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
-  );
-
   /**
    * TC-STF-082 — Không rò rỉ dữ liệu nhân viên của store khác
    * Steps:
@@ -55,9 +38,31 @@ test.describe('Bảo mật & phân quyền (Security) — Staffs', () => {
     'TC-STF-082 — không rò rỉ dữ liệu store khác',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ page }) => {
-      await expectCrossStoreBlocked(page, (storeId) => `/pos/${storeId}/staffs`);
+      // Inline instead of expectCrossStoreBlocked(): the helper builds no
+      // /nail/ segment for us and still expects the pre-refactor copy "This
+      // merchant is not available." — since 2026-10-13 the blocked state reads
+      // "We couldn't load this merchant" plus a "Your merchants" switcher.
+      await page.goto(`/pos/nail/${UNAUTHORISED_STORE_ID}/staffs`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 30_000,
+      });
+      await expect(
+        page.getByText(/this merchant is not available|couldn't load this merchant/i),
+      ).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByRole('region', { name: 'Your merchants' })).toBeVisible();
+      await expect(page.locator('tbody tr')).toHaveCount(0);
       // Not one staff field of the foreign store leaks — no emails, no phone numbers.
-      const body = await page.locator('body').innerText();
+      // The nav column (`aside "Sidebar"`) shows the signed-in user's own email
+      // since the 2026-10-13 refactor, so read everything except it.
+      let body = await page.locator('body').innerText();
+      for (const aside of await page.locator('aside').allInnerTexts()) {
+        body = body.replace(aside, '');
+      }
+      for (const own of await page
+        .getByRole('button', { name: /open user menu/i })
+        .allInnerTexts()) {
+        for (const line of own.split('\n')) body = body.split(line.trim()).join('');
+      }
       expect(body).not.toMatch(/@[\w.-]+\.\w{2,}/);
       expect(body).not.toMatch(/\(\d{3}\)\s*\d{3}-\d{4}/);
     },

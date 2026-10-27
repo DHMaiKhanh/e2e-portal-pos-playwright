@@ -92,11 +92,12 @@ test.describe('Data formatting & consistency — Payroll', () => {
       const historyValue = fromHistory.get(sharedId as string) as string;
 
       // Checks carries the time; Check History is date-only.
+      // 2026-10 redesign dropped the "(US/Central UTC-5)" suffix; allow it.
       expect(checksValue, `Checks CREATED AT: ${checksValue}`).toMatch(
-        /^[A-Z][a-z]{2} \d{1,2}, \d{4}, \d{1,2}:\d{2} [AP]M \(.+\)$/,
+        /^[A-Z][a-z]{2} \d{1,2}, \d{4}, \d{1,2}:\d{2} [AP]M( \(.+\))?$/,
       );
       expect(historyValue, `History CREATED AT: ${historyValue}`).toMatch(
-        /^[A-Z][a-z]{2} \d{1,2}, \d{4} \(.+\)$/,
+        /^[A-Z][a-z]{2} \d{1,2}, \d{4}( \(.+\))?$/,
       );
 
       // Same instant underneath: the date part must agree. Pulled with a
@@ -150,9 +151,24 @@ test.describe('Data formatting & consistency — Payroll', () => {
       const checksMemos = await memosById(payrollPage.checksTable, 1, 5);
       expect(checksMemos.size).toBeGreaterThan(0);
 
+      // 2026-10 redesign: Check History collapses its MEMO column while the
+      // detail panel is shown, and surfaces the same value as "Period" in that
+      // panel. Read it from there for each check shared with the Checks tab.
       await payrollPage.gotoTab('history');
       await expect(payrollPage.checkHistoryTable.rows.first()).toBeVisible();
-      const historyMemos = await memosById(payrollPage.checkHistoryTable, 0, 4);
+      const historyIds = new Set(
+        (await payrollPage.checkHistoryTable.rows.allInnerTexts()).map((row) =>
+          (row.split('\t')[0] ?? '').trim().replace('#', ''),
+        ),
+      );
+      const panel = payrollPage.page.getByRole('complementary', { name: /check history detail/i });
+      const historyMemos = new Map<string, string>();
+      for (const id of [...checksMemos.keys()].filter((key) => historyIds.has(key))) {
+        await payrollPage.checkHistoryRow(`#${id}`).click();
+        await expect(panel).toContainText(`#${id}`);
+        const period = panel.getByRole('definition').first();
+        historyMemos.set(id, ((await period.innerText()) ?? '').trim());
+      }
       expect(historyMemos.size).toBeGreaterThan(0);
 
       await test.step('Every MEMO uses the same date-range format', async () => {

@@ -75,28 +75,6 @@ test.describe('Staff Payroll tab — Payroll', () => {
     },
   );
 
-  /**
-   * Steps: Load Staff Payroll tab for such a store.
-   * Expected: `No payroll periods available` message is shown along with a way to create one (`Create` / `Create New`), rather than a blank or errored table.
-   */
-  // TODO(manual/setup): requires a store/tenant with zero payroll periods configured, not available on default DEV store
-  test.fixme(
-    'TC-PAY-062 — no payroll periods available shows an empty/setup state',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
-  );
-
-  /**
-   * Steps: Click `Create New`. Fill in a new period's date range and confirm.
-   * Expected: A new pay period is created, appears in the period selector, and becomes selectable; staff summary recalculates for that period.
-   */
-  // TODO(manual/setup): mutates backend state by creating a new payroll period; needs cleanup/isolation not available in this suite
-  test.fixme(
-    'TC-PAY-063 — create new payroll period flow',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
-  );
-
   test(
     'TC-PAY-064 — clicking a staff row opens their payroll detail panel',
     { tag: [Tag.REGRESSION, Tag.UI] },

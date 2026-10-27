@@ -35,6 +35,7 @@ test.describe('Reports › Daily Sale — date picker, KPI & chart', () => {
     async ({ reportPagesPage: rp }) => {
       await rp.open(SLUG);
       await expect(rp.reportDateButton).toHaveText('Today', { timeout: Timeouts.LONG });
+      await expect(rp.todayButton).toHaveAttribute('aria-pressed', 'true');
       await expect(rp.reportDateButton).toHaveAttribute('aria-haspopup', 'dialog');
       await rp.reportDateButton.click();
       await expect(rp.calendar).toBeVisible();
@@ -57,6 +58,7 @@ test.describe('Reports › Daily Sale — date picker, KPI & chart', () => {
       await expect(page).toHaveURL(new RegExp(`after=${day}&before=${day}`));
       await expect(rp.reportDateButton).toHaveText(rptDateLabel(day));
       await expect(rp.calendar).toBeHidden();
+      await expect(rp.todayButton).toHaveAttribute('aria-pressed', 'false');
       await rp.waitForData();
     },
   );
@@ -82,7 +84,7 @@ test.describe('Reports › Daily Sale — date picker, KPI & chart', () => {
     async ({ reportPagesPage: rp }) => {
       await rp.open(SLUG);
       await rp.reportDateButton.click();
-      const caption = rp.calendar.getByText(/^[A-Z][a-z]+ \d{4}$/).first();
+      const caption = rp.calendar.getByRole('status');
       const current = (await caption.textContent())!.trim();
       await rp.calendar.getByRole('button', { name: 'Go to the Previous Month' }).click();
       await expect(caption).not.toHaveText(current);
@@ -98,7 +100,7 @@ test.describe('Reports › Daily Sale — date picker, KPI & chart', () => {
       const day = rptIsoDay(7);
       await rp.open(SLUG, { after: day, before: day });
       await expect(rp.emptyRow).toBeVisible({ timeout: Timeouts.LONG });
-      await expect(rp.resultsFooter).toHaveText('Showing 0 to 0 of 0 results');
+      await rp.expectTotal(0);
       const value = async (label: string) =>
         (await rp.kpiTile(label).innerText()).split('\n').map((l) => l.trim()).filter(Boolean)[1];
       await expect.poll(() => value('Total Orders')).toBe('0');
@@ -175,7 +177,7 @@ test.describe('Reports › Daily Sale — date picker, KPI & chart', () => {
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp, page }) => {
       await rp.open(SLUG, { metric: 'bogus' });
-      await expect(page.getByText(RPT_TEXT.NO_METRIC)).toBeVisible({ timeout: Timeouts.LONG });
+      await expect(page.getByText(RPT_TEXT.NO_METRIC, { exact: true })).toBeVisible({ timeout: Timeouts.LONG });
       await expect(rp.kpiTiles.and(rp.page.locator('[data-selected="true"]'))).toHaveCount(0);
     },
   );

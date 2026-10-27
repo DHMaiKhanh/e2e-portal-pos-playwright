@@ -28,7 +28,12 @@ test.describe('Tìm kiếm & lọc (Search / Filter) — Staffs', () => {
       page.on('pageerror', (err) => errors.push(err.message));
 
       await staffsPage.search('zzz_no_such_staff_zzz');
-      await expect(staffsPage.resultsFooter).toContainText(/showing 0 to 0 of 0 results/i);
+      // Since the 2026-10-13 refactor an empty result shows the empty state
+      // ("No matching results") and removes the pager.
+      await expect(staffsPage.emptyState).toBeVisible();
+      await expect(staffsPage.emptyState).toContainText(/no matching results/i);
+      await expect(staffsPage.table.rows).toHaveCount(0);
+      await expect(staffsPage.resultsFooter).toHaveCount(0);
       expect(errors).toHaveLength(0);
     },
   );
@@ -123,7 +128,7 @@ test.describe('Tìm kiếm & lọc (Search / Filter) — Staffs', () => {
       page.on('pageerror', (err) => errors.push(err.message));
 
       await staffsPage.search(`%, _, ', --, <script>`);
-      await expect(staffsPage.resultsFooter).toBeVisible();
+      await expect(staffsPage.resultsFooter.or(staffsPage.emptyState).first()).toBeVisible();
       expect(errors).toHaveLength(0);
       const dialogHandled = await page
         .evaluate(() => document.title)

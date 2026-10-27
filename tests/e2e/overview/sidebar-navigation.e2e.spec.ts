@@ -2,46 +2,35 @@ import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
 
 /**
- * Sidebar Navigation — Overview screen (lean core).
+ * Sidebar Navigation — Overview screen.
  *
  * Store-scoped routes are asserted with `\/pos\/nail\/\d+\/…` regexes so the
- * numeric store id is never hardcoded (the app injects the `nail` vertical
- * segment). Admin routes carry the same segment and live under
- * `/pos/nail/admin/…`. The active nav item is expressed via `aria-current="page"`.
- */
-
-/**
- * Store-scoped POS + Management links, keyed by expected href pattern. The app
- * injects a vertical segment before the store id: `/pos/nail/<id>/…`.
+ * store id is never hardcoded. Since the 2026-10-13 redesign the sidebar is
+ * `navigation "Main"` with groups Operations / Management / Internal; the
+ * legacy `/income` link is gone — "Income Summary" lives under Reports
+ * (`/report-pages/income-summary`), whose links only mount once that collapsed
+ * group is expanded, so it is not part of the always-present list below. The
+ * active item carries `aria-current="page"`.
  */
 const STORE_LINKS: RegExp[] = [
+  // Operations
   /^\/pos\/nail\/\d+\/overview$/,
   /^\/pos\/nail\/\d+\/orders$/,
-  /^\/pos\/nail\/\d+\/payroll$/,
   /^\/pos\/nail\/\d+\/batch$/,
+  /^\/pos\/nail\/\d+\/payroll$/,
+  // Management
   /^\/pos\/nail\/\d+\/staffs$/,
   /^\/pos\/nail\/\d+\/services$/,
   /^\/pos\/nail\/\d+\/customers$/,
-  // `/pos/<id>/customer-groups` is gone from the sidebar: Customer Groups became
-  // a tab on the Customers screen (/customers?tab=groups). The old URL still
-  // resolves, but only as a redirect onto that tab, so there is no nav link with
-  // this href to assert on any more.
-  /^\/pos\/nail\/\d+\/income$/,
-  // `report-config` is no longer a sidebar link — "Report Configuration" now
-  // renders as a <button>, so it exposes no href to match.
   /^\/pos\/nail\/\d+\/setting$/,
 ];
 
-/**
- * Admin links — store-independent, but still carry the vertical segment and now
- * live under `/pos/nail/admin/…`. "System" and "Users & Roles" render as
- * <button>s (no href), so `/admin/monitor` and `/admin/versions` are gone.
- */
+/** Internal (admin) links — store-independent, under `/pos/nail/admin/…`. */
 const ADMIN_LINKS: string[] = [
-  '/pos/nail/admin/onboarding',
   '/pos/nail/admin/merchant',
-  '/pos/nail/admin/orders',
+  '/pos/nail/admin/onboarding',
   '/pos/nail/admin/packages',
+  '/pos/nail/admin/orders',
   '/pos/nail/admin/devices',
 ];
 
@@ -55,10 +44,10 @@ test.describe('Sidebar Navigation — Overview', () => {
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ page }) => {
       const hrefs = await page
+        .getByRole('navigation', { name: 'Main' })
         .locator('a[href]')
         .evaluateAll((els) => els.map((el) => el.getAttribute('href') ?? ''));
 
-      // All nav hrefs present and exact (store links by pattern, admin literal).
       expect(hrefs).toEqual(
         expect.arrayContaining([
           ...STORE_LINKS.map((re) => expect.stringMatching(re)),
@@ -77,16 +66,17 @@ test.describe('Sidebar Navigation — Overview', () => {
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage, page }) => {
       const routes: Array<[RegExp, RegExp]> = [
-        [/^\/pos\/nail\/\d+\/overview$/, /\/pos\/nail\/\d+\/overview/],
-        [/^\/pos\/nail\/\d+\/orders$/, /\/pos\/nail\/\d+\/orders/],
-        [/^\/pos\/nail\/\d+\/payroll$/, /\/pos\/nail\/\d+\/payroll/],
-        [/^\/pos\/nail\/\d+\/batch$/, /\/pos\/nail\/\d+\/batch/],
+        [/^\/pos\/nail\/\d+\/orders$/, /\/pos\/nail\/\d+\/orders(\?.*)?$/],
+        [/^\/pos\/nail\/\d+\/batch$/, /\/pos\/nail\/\d+\/batch(\?.*)?$/],
+        [/^\/pos\/nail\/\d+\/payroll$/, /\/pos\/nail\/\d+\/payroll(\?.*)?$/],
+        [/^\/pos\/nail\/\d+\/overview$/, /\/pos\/nail\/\d+\/overview(\?.*)?$/],
       ];
+      // Chained client-side navigation, as a user would click through the group.
       for (const [hrefPattern, urlPattern] of routes) {
-        await dashboardPage.goto();
         await dashboardPage.sidebar.navigateToHref(hrefPattern);
         await expect(page).toHaveURL(urlPattern);
       }
+      await expect(dashboardPage.heading).toBeVisible();
     },
   );
 
@@ -98,8 +88,6 @@ test.describe('Sidebar Navigation — Overview', () => {
         [/^\/pos\/nail\/\d+\/staffs$/, /\/pos\/nail\/\d+\/staffs/],
         [/^\/pos\/nail\/\d+\/services$/, /\/pos\/nail\/\d+\/services/],
         [/^\/pos\/nail\/\d+\/customers$/, /\/pos\/nail\/\d+\/customers/],
-        // customer-groups dropped — now a tab on /customers, no sidebar link.
-        [/^\/pos\/nail\/\d+\/income$/, /\/pos\/nail\/\d+\/income/],
         [/^\/pos\/nail\/\d+\/setting$/, /\/pos\/nail\/\d+\/setting/],
       ];
       for (const [hrefPattern, urlPattern] of routes) {
@@ -113,17 +101,13 @@ test.describe('Sidebar Navigation — Overview', () => {
   test(
     'TC-OVW-055 — Overview is the sole active item on the Overview route',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ dashboardPage }) => {
+    async ({ page, dashboardPage }) => {
       await expect(dashboardPage.sidebar.item('Overview')).toHaveAttribute('aria-current', 'page');
-      // Sibling items are not marked active.
-      await expect(dashboardPage.sidebar.item('Payroll')).not.toHaveAttribute(
-        'aria-current',
-        'page',
-      );
-      await expect(dashboardPage.sidebar.item('Orders').first()).not.toHaveAttribute(
-        'aria-current',
-        'page',
-      );
+      const active = page
+        .getByRole('navigation', { name: 'Main' })
+        .locator('a[aria-current="page"]');
+      await expect(active).toHaveCount(1);
+      await expect(active).toHaveAccessibleName('Overview');
     },
   );
 });

@@ -4,6 +4,22 @@
       "command": "npx",
       "args": ["-y", "@playwright/mcp@latest"]
     },
+    "portal-qa": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--isolated",
+        "--storage-state",
+        "src/data/dynamic/auth/admin.json",
+        "--viewport-size",
+        "1440x900",
+        "--console-level",
+        "warning",
+        "--output-dir",
+        ".playwright-mcp"
+      ]
+    },
     "github": {
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-github"],

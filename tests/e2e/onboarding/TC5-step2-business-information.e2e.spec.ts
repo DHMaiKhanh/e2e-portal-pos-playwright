@@ -278,136 +278,6 @@ test.describe('Bước 2 — `Business Information` — Onboarding', () => {
   );
 
   /**
-   * TC-ONB-066 — Combobox `Country` hoạt động tương tự
-   * Steps:
-   *  1. Bấm combobox `Country`.
-   *  2. Gõ vào "Search country...".
-   *  3. Chọn một giá trị.
-   * Expected:
-   *  Mở dialog tìm kiếm, lọc đúng, chọn xong đóng dialog và cập nhật nhãn combobox.
-   *  [CẦN XÁC MINH] liệu đổi `Country` có reset `State` hay không.
-   */
-  // TODO(manual/setup): the Expected's core claim — whether changing Country
-  // clears State — is unverified, and settling it means selecting a country
-  // other than the merchant's on the read-only record 3660. Needs a manual pass
-  // (or a single-use WHMCS ID) to confirm the reset behaviour before this can be
-  // asserted; the open/filter half alone would not cover the case.
-  test.fixme(
-    'TC-ONB-066 — the Country combobox opens, filters, and updates its label',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
-   * TC-ONB-067 — Email sai định dạng bị chặn
-   * Steps:
-   *  1. Xoá `#email`, nhập `abc`.
-   *  2. Bấm "Save Changes & Continue".
-   * Expected:
-   *  Hiện lỗi validate cho field `Email`, không submit, không chuyển bước.
-   *  [CẦN XÁC MINH] nội dung chính xác của thông báo lỗi.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID. The case
-  // only resolves by pressing "Save Changes & Continue", and if validation does
-  // NOT block the submit the click patches the live merchant record. The error
-  // copy is unverified on top of that.
-  test.fixme(
-    'TC-ONB-067 — a malformed email is rejected on submit',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
-   * TC-ONB-068 — Website sai định dạng
-   * Steps:
-   *  1. Nhập `notaurl` vào `#website` rồi bấm "Save Changes & Continue".
-   * Expected:
-   *  [CẦN XÁC MINH] — schema cho `website_url` là nullish/optional; kỳ vọng có
-   *  validate URL, nếu không có thì đây là gap cần báo.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID. The
-  // schema marks `website_url` nullish, so a missing URL check would let the
-  // submit through and persist `notaurl` on the live merchant.
-  test.fixme(
-    'TC-ONB-068 — a malformed website URL is rejected on submit',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
-   * TC-ONB-069 — Website để trống được chấp nhận
-   * Steps:
-   *  1. Xoá trống `#website`.
-   *  2. Submit.
-   * Expected:
-   *  Lưu thành công (field là optional theo schema `nullish`).
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID. The
-  // Expected is a successful save, which cannot be exercised against merchant
-  // 3660 without wiping its stored website URL.
-  test.fixme(
-    'TC-ONB-069 — an empty website URL saves successfully',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
-   * TC-ONB-070 — Định dạng số điện thoại
-   * Steps:
-   *  1. Xoá `#phoneNumber`, gõ `4082692000`.
-   *  2. Quan sát giá trị.
-   * Expected:
-   *  [CẦN XÁC MINH] — kỳ vọng auto-format thành `(408) 269-2000` theo mẫu
-   *  placeholder; nếu không format thì cần thống nhất với dữ liệu hiển thị ở màn
-   *  Merchants.
-   */
-  // TODO(manual/setup): the Expected is an unresolved assumption — no scan
-  // recorded whether the field auto-formats on input. Asserting either outcome
-  // now would encode a guess; needs a manual check (and a product decision if it
-  // does not format) before it can become executable.
-  test.fixme(
-    'TC-ONB-070 — a raw 10-digit phone number is auto-formatted',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
-  );
-
-  /**
-   * TC-ONB-071 — Bỏ trống các field bắt buộc
-   * Steps:
-   *  1. Xoá trống `Business Name`, `Address`, `City`, `Zip`.
-   *  2. Bấm "Save Changes & Continue".
-   * Expected:
-   *  [CẦN XÁC MINH] — DOM không gắn `required`; cần xác định field nào thực sự bắt
-   *  buộc ở tầng schema và phải hiện lỗi tương ứng, chứ không im lặng lưu dữ liệu
-   *  rỗng.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID. Nothing
-  // in the DOM marks these fields required, so the submit may well go through and
-  // blank out the live merchant's name, address, city and zip.
-  test.fixme(
-    'TC-ONB-071 — clearing the required fields blocks the submit',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
-   * TC-ONB-072 — Zip nhận giá trị không phải số
-   * Steps:
-   *  1. Nhập `ABCDE` vào `#postalCode` rồi submit.
-   * Expected:
-   *  [CẦN XÁC MINH] — kỳ vọng có validate mã ZIP (5 hoặc 9 chữ số kiểu US); nếu
-   *  chấp nhận mọi chuỗi thì báo là gap.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID. Whether
-  // a ZIP format rule exists is unverified, so the submit could persist `ABCDE`
-  // onto merchant 3660.
-  test.fixme(
-    'TC-ONB-072 — a non-numeric zip is rejected on submit',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
    * TC-ONB-073 — Bước 2 không có nút `Back`/`Skip`
    * Steps:
    *  1. Đọc toàn bộ nút ở cuối bước 2.
@@ -424,29 +294,9 @@ test.describe('Bước 2 — `Business Information` — Onboarding', () => {
 
       // Read the whole footer rather than three separate probes, so an extra
       // button appearing here fails too.
-      expect(await onboardingPage.wizardFooterLabels()).toEqual(['Save Changes & Continue']);
+      expect(await onboardingPage.wizardFooterLabels()).toEqual(['Save changes & continue']);
       await expect(onboardingPage.backButton).toHaveCount(0);
       await expect(onboardingPage.skipButton).toHaveCount(0);
     },
-  );
-
-  /**
-   * TC-ONB-074 — Lưu thành công chuyển sang bước 3
-   * Preconditions: WHMCS ID dùng-một-lần.
-   * Steps:
-   *  1. Điền dữ liệu hợp lệ.
-   *  2. Bấm "Save Changes & Continue".
-   * Expected:
-   *  [CẦN XÁC MINH — hành động ghi] Toast "Merchant updated successfully"; URL sang
-   *  `?step=work-hours&whmcsId=<id>`; stepper đánh dấu bước 2 hoàn tất.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID. The case
-  // is defined by a successful PATCH of the merchant record, which this suite may
-  // not perform against shared DEV data. Unblocked by seeding a throwaway merchant
-  // and deep-linking its id instead of the read-only 3660.
-  test.fixme(
-    'TC-ONB-074 — a successful save advances to step 3 (work-hours)',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
   );
 });

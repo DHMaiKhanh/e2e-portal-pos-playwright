@@ -1358,3 +1358,67 @@ Hành vi làm sạch param đã quan sát: `tab=bogus` → về `?tab=daily`; `d
   - TC-INC-158 / TC-INC-159 · bảng Order Details cuộn ngang trong card ở 768/390px (hợp lệ) → bỏ khỏi check strict-fit, dùng check fit-hoặc-tự-cuộn; thêm `.first()` cho `rows.or(resultsFooter)`
   - TC-INC-185 · data report giờ gọi `volt-pos.<portal-host>` (ngoài APP_HOSTS) → chấp nhận subdomain của Portal; endpoint trả về từ chối khi không có session ✔
 - Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`
+
+## Đã loại bỏ / thay đổi (2026-10-20)
+
+> Bối cảnh: Portal refactor sang design system mới (Linear VP-4569, 2026-10-13). Đã xác minh trên DEV
+> (store 100004, 2026-10-20/21): **màn `/pos/nail/100004/income` vẫn tồn tại** (h1 "Income Reports (Legacy)",
+> 3 tab) nhưng **không còn mục nào trong sidebar** — báo cáo chuyển sang nhóm `Reports` (`report-pages/*`)
+> và `Reports V4`. Bộ test giữ nguyên các TC, chỉ sửa locator/kỳ vọng theo UI mới.
+
+### Thay đổi UI đã cập nhật vào test/page object
+
+- Nhãn chuyển sang sentence case: tab `Daily sale report / Income summary / Staff income`; KPI `Total orders / Sale income / Total tip / Total payment`; panel `Income detail`, `Payment detail`, `Staff summary`; cột `Total payment`, `Supply fee`, `Total income`.
+- KPI card = `section[data-slot=pos-stat]` + nút overlay `aria-pressed`; panel phải là `pos-card` có `<dl>` (dt/dd), header thu gọn được (`aria-expanded`).
+- Summary có thêm nhóm đầu **Payment details**; `Split pay` là h4 nằm trong `Staff payout`. Cột `Total payment` của bảng = tổng của `Payment details`.
+- Phân trang: `1–30 of 244` + nút `Previous page/Next page`; **kết quả rỗng không render phân trang** (chỉ câu empty-state).
+- Nhãn khoảng ngày: `Aug 1 – 21, 2026`, `Jun 1 – Aug 21, 2026`, `Dec 1, 2025 – Jan 5, 2026`; Week/Month hiển thị `2026`.
+- `Income period` là filter chip (`button "Income period: Day"`) mở listbox.
+- Số âm dùng dấu trừ Unicode `−` (bảng, KPI, rail) và `-` trong panel `<dl>`; dòng cộng ngược có `+`.
+- Dialog order: tiêu đề `Order detail` + dòng mã `#OD…`; `Order date` in 2 mốc giờ (UTC+7 và UTC-5); Activity log là radiogroup.
+- Neo dữ liệu mới: TC-INC-043 → 2026-06-30 (có sale, tip $0); TC-INC-057/058/059 → 2026-08-05 (52 order, 2 trang); TC8 → 2026-08-18; TC-INC-135 → tên trùng `Peter`; TC-INC-146 → store id `987654321` (`999999` là merchant thật trên DEV).
+
+### Đã xoá
+
+| TC         | Lý do                                                                                                    |
+| ---------- | -------------------------------------------------------------------------------------------------------- |
+| TC-INC-009 | Link sidebar tới Income Reports đã bị gỡ (màn chỉ vào được qua URL) — tính năng không còn.               |
+| TC-INC-010 | Trạng thái active của link Income trong sidebar — link không còn.                                        |
+| TC-INC-011 | Đi ra Orders rồi quay lại _qua sidebar_ — không còn link Income để quay lại.                             |
+| TC-INC-048 | Placeholder không assert gì; "cột âm khác màu" là so sánh trực quan, không kiểm được bằng locator.       |
+| TC-INC-174 | Placeholder không assert gì; cần project `forcedColors` + đo tương phản WCAG (axe), ngoài phạm vi suite. |
+
+Placeholder đã được viết thành test thật thay vì xoá: TC-INC-032, TC-INC-046, TC-INC-051, TC-INC-059, TC-INC-076.
+
+### Còn FAIL (cố ý — phản ánh lỗi thật)
+
+| TC                     | Phân loại              | Lý do                                                                                                                                                                |
+| ---------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TC-INC-015             | Bug sản phẩm           | Đổi tab dùng replaceState, không push history → Back/Forward không đi qua các tab (Back rời khỏi màn).                                                               |
+| TC-INC-036/037/038/039 | Bug sản phẩm           | Nút overlay của KPI card (`pos-stat-hit`) che nút `About …` → di chuột không bao giờ hiện tooltip (chỉ focus bàn phím mới hiện).                                     |
+| TC-INC-060             | Bug sản phẩm           | Heading `Order detail` của dialog có width 0 (không hiển thị).                                                                                                       |
+| TC-INC-078             | Bug sản phẩm (múi giờ) | Khoảng mặc định lấy ngày theo trình duyệt (UTC+7) nhưng nhãn `Today` theo giờ store (UTC-5) → trong khung 00:00–12:00 UTC+7 hiển thị `Oct 21, 2026` thay vì `Today`. |
+| TC-INC-082             | Bug/hành vi sản phẩm   | Đổi Income period trên UI reset khoảng ngày về cả năm (`2026`), bỏ khoảng người dùng đã chọn.                                                                        |
+| TC-INC-086             | Bug sản phẩm           | `Clear filters` không reset period (vẫn `week`).                                                                                                                     |
+| TC-INC-087             | Bug sản phẩm           | Khoảng không có giao dịch vẫn render 30 dòng $0.00 thay vì empty state.                                                                                              |
+| TC-INC-088             | Bug sản phẩm           | Khoảng ngày đảo ngược → API 400 "Unable to load income data".                                                                                                        |
+| TC-INC-094/101/102     | Bug sản phẩm           | Dòng Summary được chọn không còn được đánh dấu (`data-state` luôn `false`, không có aria-selected).                                                                  |
+| TC-INC-115             | Bug sản phẩm           | Tìm staff với `%` trả về mọi staff (wildcard LIKE không được escape).                                                                                                |
+| TC-INC-125             | Bug sản phẩm           | `page=999` → bảng rỗng và không có phân trang để quay lại (không clamp trang).                                                                                       |
+| TC-INC-131             | Bug sản phẩm           | `Staff summary` không lọc theo từ khoá tìm kiếm.                                                                                                                     |
+| TC-INC-143             | Bug sản phẩm           | Dialog dùng 2 offset (UTC+7 & UTC-5) cùng lúc.                                                                                                                       |
+| TC-INC-171             | Bug a11y               | `Order details` không phải heading.                                                                                                                                  |
+| TC-INC-175             | Bug a11y               | Dòng được chọn không có aria-selected/aria-current (và không còn data-state).                                                                                        |
+
+---
+
+## Linear — Task & Bug liên quan
+
+> Nguồn: Linear team VP, label `Portal` — lấy ngày 2026-10-20. Bỏ Canceled, TechDebt/CI và Restaurant Portal.
+> Thứ tự: Bug → đang QC/Review → đã Prod/Done → Todo/Backlog. **3 issue.**
+
+| ID                                                  | Loại | Tiêu đề                                                                                                     | Trạng thái | Ưu tiên | Test hiện có                                      | E2E được? | Ghi chú                                                      |
+| --------------------------------------------------- | ---- | ----------------------------------------------------------------------------------------------------------- | ---------- | ------- | ------------------------------------------------- | --------- | ------------------------------------------------------------ |
+| [VP-4023](https://linear.app/fastboy/issue/VP-4023) | Bug  | Income Reports: PR #583 silently reverted 3 merged PRs (SERVICE column, salary layout, preload guard)       | Done       | High    | Một phần — `income/TC7-daily-order-detail-dialog` | Có        | Hồi quy: cột SERVICE, layout salary, preload guard bị revert |
+| [VP-3178](https://linear.app/fastboy/issue/VP-3178) | Enh  | [Improvement] Ticket #1491055_Income Summary: hiển thị tổng Cash/Check Income theo khoảng thời gian đã chọn | Done       | Medium  | Chưa                                              | Có        | Tổng Cash/Check Income theo khoảng ngày                      |
+| [VP-3179](https://linear.app/fastboy/issue/VP-3179) | Enh  | [Improvement] Store Income / Payment: thêm Custom Date Range cho Total Card Income                          | Done       | Medium  | Chưa                                              | Có        | Custom Date Range cho Total Card Income                      |

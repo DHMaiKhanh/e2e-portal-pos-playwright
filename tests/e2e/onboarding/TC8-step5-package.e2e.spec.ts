@@ -145,7 +145,7 @@ test.describe('Bước 5 — `Package` — Onboarding', () => {
    * half passes today.
    */
   // PRODUCT GAP (2026-10-11): closing the feature dialog (Close button or Escape) leaves focus on <body> instead of returning it to the "View all N features" trigger — a WAI-ARIA dialog-pattern violation. Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-ONB-100 — Close button and Escape both dismiss the dialog and restore focus',
     { tag: [Tag.REGRESSION] },
     async ({ onboardingPage, page }) => {
@@ -221,48 +221,11 @@ test.describe('Bước 5 — `Package` — Onboarding', () => {
       await expect(onboardingPage.saveChangesButton).toBeVisible({ timeout: Timeouts.LONG });
 
       // Presence and order only — Save Changes is never clicked here.
-      expect(await onboardingPage.wizardFooterLabels()).toEqual(['Back', 'Skip', 'Save Changes']);
+      expect(await onboardingPage.wizardFooterLabels()).toEqual(['Back', 'Skip', 'Save changes']);
 
       await expect(onboardingPage.backButton).toBeEnabled();
       await expect(onboardingPage.skipButton).toBeEnabled();
       await expect(onboardingPage.saveChangesButton).toBeEnabled();
     },
-  );
-
-  /**
-   * Steps:
-   *  1. Chọn một gói.
-   *  2. Bấm `"Save Changes"`.
-   *
-   * Expected: `[CẦN XÁC MINH — hành động ghi]` Toast
-   * `"POS package saved successfully"`; chuyển sang
-   * `?step=payment-transactions&whmcsId=<id>`.
-   *
-   * Preconditions: WHMCS ID dùng-một-lần.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID
-  test.fixme(
-    'TC-ONB-104 — saving the package toasts and advances to payment-transactions',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
-   * Steps:
-   *  1. Đọc tên các gói hiển thị.
-   *
-   * Expected: Ghi nhận môi trường DEV có nhiều gói trùng/rác
-   * (`Copy of GO POS BASIC` ×3, `123`, `1`, `TEST`, `HIHI`, `Test11155`…)
-   * → **assertion không được hard-code danh sách gói**; đồng thời báo team
-   * dọn dữ liệu DEV.
-   */
-  // TODO(manual/setup): data-hygiene observation — the outcome is a DEV cleanup
-  // request to the team, not a runtime assertion; the "never hard-code package
-  // names" rule is enforced by the other cases in this file, which assert only
-  // counts, formats and behaviour.
-  test.fixme(
-    'TC-ONB-105 — DEV package list contains duplicate/junk packages (report only)',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
   );
 });

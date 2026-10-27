@@ -145,16 +145,18 @@ test.describe('Responsive — Income Reports', () => {
       // store has not traded — the rail shows "No income data for this day yet."
       // instead of the INCOME DETAIL / PAYMENT DETAIL headings. Skip softly then.
       const emptyIncome = await incomePage.incomeDetailEmptyState.count();
-      test.skip(
+      expect(
         emptyIncome > 0,
         'store has no income today; the detail rail is absent, nothing to position',
-      );
+      ).toBeFalsy();
 
       const width = INCOME_VIEWPORTS.desktop.width;
 
-      // A permanent nav column: no collapse affordance is offered at this width.
+      // A permanent nav column. Since 2026-10-13 desktop also offers an explicit
+      // `Collapse sidebar` button (the mobile `Open navigation` trigger stays hidden).
       await expect(incomePage.sidebar.panel).toBeVisible();
-      await expect(incomePage.sidebar.toggle).toBeHidden();
+      await expect(incomePage.sidebar.toggle).toHaveAttribute('aria-label', 'Collapse sidebar');
+      await expect(page.getByRole('button', { name: 'Open navigation' })).toBeHidden();
 
       const nav = await boxOf(incomePage.sidebar.panel, 'sidebar column');
       const tabStrip = await boxOf(incomePage.tabList, 'tab strip');
@@ -171,8 +173,8 @@ test.describe('Responsive — Income Reports', () => {
       // Right: both rail panels sit in the right half, further right than the
       // content column starts, and stacked in one shared column.
       for (const [what, box] of [
-        ['INCOME DETAIL', incomeDetail],
-        ['PAYMENT DETAIL', paymentDetail],
+        ['Income detail', incomeDetail],
+        ['Payment detail', paymentDetail],
       ] as const) {
         expect(box.x, `${what} is not in the right half of the screen`).toBeGreaterThan(width / 2);
         expect(box.x, `${what} is not right of the content column`).toBeGreaterThan(tabStrip.x);
@@ -224,7 +226,10 @@ test.describe('Responsive — Income Reports', () => {
       // PAYMENT DETAIL rail, which is absent on a day the store has not traded
       // (it shows "No income data for this day yet." instead). Skip softly then.
       const emptyIncome = await incomePage.incomeDetailEmptyState.count();
-      test.skip(emptyIncome > 0, 'store has no income today; the detail rail region is absent');
+      expect(
+        emptyIncome > 0,
+        'store has no income today; the detail rail region is absent',
+      ).toBeFalsy();
 
       const width = INCOME_VIEWPORTS.laptop.width;
 
@@ -338,7 +343,11 @@ test.describe('Responsive — Income Reports', () => {
         `Order Details neither fits (${Math.round(tableBox.width)}px) nor scrolls in its own container`,
       ).toBe(true);
       await expect(
-        incomePage.orderDetailsTable.rows.first().or(incomePage.resultsFooter).first(),
+        incomePage.orderDetailsTable.rows
+          .first()
+          .or(incomePage.resultsFooter)
+          .or(incomePage.tableEmptyState)
+          .first(),
       ).toBeVisible();
     },
   );
@@ -466,8 +475,8 @@ test.describe('Responsive — Income Reports', () => {
           `the drawer is missing the ${group} group`,
         ).toBeVisible();
       }
-      // The active screen is still marked inside the drawer.
-      await expect(drawer.locator('a[aria-current="page"]')).toHaveCount(1);
+      // (The old "active screen is marked in the drawer" check is gone: since
+      // 2026-10-13 the legacy Income screen has no sidebar entry to mark.)
 
       // Closing by the same button: the open sheet is painted over its own
       // trigger, and the sheet's own "FastboyPay home" link sits exactly where
@@ -518,7 +527,10 @@ test.describe('Responsive — Income Reports', () => {
         .toBeLessThan(INCOME_VIEWPORTS.mobile.width);
 
       const mobileHours = await incomePage.chartHourLabels();
-      test.skip(mobileHours.length < 2, 'the pinned day renders fewer than two hour ticks');
+      expect(
+        mobileHours.length < 2,
+        'the pinned day renders fewer than two hour ticks',
+      ).toBeFalsy();
 
       // Still 12-hour AM/PM labels, and only ticks the full axis also had —
       // thinning drops labels, it never invents them.
@@ -634,7 +646,7 @@ test.describe('Responsive — Income Reports', () => {
       await incomePage.gotoWithQuery({ tab: IncomeTab.DAILY, date: DATA_BEARING_DATE });
       await incomePage.waitForDataSettled();
       const codes = await incomePage.orderCodes();
-      test.skip(codes.length === 0, 'no orders on the pinned day to open');
+      expect(codes.length === 0, 'no orders on the pinned day to open').toBeFalsy();
 
       await applyViewport(page, INCOME_VIEWPORTS.mobile);
       const dialog = await incomePage.openOrderRow(0);
@@ -656,8 +668,8 @@ test.describe('Responsive — Income Reports', () => {
       ).toBe(false);
 
       // Scrolls vertically all the way down to the end of `Activity Log`.
-      await dialog.scrollToSection('Activity Log');
-      await expect(dialog.section('Activity Log')).toBeVisible();
+      await dialog.scrollToSection('Activity log');
+      await expect(dialog.section('Activity log')).toBeVisible();
       await expect(dialog.activityLogTimezoneNote).toBeVisible();
       await expect(dialog.activityLogTabs).toHaveCount(INCOME_ACTIVITY_LOG_TABS.length);
 

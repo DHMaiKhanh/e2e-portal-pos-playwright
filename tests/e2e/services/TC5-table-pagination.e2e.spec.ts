@@ -12,12 +12,16 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ productsPage }) => {
       const headers = productsPage.columnHeaders;
+      // Labels since the 2026-10-13 refactor (sentence case). At the suite's
+      // 1920px viewport the old "NAME & DESCRIPTION" column is split into
+      // separate "Name" and "Description" columns.
       await expect(headers).toHaveText([
-        'NAME & DESCRIPTION',
-        'PRICE',
-        'DURATION',
-        'SUPPLY FEE',
-        'STATUS',
+        'Name',
+        'Description',
+        'Price',
+        'Duration',
+        'Supply fee',
+        'Status',
       ]);
     },
   );
@@ -67,9 +71,7 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
       let sawEmDash = false;
 
       for (let pageNo = 1; pageNo <= totalPages; pageNo++) {
-        const durations = (
-          await productsPage.table.rows.locator('td:nth-child(3)').allInnerTexts()
-        ).map((text) => text.trim());
+        const durations = await productsPage.columnTexts('Duration');
         expect(durations.length, `page ${pageNo} has no service rows`).toBeGreaterThan(0);
 
         durations.forEach((duration, index) => {
@@ -115,14 +117,8 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
       tag: [Tag.REGRESSION, Tag.UI],
     },
     async ({ productsPage }) => {
-      // The cell stacks a <span> name over an optional <p> description, which
-      // innerText renders with a blank line between them — drop the empties
-      // rather than indexing straight into the split.
-      const linesOf = (cell: string): string[] =>
-        cell
-          .split('\n')
-          .map((line) => line.trim())
-          .filter((line) => line.length > 0);
+      // Since the 2026-10-13 refactor the description has its own "Description"
+      // column at 1920px: the service's text when set, an em dash when not.
 
       const totalPages =
         Number((await productsPage.pageIndicatorText()).split('/')[1]?.trim()) || 1;
@@ -131,19 +127,23 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
       let undescribed = false;
 
       for (let pageNo = 1; pageNo <= totalPages; pageNo++) {
-        const nameCells = await productsPage.table.rows.locator('td:nth-child(1)').allInnerTexts();
+        const nameCells = await productsPage.columnTexts('Name');
+        const descriptionCells = await productsPage.columnTexts('Description');
         expect(nameCells.length, `page ${pageNo} has no service rows`).toBeGreaterThan(0);
+        expect(descriptionCells).toHaveLength(nameCells.length);
 
-        nameCells.forEach((cell, index) => {
-          // "No description" must render as nothing at all — never a stringified
-          // empty value.
-          expect(cell, `page ${pageNo} row ${index} NAME`).not.toMatch(/null|undefined/i);
-          const lines = linesOf(cell);
-          expect(lines.length, `page ${pageNo} row ${index} NAME cell is empty`).toBeGreaterThan(0);
-          // A name line plus a description line is the "described" shape; the
-          // name line on its own is the "undescribed" shape.
-          if (lines.length >= 2) described = true;
-          else undescribed = true;
+        descriptionCells.forEach((cell, index) => {
+          // "No description" renders as the em dash — never a stringified empty value.
+          expect(cell, `page ${pageNo} row ${index} DESCRIPTION`).not.toMatch(/null|undefined/i);
+          expect(cell.length, `page ${pageNo} row ${index} DESCRIPTION is blank`).toBeGreaterThan(
+            0,
+          );
+          expect(
+            nameCells[index].length,
+            `page ${pageNo} row ${index} NAME is empty`,
+          ).toBeGreaterThan(0);
+          if (cell === '—') undescribed = true;
+          else described = true;
         });
 
         if (described && undescribed) break;
@@ -169,7 +169,7 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
       tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE],
     },
     async ({ productsPage }) => {
-      await expect(productsPage.paginationFooter).toHaveText(/Showing \d+ to \d+ of \d+ results/);
+      await expect(productsPage.paginationFooter).toHaveText(/^1–\d+ of [\d,]+$/);
       await expect(productsPage.pageIndicator).toHaveText(/^1 \/ \d+$/);
       await expect(productsPage.previousPageButton).toBeDisabled();
       await expect(productsPage.nextPageButton).toBeEnabled();
@@ -213,8 +213,7 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
     'TC-SVC-046 — trang cuối cùng disable nút "Next" và hiển thị đủ số dòng còn lại',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ productsPage, page }) => {
-      const firstPageFooter = await productsPage.paginationFooterText();
-      const total = Number(firstPageFooter.match(/of (\d+) results/i)?.[1]);
+      const { total } = await productsPage.footerRange();
       expect(total).toBeGreaterThan(0);
 
       const lastPage = Number((await productsPage.pageIndicatorText()).split('/')[1]?.trim());
@@ -229,11 +228,9 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
       // between the first-page read and now. Take the last page's own footer as
       // the truth: it must end at its total ("to N of N").
       await expect(productsPage.paginationFooter.first()).toHaveText(
-        new RegExp(`Showing ${from} to (\\d+) of \\1 results`, 'i'),
+        new RegExp(`^${from}–(\\d+) of \\1$`),
       );
-      const lastTotal = Number(
-        (await productsPage.paginationFooterText()).match(/of (\d+) results/i)?.[1],
-      );
+      const lastTotal = (await productsPage.footerRange()).total;
       expect(
         Math.abs(lastTotal - total),
         'total drifted by more than a stray add',
@@ -265,9 +262,8 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ productsPage, page }) => {
       const row = productsPage.table.rows.first();
-      const cells = (await row.innerText()).split('\t').map((cell) => cell.trim());
-      const name = cells[0].split('\n')[0].trim();
-      const price = cells[1];
+      const name = (await productsPage.columnTexts('Name'))[0].split('\n')[0].trim();
+      const price = (await productsPage.columnTexts('Price'))[0];
 
       await row.click();
 
@@ -282,7 +278,7 @@ test.describe('Bảng dữ liệu & Phân trang (Table / Pagination) — Service
         await expect(productsPage.serviceSupplyFeeInput).toBeVisible();
         await expect(productsPage.serviceDescriptionInput).toBeVisible();
         await expect(productsPage.serviceDialog).toContainText(/service duration/i);
-        await expect(productsPage.serviceDialog).toContainText(/visibility settings/i);
+        await expect(productsPage.serviceDialog).toContainText(/visibility/i);
       });
 
       await test.step('Cancel closes it without changing the row', async () => {

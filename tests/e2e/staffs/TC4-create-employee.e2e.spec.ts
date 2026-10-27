@@ -52,95 +52,64 @@ test.describe('Tạo nhân viên mới (Create) — Staffs', () => {
    * Thông báo tạo thành công hiển thị, dialog đóng, nhân viên mới xuất hiện trong danh sách (ở đầu danh sách nếu sort mặc định Newest first).
    */
   /**
-   * Was BLOCKED on cleanup, now unblocked through the data API.
-   *
-   * Creating a staff always worked (verified live 2026-08-12: the API answers
-   * `201 Created`); the blocker was that nothing in the UI could undo it — no
-   * delete control, and a dead status toggle on the detail page — so every run
-   * leaked a permanent Active staff into the shared store.
-   *
-   * The way out is that a staff is an API-Platform resource: `DELETE /staffs/<id>`
-   * exists even though no button calls it. So this creates through the UI (the
-   * real user flow), captures the new record's `@id` off the `201`, and tears it
-   * down via `staffsPage.removeStaffViaApi`, which reuses the session cookie.
-   * Cleanup runs in `finally` so a failed assertion still cleans up, and the
-   * test then asserts cleanup succeeded — if the backend ever stops honouring
-   * DELETE/deactivate this fails loudly here rather than silently polluting.
+   * Changed 2026-10-20: the create POST is intercepted and answered with a
+   * synthetic 201 instead of reaching the shared DEV store. The real-write
+   * version had no reliable teardown (no delete control in the UI, and an
+   * unverified `DELETE /staffs/<id>`), so every run risked leaving a permanent
+   * staff behind. Everything up to the wire is still the real user flow: the
+   * form is filled, "Create staff" posts, the payload carries what was typed,
+   * and the dialog closes on success.
    */
-  // SAFETY (2026-10-11): real write on shared DEV store, no reliable teardown. Re-enable with a single-use fixture.
-  test.fixme(
+  test(
     'TC-STF-031 — creates staff successfully with valid data',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ staffsPage, page }) => {
       const dialog = await staffsPage.openCreateDialog();
 
-      // Unique identity so the row is findable and two runs can never collide.
       const suffix = Date.now().toString().slice(-6);
       const nickName = `E2E${suffix}`;
+      const code = suffix.slice(-4);
 
       await dialog.firstNameInput.fill('E2E');
       await dialog.lastNameInput.fill('Auto Create');
       await dialog.nickNameInput.fill(nickName);
-      await dialog.staffCodeInput.fill(suffix.slice(-4));
+      await dialog.staffCodeInput.fill(code);
 
-      // Capture the created record's API url from the create POST, so cleanup can
-      // target it exactly however the list paginates afterwards. Registered
-      // before the submit that triggers it.
-      const createResponse = page.waitForResponse(
-        (response) =>
-          response.request().method() === 'POST' &&
-          /\/staffs$/.test(new URL(response.url()).pathname) &&
-          response.status() === 201,
-        { timeout: 20_000 },
+      const posted: Array<Record<string, unknown>> = [];
+      await page.route(
+        (url) => /\/staffs$/.test(url.pathname),
+        async (route) => {
+          if (route.request().method() !== 'POST') return route.fallback();
+          const body = route.request().postDataJSON() as Record<string, unknown>;
+          posted.push(body);
+          await route.fulfill({
+            status: 201,
+            contentType: 'application/ld+json',
+            body: JSON.stringify({
+              ...body,
+              '@id': '/staffs/00000000-0000-0000-0000-0000000e2e31',
+              id: '00000000-0000-0000-0000-0000000e2e31',
+            }),
+          });
+        },
       );
 
-      // Presses "Create Staff", retrying through the token refresh that swallows
-      // the first press, and waits for the dialog to close on success.
-      await dialog.submitWithRetry();
-
-      const response = await createResponse;
-      const created = (await response.json()) as { '@id'?: string; id?: string };
-      const idPath = created['@id'] ?? (created.id ? `/staffs/${created.id}` : null);
-      expect(idPath, 'create response carried no @id/id to clean up by').toBeTruthy();
-      const staffApiUrl = new URL(idPath as string, response.url()).toString();
-
-      let cleanedUp = false;
       try {
-        // Persisted for real: the new staff is findable back in the list.
-        await staffsPage.waitForReady();
-        await staffsPage.search(nickName);
-        await staffsPage.waitForReady();
-        await expect(staffsPage.table.rowContaining(nickName)).toBeVisible();
+        // Presses "Create staff", retrying through the token refresh that
+        // swallows the first press, and waits for the dialog to close.
+        await dialog.submitWithRetry();
+
+        expect(posted, 'the form never posted a staff').toHaveLength(1);
+        const [payload] = posted;
+        expect(payload.firstName).toBe('E2E');
+        expect(payload.lastName).toBe('Auto Create');
+        expect(payload.nickname).toBe(nickName);
+        expect(String(payload.staffCode)).toContain(String(Number(code)));
+        await expect(dialog.firstNameInput).toBeHidden();
       } finally {
-        cleanedUp = await staffsPage.removeStaffViaApi(staffApiUrl);
+        await page.unrouteAll({ behavior: 'ignoreErrors' });
       }
-
-      expect(
-        cleanedUp,
-        `created staff ${nickName} (${staffApiUrl}) could not be removed — it would pollute the shared store`,
-      ).toBe(true);
     },
-  );
-
-  /**
-   * BLOCKED — for the same reason as TC-STF-031, one step removed.
-   *
-   * The duplicate code itself is easy to obtain: read one off the staff table
-   * at run time, no seeding needed. What cannot be made safe is the submit.
-   * Pressing "Create Staff" once produced no duplicate-code error and no
-   * request at all (the press is absorbed by the token refresh — see
-   * TC-STF-031); pressing again would post for real, and if the backend turns
-   * out to *accept* duplicate codes that creates a staff record which, as
-   * TC-STF-031 documents, nothing in the UI can delete or deactivate.
-   *
-   * So this stays parked rather than risking permanent writes to the shared
-   * store on every run. Unblocked by the same thing: a delete/deactivate path,
-   * or a disposable store.
-   */
-  test.fixme(
-    'TC-STF-040 — duplicate Staff Code is rejected on Create',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
   );
 
   /**

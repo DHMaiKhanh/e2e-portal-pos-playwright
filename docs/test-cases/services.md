@@ -351,3 +351,53 @@
   - TC-SVC-022 · đọc footer trước khi refetch xong (race) → `expect.poll`
   - TC-SVC-046 · tổng thay đổi 302→303 giữa chừng do TC-SVC-050 thêm service → lấy tổng từ footer trang cuối
 - Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`
+
+---
+
+## Linear — Task & Bug liên quan
+
+> Nguồn: Linear team VP, label `Portal` — lấy ngày 2026-10-20. Bỏ Canceled, TechDebt/CI và Restaurant Portal.
+> Thứ tự: Bug → đang QC/Review → đã Prod/Done → Todo/Backlog. **7 issue.**
+
+| ID                                                  | Loại | Tiêu đề                                                                                           | Trạng thái          | Ưu tiên     | Test hiện có                                       | E2E được? | Ghi chú                                                                            |
+| --------------------------------------------------- | ---- | ------------------------------------------------------------------------------------------------- | ------------------- | ----------- | -------------------------------------------------- | --------- | ---------------------------------------------------------------------------------- |
+| [VP-2621](https://linear.app/fastboy/issue/VP-2621) | Bug  | Auto-created category's services not synced to DTS on import                                      | Done                | No priority | Chưa                                               | Một phần  | Sync DTS là backend; chỉ kiểm được qua background task trên Monitor (cha: VP-1176) |
+| [VP-2634](https://linear.app/fastboy/issue/VP-2634) | Enh  | [POS/Portal] Hỗ trợ sắp xếp Service theo từng Category                                            | Ready to Review     | High        | Chưa                                               | Có        | Kéo thả sắp xếp service theo category (POS + Portal)                               |
+| [VP-3789](https://linear.app/fastboy/issue/VP-3789) | Task | [Portal] Hỗ trợ sắp xếp Service theo từng Category                                                | Ready to Review     | High        | Chưa                                               | Có        | Phần Portal của VP-2634                                                            |
+| [VP-1176](https://linear.app/fastboy/issue/VP-1176) | Task | [Portal] – Import Service/Product via Excel                                                       | Verified Production | High        | Chưa                                               | Có        | Import Service/Product Excel                                                       |
+| [VP-1178](https://linear.app/fastboy/issue/VP-1178) | Task | POS Portal – Advanced Export Service/Product (Customizable Fields & Filters)                      | Verified Production | High        | Chưa                                               | Có        | Advanced Export Service/Product                                                    |
+| [VP-2932](https://linear.app/fastboy/issue/VP-2932) | Enh  | [Improvement] Ticket #1462351_Service: duration step 5 phút + cho phép xóa service không còn dùng | Verified Production | Low         | Một phần — `services/TC6-add-service-manage-order` | Có        | Duration step 5 phút + xoá service                                                 |
+| [VP-3241](https://linear.app/fastboy/issue/VP-3241) | Task | [PORTAL] Service duration step 5 phút                                                             | Done                | No priority | Một phần — `services/TC6-add-service-manage-order` | Có        | Duration step 5 phút                                                               |
+
+---
+
+## Đã loại bỏ / thay đổi (2026-10-20)
+
+Bối cảnh: UI Portal đổi sang design system mới ngày 2026-10-13 (Linear VP-4569). Locator được sửa theo DOM thật (quét 2026-10-20, DEV store 100004). Còn **42 test**.
+
+**Đã xoá:**
+
+- TC-SVC-072 — thân test rỗng (`void productsPage`), không assert gì; cần tài khoản role hạn chế mà bộ test không có (chỉ có 1 session admin Google OAuth).
+
+**Thay đổi chính (locator / hành vi mới):**
+
+- Tiêu đề trang `h1 "Services"` (chữ "All services" chỉ còn là caption trên bảng). "Manage Order" → nút `Reorder` mở `dialog "Reorder services"` (TC-SVC-053).
+- Pager: `navigation "Pagination"`, range `"1–30 of 104"`, `"1 / 4"`, `Previous page`/`Next page`; tìm không thấy → empty state, pager bị ẩn (TC-SVC-021/023/031). Thêm `ProductsPage.footerRange()` / `totalPages()`.
+- Ở viewport 1920 bảng có cột riêng **Description**: Name | Description | Price | Duration | Supply fee | Status (TC-SVC-040/042/043/047 đọc cột theo tên header — `columnTexts()`).
+- Category: các nút "Move <tên> up/down/to first/to last" và "Edit <tên>" đã chuyển vào menu `"Actions for <tên>"` (menuitem Move to top / Move up / Move down / Move to bottom / Edit, mục biên bị `aria-disabled`). "Other" không có menu, chỉ có handle disabled `"Other is always last"` (TC-SVC-010/012/013/014/080).
+- Dialog category: `"New category"` / `"Edit category"`, nút `"Create category"`, lỗi `alert "Name is required"` (TC-SVC-017).
+- Dialog dịch vụ: `"Add service"` / `"Edit service"`, nút submit `"Add service"`, checkbox có `id` = tên field (status, showOnGoPos, …).
+- "Diamond Pedicure" không còn trên DEV → TC-SVC-020/022 ghim **"Gel Polish"**.
+- Cross-store (TC-SVC-071): thêm `/nail/`, chấp nhận thông điệp `"We couldn't load this merchant"`.
+
+**Đổi cách kiểm (không ghi dữ liệu không hoàn tác được):**
+
+- TC-SVC-016 — không còn bấm tạo category: Portal **không có chức năng xoá category**, các lần chạy trước đã để lại 10 category `E2E-CAT-*` (inactive) trên DEV. Nay kiểm tra form (tên, màu, Active mặc định, bộ đếm `n/50`) rồi Cancel và xác nhận danh sách không đổi.
+- TC-SVC-050 — tương tự: không tạo dịch vụ thật (không có xoá dịch vụ). Kiểm tra form, giá trị mặc định (Active + 3 cờ "Shown on…" bật, Flexible pricing tắt), nhập dữ liệu hợp lệ, Cancel và xác nhận không có dịch vụ mới.
+- TC-SVC-011/012/015/018 vẫn ghi thật (đổi thứ tự / đổi tên) và **khôi phục trong `finally`** — đã kiểm tra thứ tự category sau khi chạy khớp ban đầu.
+
+**Còn FAIL:** không có (TC-SVC-061/063 từng đỏ do DEV chậm/trang trắng, chạy lại đều PASS).
+
+**Ghi chú dữ liệu DEV:** category đầu danh sách `E2E-RENAMED-1791636744293` là rác từ lần chạy ngày 2026-10-10 (không biết tên gốc — change log chỉ ghi "updated"); 10 category `E2E-CAT-*` inactive cũng là rác cũ. Không do lần chạy này tạo ra, cần dọn bằng backend.
+**Bug nhỏ quan sát được:** `?page=99` hiển thị pager `"91–104 of 104"`, `"4 / 4"` nhưng bảng rỗng với thông điệp "No services yet" (sai ngữ cảnh) — TC-SVC-063 vẫn PASS vì chỉ yêu cầu không crash.
+**Sự cố khôi phục khi DEV chậm (đã xử lý):** 2 lần trong ngày TC-SVC-012 / TC-SVC-011 bị hết thời gian ngay trong `finally` nên thứ tự category chưa trả về (ACRYLIC lệch 2 bậc; Product ↔ E2E-RENAMED đổi chỗ). Đã khôi phục tay bằng menu Actions (PUT `/display_orders/<id>` 200) và xác nhận thứ tự trùng với lúc đầu. Đã tăng timeout nhóm mutating lên 240s, `ProductsPage.goto()` dùng 30s, và `moveCategoryToIndex` reload thay vì bỏ dở khi list chậm repaint.

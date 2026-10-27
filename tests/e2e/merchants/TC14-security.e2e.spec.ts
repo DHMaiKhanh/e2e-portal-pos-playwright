@@ -125,30 +125,6 @@ test.describe('Bảo mật & phân quyền (Security) — Merchants', () => {
   );
 
   /**
-   * TC-MCH-132 — Tài khoản không phải admin không truy cập được
-   * Steps:
-   *  1. Mở trực tiếp `/pos/merchants`.
-   *  2. Quan sát.
-   * Expected:
-   *  Bị chặn — 403 / redirect / trang "không có quyền"; nhóm `Internal` không hiển
-   *  thị trong sidebar; không dòng merchant nào của merchant khác bị lộ.
-   */
-  // TODO(manual/setup): needs a non-admin (staff/owner) session. The suite holds a
-  // single captured admin session (scripts/capture-auth.mjs, Google OAuth + 2FA)
-  // and configs/env/.env.local has no second credential, so there is no role to
-  // sign in as. Unblocked by capturing a second storageState for a limited-role
-  // account and adding `test.use({ storageState: <that file> })` here.
-  //
-  // This is the highest-value unwritten case on the screen: the data is
-  // cross-tenant, so a permission regression here leaks every merchant's owner
-  // email and phone number.
-  test.fixme(
-    'TC-MCH-132 — a non-admin account cannot reach the Merchants screen',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
-  );
-
-  /**
    * TC-MCH-133 — Không lộ thông tin nhạy cảm trong payload
    * Steps:
    *  1. Bắt response của endpoint danh sách merchant.

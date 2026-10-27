@@ -29,7 +29,7 @@ test.describe('Responsive — Batch History', () => {
         batchHistoryPage.sidebar.item('Batches').or(batchHistoryPage.heading).first(),
       ).toBeVisible();
       await expect(batchHistoryPage.dateRangeButton).toBeVisible();
-      await expect(batchHistoryPage.statusCombobox).toBeVisible();
+      await expect(batchHistoryPage.statusFilter).toBeVisible();
       await expect(batchHistoryPage.tableRoot).toBeVisible();
 
       const hasHorizontalScroll = await page.evaluate(
@@ -65,7 +65,7 @@ test.describe('Responsive — Batch History @ 1366x768', () => {
 
       await expect(batchHistoryPage.heading).toBeVisible();
       await expect(batchHistoryPage.dateRangeButton).toBeVisible();
-      await expect(batchHistoryPage.statusCombobox).toBeVisible();
+      await expect(batchHistoryPage.statusFilter).toBeVisible();
       await expect(batchHistoryPage.tableRoot).toBeVisible();
 
       expect(await horizontalOverflow(page)).toBe(false);
@@ -77,7 +77,7 @@ test.describe('Responsive — Batch History @ 375px', () => {
   test.use({ viewport: { width: 375, height: 812 } });
 
   test.beforeEach(async ({ batchHistoryPage }) => {
-    await batchHistoryPage.goto();
+    await batchHistoryPage.gotoAllTime();
   });
 
   /**
@@ -122,7 +122,7 @@ test.describe('Responsive — Batch History @ 320px', () => {
   test.use({ viewport: { width: 320, height: 568 } });
 
   test.beforeEach(async ({ batchHistoryPage }) => {
-    await batchHistoryPage.goto();
+    await batchHistoryPage.gotoAllTime();
   });
 
   /**
@@ -140,16 +140,15 @@ test.describe('Responsive — Batch History @ 320px', () => {
 
       // Controls remain usable, not merely present.
       await expect(batchHistoryPage.dateRangeButton.first()).toBeEnabled();
-      await expect(batchHistoryPage.statusCombobox.first()).toBeEnabled();
+      await expect(batchHistoryPage.statusFilter.first()).toBeEnabled();
 
-      // Pagination survives the breakpoint, but collapses to icon-only: the
-      // "Previous"/"Next" labels are CSS-hidden at this width, which strips the
-      // buttons of an accessible name, so the page-object's by-role locators
-      // cannot see them here. Match on text content and check they are still
-      // rendered at a tappable size.
+      // Pagination survives the breakpoint as icon buttons with accessible
+      // names, rendered at a tappable size.
       await expect(batchHistoryPage.pageIndicator).toBeVisible();
-      for (const label of ['Previous', 'Next']) {
-        const button = page.locator('button').filter({ hasText: new RegExp(`^${label}$`) });
+      for (const [label, button] of [
+        ['Previous', batchHistoryPage.previousPageButton],
+        ['Next', batchHistoryPage.nextPageButton],
+      ] as const) {
         await expect(button).toHaveCount(1);
 
         const box = await button.boundingBox();

@@ -52,7 +52,7 @@ test.describe('Tab trạng thái Active / Inactive — Services', () => {
           expect(rowText.toLowerCase()).toContain('test');
         }
       } else {
-        await expect(productsPage.paginationFooter.first()).toContainText(/of 0 results/i);
+        await expect(productsPage.emptyState).toBeVisible();
       }
     },
   );

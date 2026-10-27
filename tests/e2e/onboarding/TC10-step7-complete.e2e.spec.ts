@@ -70,7 +70,7 @@ test.describe('Bước 7 — `Complete` — Onboarding', () => {
       await expect(onboardingPage.completeHeading).toBeVisible();
       // The Expected pins the level, not just the text: it must be an h2.
       await expect(
-        page.getByRole('heading', { name: 'Merchant Onboarding Complete!', level: 2 }),
+        page.getByRole('heading', { name: 'Merchant onboarding complete!', level: 2 }),
       ).toHaveCount(1);
 
       await expect(onboardingPage.completeDescription).toBeVisible();
@@ -93,14 +93,14 @@ test.describe('Bước 7 — `Complete` — Onboarding', () => {
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ onboardingPage }) => {
       // One value cell per label, so the reads below cannot be ambiguous.
-      for (const label of ['Business Name', 'WHMCS ID', 'Created'] as const) {
+      for (const label of ['Business name', 'WHMCS ID', 'Created'] as const) {
         await expect(onboardingPage.summaryValue(label), `value of "${label}"`).toHaveCount(1);
       }
 
       // The id and the timestamp come straight from the wizard, but Business
       // Name is filled from GET /merchant_settings/<id> — the cell renders
       // empty until that resolves, so it is waited for rather than read once.
-      await expect(onboardingPage.summaryValue('Business Name')).toHaveText(/\S/, {
+      await expect(onboardingPage.summaryValue('Business name')).toHaveText(/\S/, {
         timeout: Timeouts.LONG,
       });
 
@@ -172,9 +172,10 @@ test.describe('Bước 7 — `Complete` — Onboarding', () => {
       await expect(page).toHaveURL(/^https?:\/\/[^/]+\/$/, { timeout: Timeouts.NAVIGATION });
       await expect(page).not.toHaveURL(/\/login/);
       // Home actually rendered — the POS entry card is its first product tile.
-      // The portal home now ships three POS tiles ("POS", "POS Retail", "POS
-      // Restaurant"), so target the plain "POS" card exactly rather than a prefix.
-      await expect(page.getByRole('link', { name: 'POS', exact: true })).toBeVisible({
+      // The portal home ships per-vertical POS tiles (e.g. "POS Nail Spa", "POS
+      // Retail", "POS Restaurant"); assert the first POS tile rather than an exact
+      // label so a vertical rename doesn't break the "home loaded" check.
+      await expect(page.getByRole('link', { name: /^POS/ }).first()).toBeVisible({
         timeout: Timeouts.LONG,
       });
     },
@@ -298,7 +299,7 @@ test.describe('Bước 7 — `Complete` — Onboarding', () => {
       await expect(onboardingPage.completeActionLinks).toHaveCount(COMPLETE_ACTION_LABELS.length);
 
       const hrefs = await onboardingPage.completeActionHrefs();
-      expect(hrefs['Go to Dashboard']).toBe(GO_TO_DASHBOARD_HREF);
+      expect(hrefs['Go to dashboard']).toBe(GO_TO_DASHBOARD_HREF);
       for (const { label, tail } of COMPLETE_ACTION_LINKS) {
         expect(hrefs[label], `href of "${label}"`).toMatch(merchantPathPattern(tail, WHMCS_ID));
       }

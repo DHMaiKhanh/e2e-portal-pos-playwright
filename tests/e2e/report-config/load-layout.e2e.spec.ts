@@ -18,8 +18,8 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Report Configur
 
     /**
      * TC-RCF-00x — Tải trực tiếp màn hình <screen>
-     * Expected: không bị redirect về /login; tiêu đề `page-title`, document.title,
-     * ô tìm kiếm, footer "Showing …" và ít nhất một dòng dữ liệu hiển thị.
+     * Expected: không bị redirect về /login; tiêu đề h1 trong banner `#pos-main`,
+     * document.title, ô tìm kiếm, bộ đếm `pos-count` và ít nhất một dòng dữ liệu hiển thị.
      */
     test(
       `${id} — ${spec.heading} loads by direct URL with title, toolbar and rows`,
@@ -57,8 +57,8 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Report Configur
 
   /**
    * TC-RCF-006 — Thanh công cụ đủ control trên cả 4 màn hình
-   * Expected: ô tìm kiếm đúng placeholder; mỗi bộ lọc là combobox có aria-label
-   * và hiển thị giá trị mặc định; nút "Add …" hiển thị & enabled.
+   * Expected: ô tìm kiếm đúng placeholder; mỗi bộ lọc là filter-chip có aria-label,
+   * chưa có giá trị (chỉ hiện nhãn); nút "Add …" hiển thị & enabled.
    */
   test(
     'TC-RCF-006 — every screen renders search, its default filters and the Add button',
@@ -71,7 +71,8 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Report Configur
         await expect(rc.searchInput).toHaveValue('');
         for (const f of rc.spec.filters) {
           await expect(rc.filter(f.label)).toBeVisible();
-          await expect(rc.filter(f.label)).toHaveText(f.defaultOption);
+          await expect(rc.filter(f.label)).toHaveAttribute('aria-label', f.label);
+          await expect(rc.filter(f.label)).toHaveText(f.chipText);
         }
         await expect(rc.addButton).toBeEnabled();
       }
@@ -80,9 +81,9 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Report Configur
 
   /**
    * TC-RCF-007 — Header bảng đúng nhãn và thứ tự
-   * Expected: Pages NAME|LAYOUTS|STATUS|PUBLISHED; Blocks NAME|STATUS|KIND|DATASET;
-   * Sources NAME|TYPE|RESPONSE|COLUMNS|STATUS|UPDATED; Columns NAME|TYPE|KIND|DATA TYPE;
-   * cột hành động cuối không có nhãn.
+   * Expected (UI 2026-10-13): Pages Name|Key|Layouts|Status|Published;
+   * Blocks Name|Key|Kind|Source|Status; Sources Name|Key|Type|Status|Updated;
+   * Columns Name|Key|Type|Kind|Data type; cột hành động cuối không có nhãn.
    */
   test(
     'TC-RCF-007 — table headers match the documented columns in order',

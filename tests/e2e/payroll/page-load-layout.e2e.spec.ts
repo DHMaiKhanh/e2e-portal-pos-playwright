@@ -1,6 +1,7 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
 import { env } from '@configs/env/loadEnv';
+import { Urls } from '@constants/urls';
 
 test.describe('Page load & layout — Payroll', () => {
   test.beforeEach(async ({ payrollPage }) => {
@@ -24,7 +25,7 @@ test.describe('Page load & layout — Payroll', () => {
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ payrollPage, dashboardPage }) => {
       await payrollPage.waitForReady();
-      await expect(dashboardPage.sidebar.item('Payroll')).toBeVisible();
+      await expect(dashboardPage.sidebar.item(/^payroll$/i)).toBeVisible();
       await expect(payrollPage.pageHeading).toBeVisible();
       await expect(payrollPage.checksTab).toBeVisible();
       await expect(payrollPage.quickBookTab).toBeVisible();
@@ -70,7 +71,7 @@ test.describe('Page load & layout — Payroll', () => {
       const context = await browser.newContext({ storageState: undefined, baseURL: env.BASE_URL });
       const page = await context.newPage();
       try {
-        await page.goto(`/pos/${env.STORE_ID}/payroll`, { waitUntil: 'domcontentloaded' });
+        await page.goto(Urls.PAYROLL, { waitUntil: 'domcontentloaded' });
         await expect(page).toHaveURL(/login/);
         await expect(page.getByText(/payroll/i)).toHaveCount(0);
       } finally {

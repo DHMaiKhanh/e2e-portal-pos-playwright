@@ -513,3 +513,42 @@ Chừng nào form chưa lưu được (hoặc chưa báo lý do từ chối), 4 
 - Đã sửa test (fail ở các lần chạy trước trong ngày, đều do test chứ không phải bug app):
   - TC-STF-011 · test hard-code `America/Chicago`, store giờ là UTC+7 → tính ngày theo offset `(UTC±N)` hiển thị trong ô
 - Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`
+
+---
+
+## Linear — Task & Bug liên quan
+
+> Nguồn: Linear team VP, label `Portal` — lấy ngày 2026-10-20. Bỏ Canceled, TechDebt/CI và Restaurant Portal.
+> Thứ tự: Bug → đang QC/Review → đã Prod/Done → Todo/Backlog. **6 issue.**
+
+| ID                                                  | Loại    | Tiêu đề                                                                         | Trạng thái          | Ưu tiên     | Test hiện có                                                                                                | E2E được? | Ghi chú                                             |
+| --------------------------------------------------- | ------- | ------------------------------------------------------------------------------- | ------------------- | ----------- | ----------------------------------------------------------------------------------------------------------- | --------- | --------------------------------------------------- |
+| [VP-2687](https://linear.app/fastboy/issue/VP-2687) | Bug     | Duplicate Employee Code still imports successfully instead of failing           | Done                | No priority | Có — `regression-linear/vp-2687` ([regression-bugs-linear.md](regression-bugs-linear.md)) — pass 2026-10-20 | Có        | Import trùng Employee Code phải fail (cha: VP-1168) |
+| [VP-2688](https://linear.app/fastboy/issue/VP-2688) | Bug     | Employee Phone is not validated (allows >10 digits, causes format error)        | Done                | No priority | Có — `regression-linear/vp-2688` ([regression-bugs-linear.md](regression-bugs-linear.md)) — pass 2026-10-20 | Có        | Import phone >10 số phải bị chặn (cha: VP-1168)     |
+| [VP-3787](https://linear.app/fastboy/issue/VP-3787) | Bug     | [Portal] Staff Detail: toggle Status / Appointment Staff xoá mất Role của staff | Done                | Urgent      | Có — `regression-linear/vp-3787` ([regression-bugs-linear.md](regression-bugs-linear.md)) — pass 2026-10-20 | Có        | Toggle Status/Appointment Staff → Role bị null      |
+| [VP-1168](https://linear.app/fastboy/issue/VP-1168) | Feature | [Portal] - Import Staff via .csv                                                | Verified Production | High        | Chưa                                                                                                        | Có        | Import Staff .csv                                   |
+| [VP-1180](https://linear.app/fastboy/issue/VP-1180) | Task    | POS Portal - Advanced Export Staff (Customizable Fields & Filters)              | Verified Production | Low         | Có — `staffs/TC5-export-data`                                                                               | Có        | Advanced Export Staff                               |
+| [VP-3153](https://linear.app/fastboy/issue/VP-3153) | Task    | Ticket #148959_ Investigate Duplicate Staff Code & Income Mapping Issue         | Verified Production | High        | Chưa                                                                                                        | Không     | Sửa dữ liệu trùng Staff Code cho 1 tiệm             |
+
+---
+
+## Đã loại bỏ / thay đổi (2026-10-20)
+
+Bối cảnh: UI Portal đổi sang design system mới ngày 2026-10-13 (Linear VP-4569). Locator được sửa theo DOM thật (quét 2026-10-20, DEV store 100004). **Không xoá test nào** — 49 test.
+
+**Thay đổi chính (locator / hành vi mới):**
+
+- Tiêu đề `h1 "Staff Members"`; ô tìm `"Search name, code, phone…"`; nút `Add staff` (trước "Create"); filter là chip `"Filter by staff status: Active"` / `"Sort staff: Custom order"` mở popover có `option`.
+- Pager `navigation "Pagination"`, range `"1–30 of 70"`, `"1 / 3"`; tìm không thấy → empty state `"No matching results"` và pager bị ẩn (TC-STF-021/027/093).
+- Click vào **dòng** không mở chi tiết nữa — phải click tên (nickname) ở ô đầu: thêm `StaffsPage.openStaff()` (TC-STF-015, 060–070). TC-STF-015 so sánh tên ở `h1` trang chi tiết.
+- Ô trống Phone/Email hiển thị `—` (em dash) thay cho `-` (TC-STF-011).
+- Dialog tạo: `"New staff"` (trước "Create New Staff"), field theo `id` (#firstName, #nickname, #ssn, #postalCode…), color là `radiogroup "Color"`, nút `"Upload photo"`.
+- Dialog export: `"Export staff"`, định dạng là radio `Excel` / `CSV`, filter id `#staff-export-*`; filter Status là combobox nhiều lựa chọn (`option` + `aria-checked`), mặc định "All statuses" → TC-STF-054 chọn riêng Inactive.
+- Tab Role & permissions: nhóm quyền mở sẵn, nút `"Collapse all"` ⇄ `"Expand all"`, nút lưu là `"Save"` (không bấm) — TC-STF-068.
+- Cross-store (TC-STF-082): thêm `/nail/`, thông điệp mới `"We couldn't load this merchant"`; khi quét rò rỉ email bỏ qua cột sidebar (hiển thị email của chính người đăng nhập).
+
+**Đổi cách kiểm (không ghi dữ liệu không hoàn tác được):**
+
+- TC-STF-031 — POST tạo staff được **chặn và trả 201 giả** (`page.route`), không ghi vào DEV: UI không có xoá staff và `DELETE /staffs/<id>` chưa được xác minh, bản cũ có nguy cơ để lại staff vĩnh viễn. Vẫn kiểm tra đủ luồng người dùng: điền form → "Create staff" gửi đúng payload (firstName, lastName, nickname, staffCode) → dialog đóng.
+
+**Còn FAIL:** không có (lần chạy cuối 49/49 PASS; TC-STF-054 có 1 lần "download canceled" do môi trường, chạy lại PASS).

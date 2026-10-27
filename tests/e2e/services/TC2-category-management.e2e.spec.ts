@@ -15,21 +15,19 @@ test.describe('Danh sách Category (Reorder / Edit / Add Category) — Services'
       const otherButton = productsPage.otherCategoryButton;
       await expect(otherButton).toBeVisible();
 
-      // "Other" reorder/move controls must be disabled with the "Other is always last" tooltip.
-      const otherReorderHandle = productsPage.categoryReorderHandle('Other');
-      const otherMoveUp = productsPage.categoryMoveUpButton('Other');
-      const otherMoveDown = productsPage.categoryMoveDownButton('Other');
-      const otherMoveToFirst = productsPage.categoryMoveToFirstButton('Other');
-      const otherMoveToLast = productsPage.categoryMoveToLastButton('Other');
+      // Every category has a non-empty name, none is duplicated, and "Other" is last.
+      const names = await productsPage.categoryNamesInOrder();
+      expect(names.length).toBeGreaterThan(1);
+      for (const name of names) expect(name.length).toBeGreaterThan(0);
+      expect(new Set(names).size).toBe(names.length);
+      expect(names.at(-1)).toBe('Other');
 
-      for (const locator of [otherMoveUp, otherMoveDown, otherMoveToFirst, otherMoveToLast]) {
-        if (await locator.count()) {
-          await expect(locator).toBeDisabled();
-        }
-      }
-      if (await otherReorderHandle.count()) {
-        await expect(otherReorderHandle).toHaveAttribute('aria-disabled', /true/);
-      }
+      // Since the 2026-10-13 refactor "Other" carries a disabled handle labelled
+      // "Other is always last" and no "Actions for Other" menu at all.
+      await expect(productsPage.otherPinnedHandle).toHaveAttribute('aria-disabled', 'true');
+      await expect(productsPage.otherPinnedHandle).toBeDisabled();
+      await expect(productsPage.categoryActionsButton('Other')).toHaveCount(0);
+      await expect(productsPage.categoryReorderHandle('Other')).toHaveCount(0);
     },
   );
 
@@ -39,18 +37,17 @@ test.describe('Danh sách Category (Reorder / Edit / Add Category) — Services'
     async ({ productsPage }) => {
       await productsPage.switchToActiveTab();
 
-      const firstCategoryName = productsPage.categoryButton(/.+/).first();
-      const name = ((await firstCategoryName.textContent()) ?? '').trim();
+      const names = await productsPage.categoryNamesInOrder();
+      expect(names.length).toBeGreaterThan(2);
+      const name = names[0];
 
-      const moveToFirst = productsPage.categoryMoveToFirstButton(name);
-      const moveUp = productsPage.categoryMoveUpButton(name);
-
-      if (await moveToFirst.count()) {
-        await expect(moveToFirst).toBeDisabled();
-      }
-      if (await moveUp.count()) {
-        await expect(moveUp).toBeDisabled();
-      }
+      // Read-only: the menu is opened, inspected and dismissed.
+      await productsPage.openCategoryActions(name);
+      await expect(productsPage.categoryMoveToFirstButton(name)).toBeDisabled();
+      await expect(productsPage.categoryMoveUpButton(name)).toBeDisabled();
+      await expect(productsPage.categoryMoveDownButton(name)).toBeEnabled();
+      await expect(productsPage.categoryMoveToLastButton(name)).toBeEnabled();
+      await productsPage.closeCategoryActions(name);
     },
   );
 
@@ -64,22 +61,17 @@ test.describe('Danh sách Category (Reorder / Edit / Add Category) — Services'
       await expect(otherButton).toBeVisible();
 
       // The category immediately preceding "Other" is the last movable one.
-      const lastCategoryName = await productsPage.otherCategoryButton
-        .locator('xpath=preceding-sibling::*[1]')
-        .textContent();
-      const name = (lastCategoryName ?? '').trim();
+      const names = await productsPage.categoryNamesInOrder();
+      expect(names.at(-1)).toBe('Other');
+      const name = names.at(-2) as string;
+      expect(name, 'no movable category before "Other"').toBeTruthy();
 
-      if (name) {
-        const moveDown = productsPage.categoryMoveDownButton(name);
-        const moveToLast = productsPage.categoryMoveToLastButton(name);
-
-        if (await moveDown.count()) {
-          await expect(moveDown).toBeDisabled();
-        }
-        if (await moveToLast.count()) {
-          await expect(moveToLast).toBeDisabled();
-        }
-      }
+      await productsPage.openCategoryActions(name);
+      await expect(productsPage.categoryMoveDownButton(name)).toBeDisabled();
+      await expect(productsPage.categoryMoveToLastButton(name)).toBeDisabled();
+      await expect(productsPage.categoryMoveUpButton(name)).toBeEnabled();
+      await expect(productsPage.categoryMoveToFirstButton(name)).toBeEnabled();
+      await productsPage.closeCategoryActions(name);
     },
   );
 
@@ -94,17 +86,17 @@ test.describe('Danh sách Category (Reorder / Edit / Add Category) — Services'
       const dialog = page.getByRole('dialog');
       await expect(dialog).toBeVisible();
 
-      const nameInput = dialog.getByPlaceholder(/enter category name/i);
-      if (await nameInput.count()) {
-        await nameInput.fill('');
-      }
+      const nameInput = productsPage.categoryNameInput;
+      await expect(nameInput).toBeVisible();
+      await nameInput.fill('');
 
-      // The submit control is labelled "Create" — not "Save"/"Add", which is what
-      // this test used to look for (and never found inside the dialog).
-      await dialog.getByRole('button', { name: /^create$/i }).click();
+      // The submit control is "Create category" since the 2026-10-13 refactor.
+      await productsPage.categoryDialogCreateButton.click();
 
-      // Expect a validation message and no navigation away / no new category committed.
-      await expect(page.getByText(/required|cannot be empty|please enter/i)).toBeVisible();
+      // Expect a validation message and no new category committed.
+      await expect(dialog.getByRole('alert')).toHaveText(/required|cannot be empty|please enter/i);
+      await expect(nameInput).toHaveAttribute('aria-invalid', 'true');
+      await expect(dialog).toBeVisible();
 
       // Close the dialog without creating anything. The dialog carries BOTH a
       // "Cancel" button and an icon-only "Close" — match one of them explicitly
@@ -129,7 +121,9 @@ test.describe('Danh sách Category (Reorder / Edit / Add Category) — Services'
    * assertion still leaves the store as it was found.
    */
   test.describe('mutating category state', () => {
-    test.describe.configure({ mode: 'serial' });
+    // Generous timeout: each case writes, reloads and then restores in `finally`;
+    // on a slow shared DEV the default 60s could kill the restore half-way.
+    test.describe.configure({ mode: 'serial', timeout: 240_000 });
 
     test(
       'TC-SVC-011 — "Move ... up/down" swaps adjacent category order and persists',
@@ -202,9 +196,10 @@ test.describe('Danh sách Category (Reorder / Edit / Add Category) — Services'
               .toBe(target);
 
             // At the top, the upward controls must switch off.
-            await productsPage.hoverCategory(target);
+            await productsPage.openCategoryActions(target);
             await expect(productsPage.categoryMoveToFirstButton(target)).toBeDisabled();
             await expect(productsPage.categoryMoveUpButton(target)).toBeDisabled();
+            await productsPage.closeCategoryActions(target);
           });
 
           await test.step(`"${target}" moves to last, landing before "Other"`, async () => {
@@ -213,9 +208,10 @@ test.describe('Danh sách Category (Reorder / Edit / Add Category) — Services'
               .poll(async () => (await productsPage.categoryNamesInOrder()).slice(-2))
               .toEqual([target, 'Other']);
 
-            await productsPage.hoverCategory(target);
+            await productsPage.openCategoryActions(target);
             await expect(productsPage.categoryMoveToLastButton(target)).toBeDisabled();
             await expect(productsPage.categoryMoveDownButton(target)).toBeDisabled();
+            await productsPage.closeCategoryActions(target);
           });
         } finally {
           await productsPage.moveCategoryToIndex(target, originalIndex);
@@ -285,55 +281,46 @@ test.describe('Danh sách Category (Reorder / Edit / Add Category) — Services'
      * (thường ở cuối, trước "Other").
      */
     /**
-     * Creates a real category, named with an `E2E-` prefix so anything left
-     * behind is identifiable.
-     *
-     * Caveat worth knowing: the Portal exposes no delete-category control — the
-     * Edit dialog offers Cancel / Save Changes / Close and nothing else — so
-     * cleanup can only deactivate the category, which moves it off the Active tab
-     * and out of the way. That is as far as the UI allows; removing the rows
-     * needs a backend/API delete.
+     * Changed 2026-10-20: this case no longer SAVES a category. The Portal has
+     * no delete-category control (Actions menu = Move… / Edit; Edit dialog =
+     * Cancel / Save changes / Close), so a created category can never be
+     * reverted — earlier runs left ten inactive `E2E-CAT-*` categories on the
+     * shared DEV store. The rule for this suite is "write only what you can
+     * restore", so the case now verifies the form end-to-end up to the submit
+     * and checks that Cancel commits nothing.
      */
     test(
-      'TC-SVC-016 — "Add Category" opens the add-category form and creates a category',
+      'TC-SVC-016 — "Add Category" opens the add-category form (fill + cancel, nothing saved)',
       { tag: [Tag.REGRESSION, Tag.UI] },
-      async ({ productsPage, page }) => {
+      async ({ productsPage }) => {
         await productsPage.switchToActiveTab();
         const before = await productsPage.categoryNamesInOrder();
         const name = `E2E-CAT-${Date.now()}`;
 
-        try {
-          await test.step('The form opens with the expected fields', async () => {
-            await productsPage.addCategoryButton.click();
-            await expect(productsPage.categoryDialog).toBeVisible();
-            await expect(productsPage.categoryDialog).toContainText(/create new category/i);
-            await expect(productsPage.categoryNameInput).toBeVisible();
-            await expect(productsPage.categoryDialogCreateButton).toBeEnabled();
-          });
+        await test.step('The form opens with the expected fields', async () => {
+          await productsPage.addCategoryButton.click();
+          await expect(productsPage.categoryDialog).toBeVisible();
+          await expect(productsPage.categoryDialog).toContainText(/new category/i);
+          await expect(productsPage.categoryNameInput).toBeVisible();
+          await expect(productsPage.categoryNameInput).toHaveValue('');
+          await expect(
+            productsPage.categoryDialog.getByRole('radiogroup', { name: 'Color' }),
+          ).toBeVisible();
+          await expect(productsPage.categoryActiveSwitch).toHaveAttribute('aria-checked', 'true');
+          await expect(productsPage.categoryDialogCreateButton).toBeEnabled();
+        });
 
-          await test.step('Saving adds it to the list, just before "Other"', async () => {
-            await productsPage.categoryNameInput.fill(name);
-            await productsPage.submitCategoryCreate();
+        await test.step('The name is accepted, with its length counter', async () => {
+          await productsPage.categoryNameInput.fill(name);
+          await expect(productsPage.categoryNameInput).toHaveValue(name);
+          await expect(productsPage.categoryDialog).toContainText(`${name.length}/50`);
+        });
 
-            await expect
-              .poll(async () => await productsPage.categoryNamesInOrder())
-              .toContain(name);
-
-            const after = await productsPage.categoryNamesInOrder();
-            expect(after).toHaveLength(before.length + 1);
-            expect(after.slice(-2)).toEqual([name, 'Other']);
-          });
-        } finally {
-          // Best-effort tidy-up: deactivate so it leaves the Active tab. The
-          // Portal has no delete-category control, so this is as clean as the
-          // UI gets — see the note above this test.
-          await productsPage.goto();
-          await productsPage.switchToActiveTab();
-          if ((await productsPage.categoryRow(name).count()) > 0) {
-            await productsPage.setCategoryActive(name, false);
-          }
-          void page;
-        }
+        await test.step('Cancel commits nothing', async () => {
+          await productsPage.categoryDialogCancelButton.click();
+          await expect(productsPage.categoryDialog).toBeHidden();
+          expect(await productsPage.categoryNamesInOrder()).toEqual(before);
+        });
       },
     );
 

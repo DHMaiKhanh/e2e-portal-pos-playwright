@@ -19,9 +19,11 @@ import {
  * Reports › Daily Sale Report — bảng Order Details & panel (TC-RPT-026 … 034).
  */
 const SLUG = ReportPageSlug.DAILY_SALE;
+/** Verified data-bearing day on DEV store 100004: 52 orders (two pages of 30). */
+const BUSY_DAY = '2026-08-05';
 
 async function openWithRows(rp: ReportPagesPage): Promise<void> {
-  test.skip((await rp.openDailyWithRows()) === null, 'No orders today or yesterday — nothing to assert');
+  expect((await rp.openDailyWithRows()) === null, 'No orders today or yesterday — nothing to assert').toBeFalsy();
 }
 
 /** First value whose label starts with `label` (labels may carry a sub-caption). */
@@ -30,21 +32,22 @@ const valueOf = (rows: RptValueRow[], label: string): number =>
 
 async function detailSections(rp: ReportPagesPage): Promise<{ income: RptValueRow[]; payment: RptValueRow[] }> {
   // The detail panels load through their own block request — wait for both.
+  // Since 2026-10-20 the collapsible header carries the total (no Total Payment row).
   await expect
     .poll(
       async () =>
-        /INCOME DETAIL\s*-?\$[\s\S]*Total Payment\s*-?\$[\s\S]*PAYMENT DETAIL\s*-?\$[\s\S]*Total Payment\s*-?\$/.test(
+        /Income Detail\s*[-−]?\$[\s\S]*Tax Collected[^$]*[-−]?\$[\s\S]*Payment Detail\s*[-−]?\$[\s\S]*Gift Card Redemption\s*[-−]?\$/.test(
           await rp.rightPanelText(),
         ),
       { timeout: Timeouts.LONG },
     )
     .toBe(true);
   const text = await rp.rightPanelText();
-  const income = ReportPagesPage.section(text, 'INCOME DETAIL', ['PAYMENT DETAIL']);
-  const payment = ReportPagesPage.section(text, 'PAYMENT DETAIL', ['INCOME DETAIL']);
+  const income = ReportPagesPage.section(text, 'Income Detail', ['Payment Detail']);
+  const payment = ReportPagesPage.section(text, 'Payment Detail', ['Income Detail']);
   return {
-    income: rptParseRows(income.replace(/^INCOME DETAIL/, 'HEADER')),
-    payment: rptParseRows(payment.replace(/^PAYMENT DETAIL/, 'HEADER')),
+    income: rptParseRows(income.replace(/^Income Detail/, 'HEADER')),
+    payment: rptParseRows(payment.replace(/^Payment Detail/, 'HEADER')),
   };
 }
 
@@ -62,7 +65,7 @@ test.describe('Reports › Daily Sale — Order Details & detail panels', () => 
   );
 
   test(
-    'TC-RPT-027 — every row shows an order code button and currency amounts',
+    'TC-RPT-027 — every row shows an order code link and currency amounts',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportPagesPage: rp }) => {
       await openWithRows(rp);
@@ -72,7 +75,7 @@ test.describe('Reports › Daily Sale — Order Details & detail panels', () => 
       for (let c = 1; c <= 4; c++) {
         for (const v of await rp.columnTexts(c)) expect(v).toMatch(RPT_CURRENCY);
       }
-      await expect(rp.dataRows().first().getByRole('button', { name: /^#OD/ })).toBeVisible();
+      await expect(rp.dataRows().first().locator('[data-slot="report-cell-link"]')).toHaveText(/^#OD/);
     },
   );
 
@@ -93,18 +96,17 @@ test.describe('Reports › Daily Sale — Order Details & detail panels', () => 
     'TC-RPT-029 — Next / Previous page through orders and keep ?page= in the URL',
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp, page }) => {
-      await openWithRows(rp);
+      await rp.openWithData(SLUG, { after: BUSY_DAY, before: BUSY_DAY });
       const { total } = await rp.footerCounts();
-      test.skip(total <= RPT_PAGE_SIZE, 'Only one page of orders today');
+      expect(total <= RPT_PAGE_SIZE, `Only one page of orders on ${BUSY_DAY}`).toBeFalsy();
       await expect(rp.previousButton).toBeDisabled();
       await expect(rp.pageIndicator).toHaveText(new RegExp(`^1 / ${Math.ceil(total / RPT_PAGE_SIZE)}$`));
       const firstCode = (await rp.columnTexts(0))[0];
       await rp.nextButton.click();
       await expect(page).toHaveURL(/[?&]page=2\b/);
-      await expect(rp.resultsFooter).toHaveText(
-        `Showing 31 to ${Math.min(60, total)} of ${total} results`,
-        { timeout: Timeouts.MEDIUM },
-      );
+      await expect(rp.paginationRange).toHaveText(`31–${Math.min(60, total)} of ${total}`, {
+        timeout: Timeouts.MEDIUM,
+      });
       await expect(rp.pageIndicator).toHaveText(/^2 \/ \d+$/);
       await expect.poll(async () => (await rp.columnTexts(0))[0]).not.toBe(firstCode);
       await rp.previousButton.click();
@@ -119,10 +121,10 @@ test.describe('Reports › Daily Sale — Order Details & detail panels', () => 
       await openWithRows(rp);
       const urlBefore = page.url();
       const code = (await rp.columnTexts(0))[0].replace(/ \(Refund\)$/, '');
-      await rp.dataRows().first().getByRole('button', { name: /^#OD/ }).click();
+      await rp.dataRows().first().locator('[data-slot="report-cell-link"]').click();
       await expect(rp.orderDialog).toBeVisible({ timeout: Timeouts.LONG });
       await expect(rp.orderDialog).toContainText(code);
-      for (const section of ['Order Information', 'Service Details', 'Payment Details', 'Activity Log']) {
+      for (const section of ['Order information', 'Service details', 'Payment details', 'Activity log']) {
         await expect(rp.orderDialog.getByText(section, { exact: true }).first()).toBeVisible();
       }
       expect(page.url()).toBe(urlBefore);
@@ -132,16 +134,15 @@ test.describe('Reports › Daily Sale — Order Details & detail panels', () => 
   );
 
   test(
-    'TC-RPT-031 — INCOME DETAIL lists its rows, totals to Total Payment and collapses',
+    'TC-RPT-031 — Income Detail lists its rows, totals to its header and collapses',
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp, page }) => {
       await openWithRows(rp);
       const { income } = await detailSections(rp);
       for (const label of RPT_INCOME_DETAIL_ROWS) expect(Number.isNaN(valueOf(income, label)), label).toBe(false);
       const header = valueOf(income, 'HEADER');
-      expect(header).toBeCloseTo(valueOf(income, 'Total Payment'), 2);
       const sum = valueOf(income, 'Sale') + valueOf(income, 'Tip') + valueOf(income, 'Tax Collected');
-      expect(sum).toBeCloseTo(valueOf(income, 'Total Payment'), 1);
+      expect(sum).toBeCloseTo(header, 1);
       await expect(rp.incomeDetailTrigger).toHaveAttribute('aria-expanded', 'true');
       await rp.incomeDetailTrigger.click();
       await expect(rp.incomeDetailTrigger).toHaveAttribute('aria-expanded', 'false');
@@ -152,7 +153,7 @@ test.describe('Reports › Daily Sale — Order Details & detail panels', () => 
   );
 
   test(
-    'TC-RPT-032 — PAYMENT DETAIL: Card + Cash + Others = Amount Collected; + Gift Card = Total Payment',
+    'TC-RPT-032 — Payment Detail: Card + Cash + Others = Amount Collected; + Gift Card = header total',
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp }) => {
       await openWithRows(rp);
@@ -161,7 +162,7 @@ test.describe('Reports › Daily Sale — Order Details & detail panels', () => 
       const collected = valueOf(payment, 'Card') + valueOf(payment, 'Cash') + valueOf(payment, 'Others');
       expect(collected).toBeCloseTo(valueOf(payment, 'Amount Collected'), 1);
       expect(valueOf(payment, 'Amount Collected') + valueOf(payment, 'Gift Card Redemption')).toBeCloseTo(
-        valueOf(payment, 'Total Payment'),
+        valueOf(payment, 'HEADER'),
         1,
       );
     },
@@ -185,10 +186,11 @@ test.describe('Reports › Daily Sale — Order Details & detail panels', () => 
     'TC-RPT-034 — an out-of-range ?page= clamps to a valid page',
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp }) => {
-      test.fail(true, 'Product bug: page=99 renders "99 / 1" with an empty table instead of clamping');
-      await rp.open(SLUG, { page: '99' });
+      // Product bug (2026-10-20): page=99 renders "No results · 1 / 1" with an empty table.
+      await rp.open(SLUG, { after: BUSY_DAY, before: BUSY_DAY, page: '99' });
       await rp.waitForData();
-      await expect(rp.pageIndicator).not.toHaveText(/^99 \//, { timeout: Timeouts.SHORT });
+      await expect(rp.dataRows().first()).toBeVisible({ timeout: Timeouts.MEDIUM });
+      await expect(rp.emptyRow).toHaveCount(0);
     },
   );
 });

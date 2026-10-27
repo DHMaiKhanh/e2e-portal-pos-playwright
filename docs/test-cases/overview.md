@@ -581,3 +581,27 @@
   - TC-OVW-066 (2 file) · đếm ≥4 giá trị `$` nhưng Batch History rỗng → kiểm tra định dạng trên 3 thẻ Sale / Total Tip / Total Payment
   - TC-OVW-099 · thẻ POS hiển thị serial terminal (vd `B5552E9`) thay vì chữ "terminal" → chấp nhận `No terminal` hoặc serial
 - Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`
+
+## Đã loại bỏ / thay đổi (2026-10-20)
+
+Bối cảnh: UI Portal refactor sang design system mới ngày 2026-10-13 (Linear VP-4569). Overview mới gồm: header (h1 = tên merchant + pill Active/Inactive + dòng "Today: n orders · $x" + link "View report"), 3 card "Merchant information", "Device summary" ("n devices", radiogroup Registration status, các dòng thiết bị), "Batch history (last 7 days)". `src/pages/dashboard/DashboardPage.ts` đã được map lại theo DOM thật (kiểm tra trên store 100004, 3, 12, 30, 2502).
+
+**Gộp file trùng (giữ 1 file / cặp, đã gộp assertion có ý nghĩa từ file kia)** — đã xoá:
+tai-trang-bo-cuc, thanh-app-switcher, header-ngu-canh-cua-hang, dieu-huong-sidebar, today-s-summary-the-chi-so, thong-tin-merchant, tong-quan-thiet-bi-device-summary, lich-su-batch-batch-history, menu-nguoi-dung-dang-xuat, responsive-cross-device, security-permissions (`.e2e.spec.ts`). Cặp Generate Token xoá cả hai (tao-token-generate-token, generate-token).
+
+**Đã xoá test**
+
+- TC-OVW-127, TC-OVW-128 — nút "Generate Token" và modal token đã bị gỡ khỏi Overview (không store nào còn hiển thị).
+- TC-OVW-086 (và phần encryption key/copy của TC-OVW-080) — Overview không còn hiển thị encryption key cho bất kỳ store nào.
+- TC-OVW-034 — POS shell không còn logo "FastboyPay home"; chuyển app qua menu "Switch app".
+- TC-OVW-096 — badge "n offline" không còn; trạng thái offline hiển thị theo từng dòng (đã kiểm trong TC-OVW-099).
+
+**Đổi mục tiêu (giữ ID)**
+
+- TC-OVW-004/064/066 — 5 thẻ Today's Summary bị thay bằng dòng "Today: n orders · $x"; test kiểm định dạng dòng này. TC-OVW-073 — link "View report" → report-pages/income-summary.
+- TC-OVW-033 — kiểm menu "Switch app" (POS Nail Spa / Payment / Business / Gift Card) + user menu.
+- TC-OVW-049/051 — link `/income` không còn trong sidebar (Income Summary nằm trong nhóm Reports, chỉ mount khi mở nhóm).
+
+**Còn fail**: không.
+
+Kết quả chạy 2026-10-20 (ENV=stage, retries=0, từng file): 25 test Overview pass.

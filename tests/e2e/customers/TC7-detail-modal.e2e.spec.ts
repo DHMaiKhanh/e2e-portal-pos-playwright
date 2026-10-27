@@ -108,7 +108,7 @@ test.describe('Chi tiết khách hàng (Detail page) — Customers', () => {
       // press would throw away whatever the user had typed into Profile.
       expect(page.url()).toBe(detailUrl);
       await expect(customerDetailPage.nameInput).toBeVisible();
-      await expect(customerDetailPage.saveChangesButton).toBeVisible();
+      await expect(customerDetailPage.tab(/^profile$/i)).toHaveAttribute('data-state', 'active');
     },
   );
 });

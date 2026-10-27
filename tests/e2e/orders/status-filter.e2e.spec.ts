@@ -12,17 +12,16 @@ test.describe('Bộ lọc Status — Orders', () => {
     async ({ ordersPage }) => {
       await ordersPage.statusFilter.click();
 
-      // Read off the live Select on 2026-08-12. The reset option is "All
-      // statuses" (the app used to label it "All status") and "Pending" was
-      // added between "Partial Refunded" and "Refund Issue".
+      // Read off the live popover on 2026-10-20 (VP-4569): no "All statuses"
+      // reset option any more (reset = "Clear status filter") and labels are
+      // sentence-case ("Cancel issue", "Partial refunded", "Refund issue").
       const expectedOptions = [
-        'All statuses',
-        'Cancel Issue',
+        'Cancel issue',
         'Canceled',
         'Canceling',
-        'Partial Refunded',
+        'Partial refunded',
         'Pending',
-        'Refund Issue',
+        'Refund issue',
         'Refunded',
         'Refunding',
         'Successful - Settled',
@@ -35,6 +34,7 @@ test.describe('Bộ lọc Status — Orders', () => {
           ordersPage.page.getByRole('option', { name: optionName, exact: true }),
         ).toBeVisible();
       }
+      await expect(ordersPage.page.getByRole('option')).toHaveCount(expectedOptions.length);
     },
   );
 

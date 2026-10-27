@@ -37,11 +37,11 @@ export const ONBOARDING_STEP_SLUGS = [
 /** Stepper labels as rendered, in order — asserted by the layout cases. */
 export const ONBOARDING_STEP_LABELS = [
   'Validate',
-  'Business Information',
-  'Work Hours',
+  'Business information',
+  'Work hours',
   'Photos',
   'Package',
-  'Payment & Transactions',
+  'Payment & transactions',
   'Complete',
 ] as const;
 
@@ -63,23 +63,26 @@ export const WEEKDAYS = [
 
 /** The four tender switches on step 6, with the `name` each posts under. */
 export const PAYMENT_METHODS = [
-  { label: 'Credit Card', name: 'card', description: 'Visa, Mastercard, Amex, Discover' },
+  { label: 'Credit card', name: 'card', description: 'Visa, Mastercard, Amex, Discover' },
   { label: 'Cash', name: 'cash', description: 'Physical cash accepted at the drawer' },
-  { label: 'Gift Cards', name: 'gift_card', description: 'Store-issued gift cards and balances' },
+  { label: 'Gift cards', name: 'gift_card', description: 'Store-issued gift cards and balances' },
   { label: 'Others', name: 'other', description: 'Checks, external terminals, house account' },
 ] as const;
 
 /** Integration rows on the step-1 status panel. */
-export const INTEGRATION_SYSTEMS = ['DTS', 'Business App', 'Fastboypay'] as const;
+export const INTEGRATION_SYSTEMS = ['DTS', 'Business app', 'Fastboypay'] as const;
 
-/** Badge labels the status panel can render (enumerated from the bundle). */
+/**
+ * Badge labels the status panel can render (enumerated from the bundle).
+ * Sentence case since the VP-4569 refactor ("Not ready", verified 2026-10-21).
+ */
 export const INTEGRATION_BADGES = [
   'Ready',
-  'Not Ready',
+  'Not ready',
   'Optional',
   'Integrated',
-  'Not Integrated',
-  'Failed Connect',
+  'Not integrated',
+  'Failed connect',
 ] as const;
 
 /** Success toasts, per step. */
@@ -129,9 +132,9 @@ export const INTEGRATION_DESCRIPTIONS = {
 
 /** The two summary sentences under the system rows. */
 export const INTEGRATION_SUMMARIES = {
-  READY: 'Required systems are ready. You can proceed to create the merchant.',
-  NOT_READY:
-    'Merchant is not ready for onboarding. Please ensure all required systems are configured before proceeding.',
+  READY: 'Required systems are ready. You can create the merchant.',
+  /** VP-4569: a warning callout — title + "Set up every required system, then check again." */
+  NOT_READY: 'Merchant is not ready for onboarding',
 } as const;
 
 /**
@@ -175,6 +178,8 @@ export const INTERNAL_NAV_LINKS = [
   { label: 'Packages', href: '/pos/nail/admin/packages' },
   { label: 'All Orders', href: '/pos/nail/admin/orders' },
   { label: 'Devices', href: '/pos/nail/admin/devices' },
+  // VP-4569 (2026-10-21): "Users & Roles" is a plain link again.
+  { label: 'Users & Roles', href: '/pos/nail/admin/users/employees' },
 ] as const;
 
 /**
@@ -196,15 +201,27 @@ export const STORE_SCOPED_NAV_TAILS = [
 ] as const;
 
 /** Product-context buttons on the far-left icon rail. */
-export const PRODUCT_SWITCHER_BUTTONS = ['POS', 'Payment', 'Business', 'Gift Card'] as const;
+/**
+ * Product contexts. Since VP-4569 (verified 2026-10-21) the icon rail is gone:
+ * the sidebar header has a `button "Switch app"` (text "Volt POS") opening a
+ * `menu "Switch app"` whose items include these four.
+ */
+export const PRODUCT_SWITCHER_BUTTONS = [
+  'POS Nail Spa',
+  'Payment',
+  'Business',
+  'Gift Card',
+] as const;
 
 /** Step 2 text fields: HTML id, visible label, placeholder and input type. */
 export const MERCHANT_INFO_FIELDS = [
-  { id: 'businessName', label: 'Business Name', placeholder: 'Enter business name', type: 'text' },
-  { id: 'legalName', label: 'Legal Name', placeholder: 'Enter legal name', type: 'text' },
+  { id: 'businessName', label: 'Business name', placeholder: 'Enter business name', type: 'text' },
+  { id: 'legalName', label: 'Legal name', placeholder: 'Enter legal name', type: 'text' },
   { id: 'address', label: 'Address', placeholder: 'Enter address', type: 'text' },
   { id: 'city', label: 'City', placeholder: 'Enter city', type: 'text' },
   { id: 'postalCode', label: 'Zip', placeholder: 'Enter zip code', type: 'text' },
+  // VP-4569 added a store phone; the owner's phone moved under "Contact owner".
+  { id: 'businessPhone', label: 'Business phone', placeholder: '(205) 555-0123', type: 'tel' },
   { id: 'phoneNumber', label: 'Phone', placeholder: '(205) 555-0123', type: 'tel' },
   { id: 'email', label: 'Email', placeholder: 'email@example.com', type: 'email' },
   { id: 'website', label: 'Website URL', placeholder: 'https://example.com', type: 'url' },
@@ -251,7 +268,7 @@ export const PACKAGE_FEATURE_GROUPS = [
 export const TIP_TIMING_OPTIONS = [
   {
     value: 'before_payment',
-    label: 'Before Payment',
+    label: 'Before payment',
     badge: 'SALE',
     description:
       'Tip is collected before the card is charged. Sent as a Sale — the tip cannot be adjusted after checkout.',
@@ -259,7 +276,7 @@ export const TIP_TIMING_OPTIONS = [
   },
   {
     value: 'after_payment',
-    label: 'After Payment',
+    label: 'After payment',
     badge: 'AUTHORIZE',
     description:
       'Card is authorized for the order amount, then captured with the final tip included.',
@@ -276,13 +293,13 @@ export const COMPLETE_CREATED_PATTERN =
 
 /** Step 6 percentage fields: HTML id + visible label, in render order. */
 export const TAX_PRICING_FIELDS = [
-  { id: 'taxPercentage', label: 'Product Tax Rate (%)' },
-  { id: 'cashDiscountPercentage', label: 'Cash Discount (%)' },
-  { id: 'serviceFeePercentage', label: 'Service Fee (%)' },
+  { id: 'taxPercentage', label: 'Product tax rate (%)' },
+  { id: 'cashDiscountPercentage', label: 'Cash discount (%)' },
+  { id: 'serviceFeePercentage', label: 'Service fee (%)' },
 ] as const;
 
 /** The two `Tip type` toggles, in render order — `Percentage` starts pressed. */
-export const TIP_TYPE_OPTIONS = ['Percentage', 'Fixed Amount'] as const;
+export const TIP_TYPE_OPTIONS = ['Percentage', 'Fixed amount'] as const;
 
 export type TipTypeOption = (typeof TIP_TYPE_OPTIONS)[number];
 
@@ -309,9 +326,9 @@ export const INTEGRATION_BADGE_PATTERN = new RegExp(
  * `env.STORE_ID`. Build the matcher with {@link merchantPathPattern}.
  */
 export const COMPLETE_ACTION_LINKS = [
-  { label: 'View Merchant', tail: 'setting' },
-  { label: 'Add Services', tail: 'services' },
-  { label: 'Add Staff', tail: 'staffs' },
+  { label: 'View merchant', tail: 'setting' },
+  { label: 'Add services', tail: 'services' },
+  { label: 'Add staff', tail: 'staffs' },
 ] as const;
 
 /** `Go to Dashboard` is the only step-7 link that is not merchant-scoped. */
@@ -319,16 +336,16 @@ export const GO_TO_DASHBOARD_HREF = '/';
 
 /** Every step-7 action link's visible label, in render order (TC-ONB-132). */
 export const COMPLETE_ACTION_LABELS = [
-  'View Merchant',
-  'Go to Dashboard',
-  'Add Services',
-  'Add Staff',
+  'Go to dashboard',
+  'View merchant',
+  'Add services',
+  'Add staff',
 ] as const;
 
 /** The two shortcut cards below the step-7 actions: title, subtitle, path tail. */
 export const COMPLETE_QUICK_ACTIONS = [
-  { title: 'Add Services', subtitle: 'Configure services & products', tail: 'services' },
-  { title: 'Add Staff', subtitle: 'Set up staff members', tail: 'staffs' },
+  { title: 'Add services', subtitle: 'Configure services & products', tail: 'services' },
+  { title: 'Add staff', subtitle: 'Set up staff members', tail: 'staffs' },
 ] as const;
 
 /**
@@ -467,7 +484,12 @@ export class OnboardingPage extends BasePage {
     this.validateButton = page.getByRole('button', { name: 'Validate', exact: true });
     this.homeLink = page.getByRole('link', { name: 'FastboyPay home' });
     this.userMenuButton = page.getByRole('button', { name: 'Open user menu' });
-    this.toggleSidebarButton = page.getByRole('button', { name: 'Toggle Sidebar' });
+    // VP-4569: "Collapse sidebar" (desktop) / "Open navigation" (mobile).
+    this.toggleSidebarButton = page
+      .locator(
+        'button[aria-label="Collapse sidebar"]:visible, button[aria-label="Open navigation"]:visible',
+      )
+      .first();
     this.notificationsRegion = page.getByRole('region', { name: /notifications/i });
   }
 
@@ -489,14 +511,22 @@ export class OnboardingPage extends BasePage {
    * collapses; the sidebar's own "Onboarding" nav link is not matched here.
    */
   get pageTitle(): Locator {
-    return this.page.locator('[data-slot="page-title"]');
+    // VP-4569: a real <h1> in the page header (verified 2026-10-21).
+    return this.page.getByRole('heading', { level: 1, name: 'Onboarding', exact: true });
   }
 
   // ---- chrome: icon rail + sidebar ---------------------------------------
 
   /** A product-context button on the icon rail — see {@link PRODUCT_SWITCHER_BUTTONS}. */
   productSwitcherButton(name: string): Locator {
-    return this.page.getByRole('button', { name, exact: true });
+    return this.page
+      .getByRole('menu', { name: 'Switch app' })
+      .getByRole('menuitem', { name, exact: true });
+  }
+
+  /** The sidebar-header app switcher (VP-4569), text "Volt POS". */
+  get switchAppButton(): Locator {
+    return this.page.getByRole('button', { name: 'Switch app' });
   }
 
   /** Sidebar link addressed by its exact href — the way to disambiguate the two "Settings" / "Orders" labels. */
@@ -543,13 +573,65 @@ export class OnboardingPage extends BasePage {
   async gotoStep(step: string, whmcsId?: string | number): Promise<void> {
     const query = new URLSearchParams({ step });
     if (whmcsId !== undefined) query.set('whmcsId', String(whmcsId));
-    await this.page.goto(`${this.path}?${query.toString()}`, { waitUntil: 'domcontentloaded' });
+    await this.installWriteGuard();
+    await this.page.goto(`${this.path}?${query.toString()}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: Timeouts.NAVIGATION,
+    });
   }
 
   /** Navigate with arbitrary query params (for the malformed-URL cases). */
   async gotoWithQuery(query: Record<string, string>): Promise<void> {
     const search = new URLSearchParams(query).toString();
-    await this.page.goto(`${this.path}?${search}`, { waitUntil: 'domcontentloaded' });
+    await this.installWriteGuard();
+    await this.page.goto(`${this.path}?${search}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: Timeouts.NAVIGATION,
+    });
+  }
+
+  /**
+   * Bare-route navigation with the write guard installed and the full
+   * navigation budget (the shared DEV app routinely needs >15 s to reach
+   * `domcontentloaded` under parallel load).
+   */
+  override async goto(): Promise<void> {
+    await this.installWriteGuard();
+    await this.page.goto(this.path, {
+      waitUntil: 'domcontentloaded',
+      timeout: Timeouts.NAVIGATION,
+    });
+    await this.waitForReady();
+  }
+
+  /**
+   * Every write the wizard attempted against the POS API on this page — each
+   * one was ABORTED by {@link installWriteGuard} before reaching DEV.
+   */
+  readonly blockedWrites: string[] = [];
+
+  private writeGuardInstalled = false;
+
+  /**
+   * SAFETY NET (2026-10-21): the onboarding suite must never create, onboard or
+   * update a merchant on the shared DEV backend. Any non-GET request to the
+   * POS API (`volt-pos.*`) is aborted and recorded in {@link blockedWrites};
+   * reads, auth refreshes (`sys.*`/`refresh_token`) and assets pass through.
+   * Specs that stub an endpoint with `page.route` register later and therefore
+   * take precedence; they never fulfil writes.
+   */
+  async installWriteGuard(): Promise<void> {
+    if (this.writeGuardInstalled) return;
+    this.writeGuardInstalled = true;
+    await this.page.route(/volt-pos\./, async (route) => {
+      const request = route.request();
+      if (request.method() === 'GET' || request.method() === 'OPTIONS') {
+        await route.fallback();
+        return;
+      }
+      this.blockedWrites.push(`${request.method()} ${request.url()}`);
+      await route.abort('blockedbyclient');
+    });
   }
 
   /** The `step` value currently on the URL, or '' when absent. */
@@ -580,14 +662,14 @@ export class OnboardingPage extends BasePage {
    * not clicked (TC-ONB-021 pins that they do not navigate).
    */
   stepperItem(label: string): Locator {
-    return this.page.getByText(label, { exact: true }).first();
+    return this.stepperItems
+      .locator('[data-slot="pos-steps-label"]')
+      .getByText(label, { exact: true });
   }
 
   /** Every stepper label as one locator set, for order and count assertions. */
   get stepperLabels(): Locator {
-    return this.page.getByText(
-      new RegExp(`^(${ONBOARDING_STEP_LABELS.map(escapeRegExp).join('|')})$`),
-    );
+    return this.stepperItems.locator('[data-slot="pos-steps-label"]');
   }
 
   /**
@@ -600,15 +682,14 @@ export class OnboardingPage extends BasePage {
    * heading of the same name.
    */
   get stepperItems(): Locator {
-    return this.page
-      .locator('div.shrink-0.md\\:flex-col')
-      .filter({ hasText: new RegExp(`(${ONBOARDING_STEP_LABELS.map(escapeRegExp).join('|')})`) });
+    // VP-4569: `<ol aria-label="Onboarding steps">` of `li[data-slot=pos-steps-item]`.
+    return this.page.getByRole('list', { name: 'Onboarding steps' }).getByRole('listitem');
   }
 
-  /** One stepper cell by its label, e.g. `stepperCell('Work Hours')`. */
+  /** One stepper cell by its label, e.g. `stepperCell('Work hours')`. */
   stepperCell(label: string): Locator {
     return this.stepperItems.filter({
-      hasText: new RegExp(`^\\d?\\s*${escapeRegExp(label)}$`),
+      has: this.page.locator('[data-slot="pos-steps-label"]').getByText(label, { exact: true }),
     });
   }
 
@@ -619,7 +700,7 @@ export class OnboardingPage extends BasePage {
    * once the step is complete — the number is swapped for a tick icon.
    */
   stepperBadge(label: string): Locator {
-    return this.stepperCell(label).locator('div.rounded-full').first();
+    return this.stepperCell(label).locator('[data-slot="pos-steps-marker"]').first();
   }
 
   /**
@@ -631,8 +712,15 @@ export class OnboardingPage extends BasePage {
    * (TC-ONB-004 / 005 / 006 / 131).
    */
   async stepperCellTexts(): Promise<string[]> {
-    const texts = await this.stepperItems.allInnerTexts();
-    return texts.map((text) => text.replace(/\s+/g, ' ').trim());
+    // Marker (number, or empty once ticked) + label — the sr-only state suffix
+    // (", current step") is deliberately left out.
+    return this.stepperItems.evaluateAll((items) =>
+      items.map((item) => {
+        const marker = item.querySelector('[data-slot="pos-steps-marker"]')?.textContent ?? '';
+        const label = item.querySelector('[data-slot="pos-steps-label"]')?.textContent ?? '';
+        return `${marker} ${label}`.replace(/\s+/g, ' ').trim();
+      }),
+    );
   }
 
   /**
@@ -640,16 +728,20 @@ export class OnboardingPage extends BasePage {
    * `bg-success` = done, `bg-primary` = current, `bg-muted` = not reached.
    */
   async stepperState(label: string): Promise<'complete' | 'current' | 'pending'> {
-    const className = (await this.stepperBadge(label).getAttribute('class')) ?? '';
-    if (className.includes('bg-success')) return 'complete';
-    if (className.includes('bg-primary')) return 'current';
+    // VP-4569: `data-state` = complete | current | upcoming on the <li>.
+    const state = (await this.stepperCell(label).getAttribute('data-state')) ?? '';
+    if (state === 'complete') return 'complete';
+    if (state === 'current') return 'current';
     return 'pending';
   }
 
   // ---- step 1: form state ----------------------------------------------
 
+  /** VP-4569: a card title `div[data-slot=pos-card-title]`, no longer a heading. */
   get enterWhmcsIdHeading(): Locator {
-    return this.page.getByRole('heading', { name: 'Enter WHMCS ID' });
+    return this.page.locator('[data-slot="pos-card-title"]').getByText('Enter WHMCS ID', {
+      exact: true,
+    });
   }
 
   get validateDescription(): Locator {
@@ -685,18 +777,21 @@ export class OnboardingPage extends BasePage {
    * to see it has to slow or stall that request first.
    */
   get validateSpinner(): Locator {
-    return this.validateButton.locator('svg.animate-spin');
+    // VP-4569: `svg[data-slot=pos-spinner]` (button gets aria-busy / aria-disabled).
+    return this.validateButton.locator('svg.animate-spin, svg[data-slot="pos-spinner"]');
   }
 
   // ---- step 1: integration status panel ---------------------------------
 
   get integrationStatusHeading(): Locator {
-    return this.page.getByRole('heading', { name: 'Integration Status' });
+    return this.page.getByRole('heading', { name: 'Integration status' });
   }
 
-  /** The "WHMCS ID: <id>" chip in the panel header. */
+  /** The "WHMCS ID <id>" chip in the panel header (label + value spans since VP-4569). */
   whmcsIdChip(id: string | number): Locator {
-    return this.page.getByText(`WHMCS ID: ${id}`);
+    return this.integrationStatusHeading
+      .locator('xpath=following-sibling::div[1]')
+      .filter({ hasText: new RegExp(`^WHMCS ID\\s*${escapeRegExp(String(id))}$`) });
   }
 
   /**
@@ -707,23 +802,19 @@ export class OnboardingPage extends BasePage {
    * description without catching a sibling system.
    */
   integrationRow(system: string): Locator {
+    // VP-4569: each system is `li[data-slot=onboarding-integration-row]`.
     return this.page
-      .locator('div')
-      .filter({ hasText: new RegExp(`^${escapeRegExp(system)}`) })
-      .last();
+      .locator('[data-slot="onboarding-integration-row"]')
+      .filter({ hasText: new RegExp(`^${escapeRegExp(system)}`) });
   }
 
   /** The status badge inside a system's row, e.g. "Ready" / "Optional". */
   integrationBadge(system: string): Locator {
-    return this.integrationRow(system)
-      .getByText(new RegExp(`^(${INTEGRATION_BADGES.map(escapeRegExp).join('|')})$`))
-      .first();
+    return this.integrationRow(system).locator('[data-slot="pos-status-pill-label"]').first();
   }
 
   get readySummary(): Locator {
-    return this.page.getByText(
-      /Required systems are ready\. You can proceed to create the merchant/i,
-    );
+    return this.page.getByText(/Required systems are ready\. You can create the merchant/i);
   }
 
   get notReadySummary(): Locator {
@@ -731,11 +822,11 @@ export class OnboardingPage extends BasePage {
   }
 
   get createMerchantButton(): Locator {
-    return this.page.getByRole('button', { name: 'Create Merchant' });
+    return this.page.getByRole('button', { name: 'Create merchant' });
   }
 
   get checkAgainButton(): Locator {
-    return this.page.getByRole('button', { name: 'Check Again' });
+    return this.page.getByRole('button', { name: 'Check again' });
   }
 
   /**
@@ -767,17 +858,16 @@ export class OnboardingPage extends BasePage {
    * whole text is one status word.
    */
   integrationRowBadge(system: string): Locator {
-    return this.page
-      .getByText(system, { exact: true })
-      .locator('xpath=ancestor::div[2]')
+    return this.integrationRow(system)
+      .locator('[data-slot="pos-status-pill-label"]')
       .getByText(INTEGRATION_BADGE_PATTERN);
   }
 
   /** The three system labels as one locator set, for a count/order assertion. */
   get integrationSystemLabels(): Locator {
-    return this.page.getByText(
-      new RegExp(`^(${INTEGRATION_SYSTEMS.map(escapeRegExp).join('|')})$`),
-    );
+    return this.page
+      .locator('[data-slot="onboarding-integration-row"] > div > span:first-child')
+      .getByText(new RegExp(`^(${INTEGRATION_SYSTEMS.map(escapeRegExp).join('|')})$`));
   }
 
   /**
@@ -793,11 +883,11 @@ export class OnboardingPage extends BasePage {
   // ---- step 2: Business Information --------------------------------------
 
   get businessInformationHeading(): Locator {
-    return this.page.getByRole('heading', { name: 'Business Information' });
+    return this.page.getByRole('heading', { name: 'Business information' });
   }
 
   get contactOwnerHeading(): Locator {
-    return this.page.getByRole('heading', { name: 'Contact Owner' });
+    return this.page.getByRole('heading', { name: 'Contact owner' });
   }
 
   get businessNameInput(): Locator {
@@ -818,6 +908,11 @@ export class OnboardingPage extends BasePage {
 
   get postalCodeInput(): Locator {
     return this.page.locator('#postalCode');
+  }
+
+  /** Store phone — added by VP-4569 under "Business information". */
+  get businessPhoneInput(): Locator {
+    return this.page.locator('#businessPhone');
   }
 
   get phoneNumberInput(): Locator {
@@ -842,7 +937,7 @@ export class OnboardingPage extends BasePage {
 
   /** Step 2's only button — the step has neither Back nor Skip. */
   get saveChangesAndContinueButton(): Locator {
-    return this.page.getByRole('button', { name: 'Save Changes & Continue' });
+    return this.page.getByRole('button', { name: 'Save changes & continue' });
   }
 
   /**
@@ -953,7 +1048,7 @@ export class OnboardingPage extends BasePage {
   // ---- step 3: Work Hours -------------------------------------------------
 
   get businessHoursHeading(): Locator {
-    return this.page.getByRole('heading', { name: 'Business Hours' });
+    return this.page.getByRole('heading', { name: 'Business hours' });
   }
 
   /** The per-day open/closed switch, e.g. `switch "Monday open status"`. */
@@ -969,11 +1064,7 @@ export class OnboardingPage extends BasePage {
    * across all seven rows.
    */
   dayTimeButtons(day: string): Locator {
-    return this.page
-      .locator('div')
-      .filter({ has: this.dayOpenSwitch(day) })
-      .last()
-      .getByRole('button', { name: /select time|\d{1,2}:\d{2}\s*(AM|PM)/i });
+    return this.dayRow(day).getByRole('button', { name: /select time|\d{1,2}:\d{2}\s*(AM|PM)/i });
   }
 
   /** Every time trigger on the step, in row order. */
@@ -983,10 +1074,8 @@ export class OnboardingPage extends BasePage {
 
   /** The row for one weekday — the innermost block holding that day's switch. */
   dayRow(day: string): Locator {
-    return this.page
-      .locator('div')
-      .filter({ has: this.dayOpenSwitch(day) })
-      .last();
+    // VP-4569: row = <div><div>switch + day</div><div>time triggers</div></div>.
+    return this.dayOpenSwitch(day).locator('xpath=ancestor::div[2]');
   }
 
   /** The day name as rendered next to its switch. */
@@ -1053,7 +1142,7 @@ export class OnboardingPage extends BasePage {
   // ---- step 4: Photos ------------------------------------------------------
 
   get businessPhotosHeading(): Locator {
-    return this.page.getByRole('heading', { name: 'Business Photos' });
+    return this.page.getByRole('heading', { name: 'Business photos' });
   }
 
   get logoFileInput(): Locator {
@@ -1097,12 +1186,12 @@ export class OnboardingPage extends BasePage {
   }
 
   get selectPlanButtons(): Locator {
-    return this.page.getByRole('button', { name: 'Select Plan' });
+    return this.page.getByRole('button', { name: 'Select plan' });
   }
 
   /** The in-use package's disabled action button. */
   get currentPlanButton(): Locator {
-    return this.page.getByRole('button', { name: 'Current Plan' });
+    return this.page.getByRole('button', { name: 'Current plan' });
   }
 
   get currentBadge(): Locator {
@@ -1114,7 +1203,7 @@ export class OnboardingPage extends BasePage {
   }
 
   get selectThisPackageButton(): Locator {
-    return this.featureDialog.getByRole('button', { name: 'Select This Package' });
+    return this.featureDialog.getByRole('button', { name: 'Select this package' });
   }
 
   get dialogCloseButton(): Locator {
@@ -1166,15 +1255,15 @@ export class OnboardingPage extends BasePage {
   // ---- step 6: Payment & Transactions ----------------------------------------
 
   get paymentMethodsHeading(): Locator {
-    return this.page.getByRole('heading', { name: 'Payment Methods' });
+    return this.page.getByRole('heading', { name: 'Payment methods' });
   }
 
   get taxPricingHeading(): Locator {
-    return this.page.getByRole('heading', { name: 'Tax & Pricing' });
+    return this.page.getByRole('heading', { name: 'Tax & pricing' });
   }
 
   get tippingSettingsHeading(): Locator {
-    return this.page.getByRole('heading', { name: 'Tipping Settings' });
+    return this.page.getByRole('heading', { name: 'Tipping settings' });
   }
 
   /** A tender switch by its visible label, e.g. "Credit Card". */
@@ -1207,9 +1296,9 @@ export class OnboardingPage extends BasePage {
     return this.page.getByRole('radio', { name });
   }
 
-  /** The Percentage / Fixed Amount toggle. */
-  tipTypeButton(name: 'Percentage' | 'Fixed Amount'): Locator {
-    return this.page.getByRole('button', { name, exact: true });
+  /** The Percentage / Fixed amount toggle — radios in `radiogroup "Tip type"` since VP-4569. */
+  tipTypeButton(name: TipTypeOption): Locator {
+    return this.tipTypeGroup.getByRole('radio', { name, exact: true });
   }
 
   /** Every "Remove <n>% tip preset" button — one per preset chip. */
@@ -1257,11 +1346,11 @@ export class OnboardingPage extends BasePage {
   }
 
   get tipTimingHeading(): Locator {
-    return this.page.getByRole('heading', { name: 'Tip Timing', level: 4 });
+    return this.page.getByRole('heading', { name: 'Tip timing', level: 4 });
   }
 
   get tipPresetsHeading(): Locator {
-    return this.page.getByRole('heading', { name: 'Tip Presets', level: 4 });
+    return this.page.getByRole('heading', { name: 'Tip presets', level: 4 });
   }
 
   /** `SALE` / `AUTHORIZE` — the badge on a tip-timing card. */
@@ -1281,7 +1370,7 @@ export class OnboardingPage extends BasePage {
 
   /** The `Percentage` / `Fixed Amount` toggle group. */
   get tipTypeGroup(): Locator {
-    return this.page.getByRole('group', { name: 'Tip type' });
+    return this.page.getByRole('radiogroup', { name: 'Tip type' });
   }
 
   /**
@@ -1410,7 +1499,7 @@ export class OnboardingPage extends BasePage {
    * Pick a tip-timing option. Client-side only — nothing is persisted until
    * `Save Changes`, which this never touches.
    */
-  async selectTipTiming(label: 'Before Payment' | 'After Payment'): Promise<void> {
+  async selectTipTiming(label: 'Before payment' | 'After payment'): Promise<void> {
     await this.tipTimingOption(new RegExp(escapeRegExp(label)))
       .first()
       .click();
@@ -1419,6 +1508,8 @@ export class OnboardingPage extends BasePage {
   /** Whether a `Tip type` toggle reads as pressed (`aria-pressed` / `data-state`). */
   async tipTypePressed(name: TipTypeOption): Promise<boolean> {
     const button = this.tipTypeButton(name);
+    const checked = await button.getAttribute('aria-checked');
+    if (checked !== null) return checked === 'true';
     const pressed = await button.getAttribute('aria-pressed');
     if (pressed !== null) return pressed === 'true';
     const state = await button.getAttribute('data-state');
@@ -1467,19 +1558,19 @@ export class OnboardingPage extends BasePage {
   // ---- step 7: Complete --------------------------------------------------------
 
   get completeHeading(): Locator {
-    return this.page.getByRole('heading', { name: 'Merchant Onboarding Complete!' });
+    return this.page.getByRole('heading', { name: 'Merchant onboarding complete!' });
   }
 
   get viewMerchantLink(): Locator {
-    return this.page.getByRole('link', { name: 'View Merchant' });
+    return this.page.getByRole('link', { name: 'View merchant' });
   }
 
   get onboardAnotherButton(): Locator {
-    return this.page.getByRole('button', { name: 'Onboard Another' });
+    return this.page.getByRole('button', { name: 'Onboard another' });
   }
 
   get goToDashboardLink(): Locator {
-    return this.page.getByRole('link', { name: 'Go to Dashboard' });
+    return this.page.getByRole('link', { name: 'Go to dashboard' });
   }
 
   get addServicesLink(): Locator {
@@ -1503,17 +1594,17 @@ export class OnboardingPage extends BasePage {
    * label span's next sibling. Business Name and Created are live merchant
    * data — assert shape ({@link COMPLETE_CREATED_PATTERN}), not content.
    */
-  summaryValue(label: 'Business Name' | 'WHMCS ID' | 'Created'): Locator {
+  summaryValue(label: 'Business name' | 'WHMCS ID' | 'Created'): Locator {
     return this.page.getByText(label, { exact: true }).locator('xpath=following-sibling::*[1]');
   }
 
   /** Trimmed text of a summary row's value. */
-  async summaryValueText(label: 'Business Name' | 'WHMCS ID' | 'Created'): Promise<string> {
+  async summaryValueText(label: 'Business name' | 'WHMCS ID' | 'Created'): Promise<string> {
     return (await this.summaryValue(label).innerText()).replace(/\s+/g, ' ').trim();
   }
 
   /** A step-7 shortcut card by its title. */
-  quickActionLink(title: 'Add Services' | 'Add Staff'): Locator {
+  quickActionLink(title: 'Add services' | 'Add staff'): Locator {
     return this.page.getByRole('link', { name: new RegExp(`^${escapeRegExp(title)}\\b`) });
   }
 
@@ -1568,9 +1659,9 @@ export class OnboardingPage extends BasePage {
     return this.page.getByRole('button', { name: 'Skip', exact: true });
   }
 
-  /** Steps 3–6 share this label; step 2's reads "Save Changes & Continue". */
+  /** Steps 3–6 share this label; step 2's reads "Save changes & continue". */
   get saveChangesButton(): Locator {
-    return this.page.getByRole('button', { name: 'Save Changes', exact: true });
+    return this.page.getByRole('button', { name: 'Save changes', exact: true });
   }
 
   // ---- error boundary -------------------------------------------------------------
@@ -1610,7 +1701,7 @@ export class OnboardingPage extends BasePage {
    */
   get wizardFooterButtons(): Locator {
     return this.page.getByRole('button', {
-      name: /^(Back|Skip|Save Changes|Save Changes & Continue)$/,
+      name: /^(Back|Skip|Save changes|Save changes & continue)$/,
     });
   }
 

@@ -2,54 +2,39 @@ import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
 
 /**
- * App Switcher Rail — the left icon rail (complementary landmark) on the store
- * Overview: the FastboyPay home logo, the app-switcher buttons
- * (POS / Portal / Business / Gift Card), and the user-menu avatar (lean core).
+ * App switcher — since the 2026-10-13 redesign the left icon rail (logo + one
+ * button per app) is gone. Switching apps goes through the sidebar's "Switch
+ * app" menu button; the user menu sits at the foot of the same sidebar.
  *
- * Cross-app switches (Portal / Business / Gift Card) leave the /pos/<id>/...
- * namespace for external app landings, so they are out of the lean core.
+ * TC-OVW-034 (FastboyPay home logo returns to `/`) was removed: the POS shell no
+ * longer renders a home logo link.
  */
-test.describe('App Switcher Rail — Overview', () => {
+test.describe('App Switcher — Overview', () => {
   test.beforeEach(async ({ dashboardPage }) => {
     await dashboardPage.goto();
   });
 
   test(
-    'TC-OVW-033 — rail renders logo, four app buttons, and user menu',
+    'TC-OVW-033 — app switcher lists the Fastboy apps, and the user menu is present',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ dashboardPage }) => {
       const rail = dashboardPage.appRail;
       await expect(rail).toBeVisible();
-      await expect(rail.getByRole('link', { name: /fastboypay home/i })).toBeVisible();
+      await expect(rail.getByRole('button', { name: /switch app/i })).toBeEnabled();
+      await expect(rail.getByRole('button', { name: /open user menu/i })).toBeEnabled();
 
-      // Rail labels read off the live aria-labels on 2026-08-12. The second app
-      // is now "Payment" — it used to be labelled "Portal".
-      for (const name of ['POS', 'Payment', 'Business', 'Gift Card'] as const) {
-        const btn = rail.getByRole('button', { name, exact: true });
-        // Exactly one of each — no missing or duplicated app button.
-        await expect(btn).toHaveCount(1);
-        await expect(btn).toBeVisible();
-        await expect(btn).toBeEnabled();
+      await dashboardPage.appSwitcherButton.click();
+      const menu = dashboardPage.appSwitcherMenu;
+      await expect(menu).toBeVisible();
+      for (const name of ['POS Nail Spa', 'Payment', 'Business', 'Gift Card'] as const) {
+        const item = menu.getByRole('menuitem', { name, exact: true });
+        // Exactly one of each — no missing or duplicated app entry.
+        await expect(item).toHaveCount(1);
+        await expect(item).toBeVisible();
       }
 
-      await expect(rail.getByRole('button', { name: /open user menu/i })).toBeVisible();
-    },
-  );
-
-  test(
-    'TC-OVW-034 — FastboyPay logo returns to /pos/<id>/overview',
-    { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
-    async ({ dashboardPage, page }) => {
-      // Navigate away first (labels repeat, so match the store-scoped href).
-      await dashboardPage.sidebar.navigateToHref(/^\/pos\/nail\/\d+\/orders$/);
-      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/orders/);
-
-      await dashboardPage.logoHomeLink.click();
-
-      // The logo is href="/" and `/` no longer redirects into the store — it now
-      // lands on the Fastboy Portal app chooser. See the note on TC-OVW-002.
-      await expect(page).not.toHaveURL(/\/pos\/nail\/\d+\//);
-      await expect(page.getByText(/choose where you'?d like to start/i)).toBeVisible();
+      await dashboardPage.page.keyboard.press('Escape');
+      await expect(menu).toBeHidden();
     },
   );
 });

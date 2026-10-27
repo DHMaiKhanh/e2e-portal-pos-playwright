@@ -131,11 +131,14 @@ test.describe('Bảng dữ liệu Order History — Orders', () => {
 
       const cardCell = ordersPage.table.rowContaining(cardOrder.orderCode).getByRole('cell').nth(1);
       await expect(cardCell).toContainText(/•••• 4242/);
-      await expect(cardCell.getByRole('img')).toBeVisible();
+      // VP-4569: the brand logo is decorative (alt="", aria-hidden) — the brand
+      // is announced through the cell's group label instead.
+      await expect(cardCell.getByRole('group', { name: /mastercard ending 4242/i })).toBeVisible();
+      await expect(cardCell.locator('img[data-slot="pos-card-brand"]')).toBeVisible();
 
       const cashCell = ordersPage.table.rowContaining(cashOrder.orderCode).getByRole('cell').nth(1);
       await expect(cashCell).toContainText(/cash/i);
-      await expect(cashCell.getByRole('img')).toHaveCount(0);
+      await expect(cashCell.locator('img[data-slot="pos-card-brand"]')).toHaveCount(0);
     },
   );
 });

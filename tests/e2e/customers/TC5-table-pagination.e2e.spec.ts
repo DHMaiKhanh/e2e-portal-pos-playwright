@@ -1,5 +1,6 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
+import { CustomersPage } from '@pages/customers/CustomersPage';
 import { Urls } from '@constants/urls';
 
 test.describe('Bảng dữ liệu & phân trang (Tables/lists) — Customers', () => {
@@ -20,7 +21,7 @@ test.describe('Bảng dữ liệu & phân trang (Tables/lists) — Customers', (
         /group/i,
         /total visits/i,
         /points/i,
-        /cashback balance/i,
+        /rewards/i, // renamed from "Cashback Balance" in the cashback→Rewards rebrand
         /last visit/i,
       ];
       for (let i = 0; i < expected.length; i++) {
@@ -45,7 +46,7 @@ test.describe('Bảng dữ liệu & phân trang (Tables/lists) — Customers', (
       expect(populated.length, 'no fully-populated customer row on page 1').toBeGreaterThan(0);
 
       for (const cells of populated) {
-        expect(cells[1]).toMatch(/^\(\*{3}\) \*{3}-\d{4}$/);
+        expect(cells[1]).toMatch(CustomersPage.MASKED_PHONE);
         expect(cells[6]).toMatch(/^\$[\d,]+\.\d{2}$/);
         // TOTAL VISITS / POINTS are deliberately not asserted as integers here:
         // rows in this store render "—" for them, and whether that placeholder
@@ -64,7 +65,7 @@ test.describe('Bảng dữ liệu & phân trang (Tables/lists) — Customers', (
       const totalVisitsValues = new Set<string>();
       for (let i = 0; i < count; i++) {
         const lastVisit = (await rows.nth(i).getByRole('cell').nth(7).textContent())?.trim() ?? '';
-        if (lastVisit === '-') {
+        if (lastVisit === '—') {
           const totalVisits =
             (await rows.nth(i).getByRole('cell').nth(4).textContent())?.trim() ?? '';
           totalVisitsValues.add(totalVisits);
@@ -86,7 +87,7 @@ test.describe('Bảng dữ liệu & phân trang (Tables/lists) — Customers', (
       await customersPage.waitForReady();
       await expect(customersPage.pageIndicator).toHaveText(/5\s*\/\s*\d+/);
       await expect(customersPage.table.rows).toHaveCount(30);
-      await expect(customersPage.resultsFooter).toContainText(/showing 121 to 150 of \d+ results/i);
+      await expect(customersPage.resultsFooter).toContainText(/^121–150 of [\d,]+$/);
       await expect(customersPage.pagination.prevButton).toBeEnabled();
       await expect(customersPage.pagination.nextButton).toBeEnabled();
     },
@@ -122,7 +123,10 @@ test.describe('Bảng dữ liệu & phân trang (Tables/lists) — Customers', (
     async ({ customersPage }) => {
       await customersPage.search('zzzxxxnonexistent999');
       await expect(customersPage.emptyState).toBeVisible();
-      await expect(customersPage.resultsFooter).not.toContainText('313');
+      // No stale "x–y of N" range from the unfiltered list survives: since the
+      // 2026-10-13 refactor the whole pager is removed on an empty result.
+      await expect(customersPage.resultsFooter).toHaveCount(0);
+      await expect(customersPage.table.rows).toHaveCount(0);
     },
   );
 });

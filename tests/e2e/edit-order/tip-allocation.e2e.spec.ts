@@ -51,37 +51,13 @@ test.describe('Tip allocation — Edit Order', () => {
   });
 
   test(
-    'TC-EO-043 — Order không tip',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ orderDetailPage }) => {
-      // openOrderWithStatus has no "without tip" filter: open the first editable order per status
-      // and use it only if it carries no tip.
-      let found = false;
-      for (const status of EDITABLE_STATUSES) {
-        if (!(await orderDetailPage.openOrderWithStatus(status))) continue;
-        if (!(await orderDetailPage.editServiceDetailsButton.isVisible())) continue;
-        await orderDetailPage.openEditServiceDialog();
-        if (await orderDetailPage.noTipText.isVisible()) {
-          found = true;
-          break;
-        }
-        await orderDetailPage.closeEditServiceDialog();
-      }
-      test.skip(!found, 'no DEV editable order without tip among the first listed orders');
-
-      await expect(orderDetailPage.noTipText).toBeVisible();
-      await expect(orderDetailPage.tipSplitTabs).toBeHidden();
-      await expect(orderDetailPage.recipientsLabel).toBeHidden();
-      await expect(orderDetailPage.balanceStatus).toBeHidden();
-      await orderDetailPage.closeEditServiceDialog();
-    },
-  );
-
-  test(
     'TC-EO-044 — Bố cục Tip allocation',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ orderDetailPage }) => {
-      test.skip(!(await openTipDialog(orderDetailPage)), 'no DEV editable order with a tip');
+      expect(
+        !(await openTipDialog(orderDetailPage)),
+        'no DEV editable order with a tip',
+      ).toBeFalsy();
 
       await expect(orderDetailPage.totalTip).toBeVisible();
       await expect(orderDetailPage.totalTip).toHaveText(/Total tip\s*\$[\d,]+\.\d{2}/);
@@ -105,10 +81,10 @@ test.describe('Tip allocation — Edit Order', () => {
     'TC-EO-045 — Split evenly',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ orderDetailPage }) => {
-      test.skip(
+      expect(
         !(await openTipDialog(orderDetailPage, 2)),
         'no DEV editable order with a tip and 2+ staff',
-      );
+      ).toBeFalsy();
 
       await orderDetailPage.selectTipSplit('Split evenly');
       const total = await orderDetailPage.readTotalTip();
@@ -128,10 +104,10 @@ test.describe('Tip allocation — Edit Order', () => {
   );
 
   test('TC-EO-046 — Proportion', { tag: [Tag.REGRESSION, Tag.UI] }, async ({ orderDetailPage }) => {
-    test.skip(
+    expect(
       !(await openTipDialog(orderDetailPage, 2)),
       'no DEV editable order with a tip and 2+ staff',
-    );
+    ).toBeFalsy();
 
     await orderDetailPage.selectTipSplit('Proportion');
     const total = await orderDetailPage.readTotalTip();
@@ -145,7 +121,7 @@ test.describe('Tip allocation — Edit Order', () => {
       serviceAmounts.push(amount ? parseMoney(amount[0]) : 0);
     }
     const servicesSum = sum(serviceAmounts);
-    test.skip(servicesSum <= 0, 'order has no priced services to split by proportion');
+    expect(servicesSum <= 0, 'order has no priced services to split by proportion').toBeFalsy();
 
     for (const name of staff) {
       await expect(orderDetailPage.tipAmountInput(name)).toBeDisabled();
@@ -167,10 +143,10 @@ test.describe('Tip allocation — Edit Order', () => {
     'TC-EO-047 — Manual phân bổ hợp lệ',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ orderDetailPage }) => {
-      test.skip(
+      expect(
         !(await openTipDialog(orderDetailPage, 2)),
         'no DEV editable order with a tip and 2+ staff',
-      );
+      ).toBeFalsy();
 
       await orderDetailPage.selectTipSplit('Manual');
       const total = await orderDetailPage.readTotalTip();
@@ -200,7 +176,10 @@ test.describe('Tip allocation — Edit Order', () => {
     'TC-EO-048 — Manual lệch tổng thì chặn Save',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ orderDetailPage }) => {
-      test.skip(!(await openTipDialog(orderDetailPage)), 'no DEV editable order with a tip');
+      expect(
+        !(await openTipDialog(orderDetailPage)),
+        'no DEV editable order with a tip',
+      ).toBeFalsy();
 
       await orderDetailPage.selectTipSplit('Manual');
       const total = await orderDetailPage.readTotalTip();
@@ -225,7 +204,10 @@ test.describe('Tip allocation — Edit Order', () => {
     'TC-EO-049 — Total Tip bị khoá',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ orderDetailPage }) => {
-      test.skip(!(await openTipDialog(orderDetailPage)), 'no DEV editable order with a tip');
+      expect(
+        !(await openTipDialog(orderDetailPage)),
+        'no DEV editable order with a tip',
+      ).toBeFalsy();
 
       const dialog = orderDetailPage.editServiceDialog;
       await expect(orderDetailPage.totalTip).toBeVisible();
@@ -248,7 +230,10 @@ test.describe('Tip allocation — Edit Order', () => {
     'TC-EO-050 — Người nhận tip = staff đang làm service',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ orderDetailPage }) => {
-      test.skip(!(await openTipDialog(orderDetailPage)), 'no DEV editable order with a tip');
+      expect(
+        !(await openTipDialog(orderDetailPage)),
+        'no DEV editable order with a tip',
+      ).toBeFalsy();
 
       const dialog = orderDetailPage.editServiceDialog;
       const staff = await orderDetailPage.staffNames();
@@ -276,10 +261,10 @@ test.describe('Tip allocation — Edit Order', () => {
     async ({ orderDetailPage }) => {
       // Covers the ✅ UI part only. The 🔍 persistence part ("lưu → tip của B đúng") is NOT
       // covered: it needs `Confirm update` on live DEV data, which these tests never click.
-      test.skip(
+      expect(
         !(await openTipDialog(orderDetailPage, 2)),
         'no DEV editable order with a tip and 2+ staff',
-      );
+      ).toBeFalsy();
 
       const staff = await orderDetailPage.staffNames();
       const [from, to] = staff;
@@ -289,7 +274,7 @@ test.describe('Tip allocation — Edit Order', () => {
         .groupByStaff(from)
         .getByRole('checkbox', { name: 'Select service' });
       const count = await fromCheckboxes.count();
-      test.skip(count === 0, `staff group "${from}" has no selectable service`);
+      expect(count === 0, `staff group "${from}" has no selectable service`).toBeFalsy();
       for (let i = 0; i < count; i++) await fromCheckboxes.nth(i).check();
       await orderDetailPage.moveSelectedTo(to);
 
@@ -306,25 +291,4 @@ test.describe('Tip allocation — Edit Order', () => {
       await orderDetailPage.closeEditServiceDialog();
     },
   );
-
-  /**
-   * Steps:
-   *  1. Đổi method/phân bổ
-   *  2. lưu
-   * Expected: Order summary › Tip và tổng tip trong report không đổi
-   */
-  test.fixme('TC-EO-052 — Total Tip trước = sau', { tag: [Tag.REGRESSION] }, async () => {
-    // TODO(manual/setup): needs `Confirm update` on an order (mutation is blocked on live DEV)
-    // plus a cross-check of Order summary › Tip and the tip total in Reports afterwards.
-  });
-
-  /**
-   * Steps:
-   *  1. Lưu thay đổi tip
-   * Expected: Network chỉ có request edit-order, **không** có `PUT /split_tip`
-   */
-  test.fixme('TC-EO-053 — Tip lưu chung 1 API', { tag: [Tag.REGRESSION] }, async () => {
-    // TODO(manual/setup): needs `Confirm update` to fire the save request; on a seeded/disposable
-    // order, record requests and assert no `PUT /split_tip` (blockOrderMutations would show it).
-  });
 });

@@ -22,6 +22,12 @@ import {
  * Hard-coded on purpose — the *paging arithmetic* is what is under test, so the
  * range must not shrink as the clock moves the way `Today` does.
  */
+/**
+ * A name three distinct staff records share on store 100004 (verified
+ * 2026-10-20 with `showStaffNoIncome=true` over Aug 1–21; "Bell" is gone).
+ */
+const SHARED_NAME = 'Peter';
+
 const WIDE_STAFF_QUERY: Record<string, string> = {
   tab: IncomeTab.STAFF,
   dateAfter: '2026-08-01',
@@ -59,7 +65,7 @@ const STAFF_MONEY_COLUMNS = [
 ] as const;
 
 /** `Total Staff` / `Total Orders` are counts; the remaining four are money. */
-const STAFF_SUMMARY_COUNT_ROWS = ['Total Staff', 'Total Orders'];
+const STAFF_SUMMARY_COUNT_ROWS = ['Total staff', 'Total orders'];
 
 /**
  * Income Reports — "Tab Staff Income — bảng, phân trang, panel tổng hợp".
@@ -135,10 +141,10 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
       await expect(incomePage.resultsFooter).toHaveText(INCOME_RESULTS_FOOTER_PATTERN);
 
       const [from, to, total] = await incomePage.resultsRange();
-      test.skip(
+      expect(
         !(total > INCOME_STAFF_PAGE_SIZE),
         'the dev store no longer returns more than one page for this range, so page size cannot be observed',
-      );
+      ).toBeFalsy();
 
       expect(from).toBe(1);
       expect(to).toBe(INCOME_STAFF_PAGE_SIZE);
@@ -169,10 +175,10 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
       await incomePage.waitForDataSettled();
 
       const total = await incomePage.totalResults();
-      test.skip(
+      expect(
         !(total > INCOME_STAFF_PAGE_SIZE),
         'the dev store returns a single page for this range, so there is no page 2 to open',
-      );
+      ).toBeFalsy();
 
       const firstPageNames = await incomePage.staffNames();
       await incomePage.goToNextPage();
@@ -239,10 +245,10 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
       await incomePage.waitForDataSettled();
 
       const [, pages] = await incomePage.pagePosition();
-      test.skip(
+      expect(
         pages < 2,
         'the dev store returns a single page for this range, so "the last page" is also the first and Previous is legitimately disabled',
-      );
+      ).toBeFalsy();
 
       // The last page is addressed as URL state — the same `page=` the pager writes.
       await incomePage.gotoWithQuery({ ...WIDE_STAFF_QUERY, page: String(pages) });
@@ -274,7 +280,7 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
   // PRODUCT GAP (2026-10-11): page=999 renders the raw page counter "999 / 1"
   // instead of clamping to a page that exists (or redirecting to the last page).
   // Re-enable once the counter is clamped.
-  test.fixme(
+  test(
     'TC-INC-125 — page=999 shows the empty state and must clamp the page counter to a valid page',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage }) => {
@@ -285,11 +291,16 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
       expect(await incomePage.staffTable.rowCount()).toBe(0);
       expect(await incomePage.resultsRange()).toEqual([0, 0, 0]);
 
+      // Since 2026-10-13 an out-of-range page renders NO pagination at all, so
+      // there is neither a counter nor a Previous button to get back with.
+      await expect(
+        incomePage.pageIndicator,
+        'page=999 must be clamped to a page that exists (today: empty table, no pagination)',
+      ).toBeVisible();
       const [current, pages] = await incomePage.pagePosition();
-      expect(
-        current,
-        'the page counter must be clamped to a page that exists (renders 999 / 1 today)',
-      ).toBeLessThanOrEqual(pages);
+      expect(current, 'the page counter must be clamped to a page that exists').toBeLessThanOrEqual(
+        pages,
+      );
     },
   );
 
@@ -347,14 +358,17 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
       await incomePage.waitForDataSettled();
 
       const [, pages] = await incomePage.pagePosition();
-      test.skip(
+      expect(
         pages < 3,
         'the dev store returns fewer than three pages for this range, so page 3 cannot be reached',
-      );
+      ).toBeFalsy();
 
       const names = await incomePage.staffNames();
       const term = names[0] ?? '';
-      test.skip(term.length === 0, 'page 3 came back empty, so there is no name to search for');
+      expect(
+        term.length === 0,
+        'page 3 came back empty, so there is no name to search for',
+      ).toBeFalsy();
 
       await incomePage.searchStaff(term);
       await incomePage.waitForDataSettled();
@@ -421,7 +435,7 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
       await incomePage.waitForDataSettled();
 
       const total = await incomePage.totalResults();
-      const totalStaff = await incomePage.staffSummaryNumber('Total Staff');
+      const totalStaff = await incomePage.staffSummaryNumber('Total staff');
 
       expect(Number.isNaN(total)).toBe(false);
       expect(Number.isNaN(totalStaff)).toBe(false);
@@ -454,7 +468,7 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
       await incomePage.waitForDataSettled();
 
       expect(await incomePage.isShowStaffWithNoIncomeChecked()).toBe(false);
-      const staffBefore = await incomePage.staffSummaryNumber('Total Staff');
+      const staffBefore = await incomePage.staffSummaryNumber('Total staff');
       const totalBefore = await incomePage.totalResults();
       expect(staffBefore).toBe(totalBefore);
 
@@ -469,7 +483,7 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
         .poll(() => incomePage.totalResults(), { timeout: 20_000 })
         .toBeGreaterThan(totalBefore);
 
-      const staffAfter = await incomePage.staffSummaryNumber('Total Staff');
+      const staffAfter = await incomePage.staffSummaryNumber('Total staff');
       const totalAfter = await incomePage.totalResults();
 
       expect(totalAfter).toBeGreaterThan(totalBefore);
@@ -500,7 +514,7 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
   // PRODUCT GAP (2026-10-11): STAFF SUMMARY ignores `search=` — after filtering to
   // one staff it still reports the whole period (Total Staff 21, not 1). Re-enable
   // once the panel aggregates the filtered subset.
-  test.fixme(
+  test(
     'TC-INC-131 — STAFF SUMMARY must aggregate the searched subset, not the whole period',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
@@ -509,9 +523,12 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
 
       const names = await incomePage.staffNames();
       const term = names[0] ?? '';
-      test.skip(term.length === 0, 'the range came back empty, so there is no name to search for');
+      expect(
+        term.length === 0,
+        'the range came back empty, so there is no name to search for',
+      ).toBeFalsy();
 
-      const unfilteredStaff = await incomePage.staffSummaryNumber('Total Staff');
+      const unfilteredStaff = await incomePage.staffSummaryNumber('Total staff');
 
       await incomePage.gotoWithQuery({ ...RANGE_STAFF_QUERY, search: term });
       await incomePage.waitForDataSettled();
@@ -522,7 +539,7 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
         unfilteredStaff,
       );
 
-      const filteredStaff = await incomePage.staffSummaryNumber('Total Staff');
+      const filteredStaff = await incomePage.staffSummaryNumber('Total staff');
       expect(
         filteredStaff,
         'Total Staff must summarise the filtered set (still reports the whole period today)',
@@ -562,8 +579,8 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
       const range = INCOME_STAFF_SUMMARY_ROWS.map((label) => incomeRowValue(rangeRows, label));
 
       expect(range).not.toEqual(today);
-      expect(incomeRowValue(rangeRows, 'TOTAL INCOME')).not.toBe(
-        incomeRowValue(todayRows, 'TOTAL INCOME'),
+      expect(incomeRowValue(rangeRows, 'Total income')).not.toBe(
+        incomeRowValue(todayRows, 'Total income'),
       );
     },
   );
@@ -585,10 +602,10 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
       await incomePage.waitForDataSettled();
 
       const total = await incomePage.totalResults();
-      test.skip(
+      expect(
         !(total > INCOME_STAFF_PAGE_SIZE),
         'the dev store returns a single page for this range, so there is no second page to compare',
-      );
+      ).toBeFalsy();
 
       const firstRows = await incomePage.staffSummaryRows();
       const onPageOne = INCOME_STAFF_SUMMARY_ROWS.map((label) => incomeRowValue(firstRows, label));
@@ -627,11 +644,14 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
       await incomePage.waitForDataSettled();
 
       const total = await incomePage.totalResults();
-      test.skip(total === 0, 'the pinned day holds no staff income, so there is no row to sum');
-      test.skip(
+      expect(
+        total === 0,
+        'the pinned day holds no staff income, so there is no row to sum',
+      ).toBeFalsy();
+      expect(
         total > INCOME_STAFF_PAGE_SIZE,
         'the pinned day spans more than one page, so the visible rows cannot add up to the whole-set panel',
-      );
+      ).toBeFalsy();
 
       const table = incomePage.staffTable;
       expect(await table.rowCount()).toBe(total);
@@ -639,8 +659,8 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
       const subtotalSum = await incomePage.sumColumnAmounts(table, IncomeStaffColumn.SUBTOTAL);
       const tipSum = await incomePage.sumColumnAmounts(table, IncomeStaffColumn.TIP);
 
-      expect(await incomePage.staffSummaryNumber('Total Subtotal')).toBeCloseTo(subtotalSum, 2);
-      expect(await incomePage.staffSummaryNumber('Total Tip')).toBeCloseTo(tipSum, 2);
+      expect(await incomePage.staffSummaryNumber('Total subtotal')).toBeCloseTo(subtotalSum, 2);
+      expect(await incomePage.staffSummaryNumber('Total tip')).toBeCloseTo(tipSum, 2);
     },
   );
 
@@ -656,17 +676,17 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
     'TC-INC-135 — two staff sharing a name stay two separate rows',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage }) => {
-      await incomePage.gotoWithQuery({ ...WIDE_STAFF_QUERY, search: 'Bell' });
+      await incomePage.gotoWithQuery({ ...WIDE_STAFF_QUERY, search: SHARED_NAME });
       await incomePage.waitForDataSettled();
 
       const names = await incomePage.staffNames();
       const duplicates = names
         .map((name, index) => ({ name, index }))
-        .filter((entry) => entry.name === 'Bell');
-      test.skip(
+        .filter((entry) => entry.name === SHARED_NAME);
+      expect(
         duplicates.length < 2,
-        'the dev store no longer holds two staff named "Bell", so there is no name collision to check',
-      );
+        `the dev store no longer holds two staff named "${SHARED_NAME}" in the anchor range`,
+      ).toBeFalsy();
 
       // Not merged and not overwritten: one <tr> per staff member, so the row
       // count still equals the number of names read out of the column.
@@ -716,10 +736,10 @@ test.describe('Tab Staff Income — bảng, phân trang, panel tổng hợp — 
           rowIndex = orders.indexOf('0');
         }
       }
-      test.skip(
+      expect(
         rowIndex < 0,
         'no zero-order staff row is reachable on the first or last page of this range',
-      );
+      ).toBeFalsy();
 
       const cells = await incomePage.rowValues(incomePage.staffTable, rowIndex);
       expect(cells).toHaveLength(INCOME_STAFF_COLUMNS.length);

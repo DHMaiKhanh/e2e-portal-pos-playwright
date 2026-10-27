@@ -1,6 +1,26 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Parse the date-range trigger label into [start, end] (local midnight).
+ * Formats seen live: "Oct 13 – 20, 2026", "Aug 1 – Sep 5, 2026",
+ * "Jan 1, 2020 – Oct 20, 2026", "Aug 18, 2026".
+ */
+const parseRangeLabel = (label: string): [Date, Date] => {
+  const [left, right = left] = label.split(/\s+[–-]\s+/).map((part) => part.trim());
+  const year = right.match(/\d{4}$/)?.[0] ?? '';
+  const end = new Date(/^[A-Z]/.test(right) ? right : `${left.split(' ')[0]} ${right}`);
+  const start = new Date(/\d{4}$/.test(left) ? left : `${left}, ${year}`);
+  return [start, end];
+};
+
+const iso = (date: Date): string =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+    date.getDate(),
+  ).padStart(2, '0')}`;
+
 test.describe('Filter — khoảng ngày — Batch History', () => {
   test.beforeEach(async ({ batchHistoryPage }) => {
     await batchHistoryPage.goto();
@@ -10,91 +30,63 @@ test.describe('Filter — khoảng ngày — Batch History', () => {
     'TC-BH-010 — default date range is last 7 days',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ batchHistoryPage }) => {
-      await batchHistoryPage.waitForReady();
-
       await expect(batchHistoryPage.dateRangeButton).toBeVisible();
 
-      const params = batchHistoryPage.currentQueryParams();
-      const dateAfter = params.get('dateAfter');
-      const dateBefore = params.get('dateBefore');
+      // The default window is not written to the URL; read it off the trigger.
+      const label = (await batchHistoryPage.dateRangeButton.innerText()).trim();
+      const [start, end] = parseRangeLabel(label);
+      expect(Number.isNaN(start.getTime()), `unparseable range label "${label}"`).toBe(false);
 
-      if (dateAfter && dateBefore) {
-        const after = new Date(dateAfter);
-        const before = new Date(dateBefore);
-        const diffDays = Math.round((before.getTime() - after.getTime()) / (1000 * 60 * 60 * 24));
-        expect(diffDays).toBeGreaterThanOrEqual(6);
-        expect(diffDays).toBeLessThanOrEqual(7);
-      }
+      const spanDays = Math.round((end.getTime() - start.getTime()) / DAY_MS);
+      expect(spanDays).toBeGreaterThanOrEqual(6);
+      expect(spanDays).toBeLessThanOrEqual(7);
+
+      // Ends today (±1 day for the store vs. runner timezone difference).
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      expect(Math.abs(Math.round((end.getTime() - today.getTime()) / DAY_MS))).toBeLessThanOrEqual(
+        1,
+      );
+      await expect(batchHistoryPage.clearFiltersButton).toBeHidden();
     },
   );
 
   /**
-   * Steps:
-   * 1. Mở date range picker.
-   * 2. Chọn khoảng rộng hơn bao trùm các batch lịch sử đã biết (vd 2020-01-01 đến hôm nay).
-   * 3. Áp dụng.
-   * Expected: Bảng nạp lại tất cả batch trong khoảng đã chọn; query param `dateAfter`/`dateBefore`
-   * cập nhật đúng; số lượng kết quả ở footer cập nhật theo.
-   */
-  /**
-   * Day cells now have stable locators (BatchHistoryPage.dayCell), keyed off the
-   * calendar's accessible names rather than the bare day number — matching on
-   * the number alone would also hit the adjacent month's greyed-out days that
-   * share the grid.
+   * Steps: open the picker, pick a range, apply.
+   * Expected: the table reloads for that range; `dateAfter`/`dateBefore` update;
+   * the result count updates.
    */
   test(
     'TC-BH-011 — selecting new date range filters table and updates URL',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ batchHistoryPage }) => {
-      // Anchor on the all-time total rather than on the default 7-day window,
-      // which is routinely empty on this store — "0 results before, 0 after"
-      // would let a broken filter pass.
       await batchHistoryPage.gotoAllTime();
-      const allTimeTotal = Number(
-        (await batchHistoryPage.paginationSummaryText()).match(/of (\d+) results/i)?.[1],
-      );
+      const allTimeTotal = await batchHistoryPage.totalResults();
       expect(allTimeTotal).toBeGreaterThan(0);
 
-      // Back to the default view before opening the picker: the calendar opens
-      // on the currently selected range's month, so opening it from the
-      // all-time view starts the user in January 2020 and "4 months back" lands
-      // in 2019 instead of in the recent months that hold data.
+      // From the default view the calendar opens on last month + this month;
+      // step back to a month that holds data (DEV has batches since mid-2026).
       await batchHistoryPage.goto();
       await batchHistoryPage.openDateRangePicker();
+      await batchHistoryPage.goBackMonths(2);
+      const { year, month } = await batchHistoryPage.calendarMonth();
 
-      // Both clicks must land in the same month view: navigating months between
-      // them restarts the range instead of closing it.
-      await batchHistoryPage.goBackMonths(4);
-      const caption = (await batchHistoryPage.calendarCaption.innerText()).trim();
-      const [monthName, yearText] = caption.split(' ');
-      const month = new Date(`${monthName} 1, ${yearText}`).getMonth();
-      const year = Number(yearText);
-      const iso = (day: number) =>
-        `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-      await batchHistoryPage.dayCell(new Date(year, month, 1)).click();
-      await batchHistoryPage.dayCell(new Date(year, month, 28)).click();
+      const from = new Date(year, month, 1);
+      const to = new Date(year, month, 28);
+      await batchHistoryPage.dayCell(from).click();
+      await batchHistoryPage.dayCell(to).click();
+      await batchHistoryPage.applyDateRangeButton.click();
       await batchHistoryPage.waitForReady();
 
       await test.step('URL carries the chosen range', async () => {
-        const params = batchHistoryPage.currentQueryParams();
-        expect(params.get('dateAfter')).toBe(iso(1));
-        expect(params.get('dateBefore')).toBe(iso(28));
+        await expect
+          .poll(() => batchHistoryPage.currentQueryParams().get('dateAfter'))
+          .toBe(iso(from));
+        expect(batchHistoryPage.currentQueryParams().get('dateBefore')).toBe(iso(to));
       });
 
       await test.step('The table reloads narrowed to that range', async () => {
-        // The summary is repainted by the response, not by the click, so poll
-        // rather than reading it the instant the URL changes.
-        await expect
-          .poll(async () => {
-            const summary = await batchHistoryPage.paginationSummaryText();
-            return Number(summary.match(/of (\d+) results/i)?.[1] ?? NaN);
-          })
-          .toBeLessThan(allTimeTotal);
-
-        await expect(batchHistoryPage.paginationSummary).toHaveText(
-          /showing \d+ to \d+ of \d+ results/i,
-        );
+        await expect.poll(() => batchHistoryPage.totalResults()).toBeLessThan(allTimeTotal);
         await expect(
           batchHistoryPage.table.rows.first().or(batchHistoryPage.emptyState),
         ).toBeVisible();
@@ -112,34 +104,18 @@ test.describe('Filter — khoảng ngày — Batch History', () => {
         dateAfter: '1999-01-01',
         dateBefore: '1999-01-02',
       });
-      await batchHistoryPage.waitForReady();
 
       await expect(batchHistoryPage.emptyState).toBeVisible();
-      await expect(batchHistoryPage.emptyState).toContainText(/No batches found\./i);
-
-      const summary = await batchHistoryPage.paginationSummaryText();
-      expect(summary).toMatch(/Showing 0 to 0 of 0 results/i);
-
-      await expect(batchHistoryPage.previousPageButton).toBeDisabled();
-      await expect(batchHistoryPage.nextPageButton).toBeDisabled();
-
-      const indicator = await batchHistoryPage.pageIndicatorText();
-      expect(indicator).toMatch(/1\s*\/\s*1/);
+      await expect(batchHistoryPage.table.rows).toHaveCount(0);
+      await expect(batchHistoryPage.countBadge).toHaveText(/^0\s*batches$/i);
+      // With nothing to page through the pagination bar is not rendered at all.
+      await expect(batchHistoryPage.pagination).toBeHidden();
     },
   );
 
   /**
-   * Steps:
-   * 1. Mở date picker.
-   * 2. Thử chọn ngày kết thúc sớm hơn ngày bắt đầu đã chọn.
-   * Expected: Picker ngăn lựa chọn không hợp lệ (disable các ngày trước đó) hoặc tự động hoán đổi
-   * khoảng; không bị crash, không có trạng thái `dateAfter > dateBefore` được gửi lên URL/API.
-   */
-  /**
-   * The case allows either resolution — the picker refuses the earlier date, or
-   * it swaps the range. Both are asserted through the same invariant, so this
-   * does not have to guess which one the component implements: whatever reaches
-   * the URL must never have dateAfter later than dateBefore.
+   * Expected: the picker prevents an end date before the start (or swaps the
+   * range); never a `dateAfter > dateBefore` state in the URL; no crash.
    */
   test(
     'TC-BH-013 — selecting end date before start date is blocked or auto-corrected',
@@ -148,33 +124,25 @@ test.describe('Filter — khoảng ngày — Batch History', () => {
       const pageErrors: string[] = [];
       page.on('pageerror', (error) => pageErrors.push(error.message));
 
-      await batchHistoryPage.waitForReady();
       await batchHistoryPage.openDateRangePicker();
       await batchHistoryPage.goBackMonths(1);
-
-      const caption = (await batchHistoryPage.calendarCaption.innerText()).trim();
-      const [monthName, yearText] = caption.split(' ');
-      const month = new Date(`${monthName} 1, ${yearText}`).getMonth();
-      const year = Number(yearText);
+      const { year, month } = await batchHistoryPage.calendarMonth();
 
       // Pick the 20th first, then try to close the range on the 5th.
       await batchHistoryPage.dayCell(new Date(year, month, 20)).click();
       await batchHistoryPage.dayCell(new Date(year, month, 5)).click();
-      await page.waitForTimeout(1500);
+      await batchHistoryPage.applyDateRangeButton.click();
       await batchHistoryPage.waitForReady();
 
+      await expect.poll(() => batchHistoryPage.currentQueryParams().get('dateAfter')).toBeTruthy();
       const params = batchHistoryPage.currentQueryParams();
-      const after = params.get('dateAfter');
-      const before = params.get('dateBefore');
+      const after = params.get('dateAfter')!;
+      const before = params.get('dateBefore') ?? after;
+      expect(
+        new Date(after).getTime(),
+        `inverted range reached the URL: dateAfter=${after} dateBefore=${before}`,
+      ).toBeLessThanOrEqual(new Date(before).getTime());
 
-      if (after && before) {
-        expect(
-          new Date(after).getTime(),
-          `inverted range reached the URL: dateAfter=${after} dateBefore=${before}`,
-        ).toBeLessThanOrEqual(new Date(before).getTime());
-      }
-
-      // Whichever branch the picker took, the screen must still be usable.
       await expect(
         batchHistoryPage.table.rows.first().or(batchHistoryPage.emptyState),
       ).toBeVisible();
@@ -186,25 +154,23 @@ test.describe('Filter — khoảng ngày — Batch History', () => {
     'TC-BH-014 — single-day range (start = end) is valid',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ batchHistoryPage }) => {
-      const today = new Date().toISOString().slice(0, 10);
-
+      // Pinned to a known data-bearing day on DEV.
+      const day = '2026-08-18';
       await batchHistoryPage.gotoWithParams({
         page: '1',
         status: 'all',
-        dateAfter: today,
-        dateBefore: today,
+        dateAfter: day,
+        dateBefore: day,
       });
-      await batchHistoryPage.waitForReady();
 
       const params = batchHistoryPage.currentQueryParams();
-      expect(params.get('dateAfter')).toBe(today);
-      expect(params.get('dateBefore')).toBe(today);
+      expect(params.get('dateAfter')).toBe(day);
+      expect(params.get('dateBefore')).toBe(day);
+      await expect(batchHistoryPage.dateRangeButton).toHaveText(/Aug 18, 2026/);
 
-      const hasEmptyState = await batchHistoryPage.emptyState.isVisible().catch(() => false);
-      if (hasEmptyState) {
-        await expect(batchHistoryPage.emptyState).toContainText(/No batches found\./i);
-      } else {
-        await expect(batchHistoryPage.tableRoot).toBeVisible();
+      await expect(batchHistoryPage.table.rows.first()).toBeVisible();
+      for (const date of await batchHistoryPage.columnCellTexts(/batch date/i)) {
+        expect(date).toMatch(/^Aug 18, 2026/);
       }
     },
   );
@@ -216,18 +182,19 @@ test.describe('Filter — khoảng ngày — Batch History', () => {
       await batchHistoryPage.gotoWithParams({
         page: '1',
         status: 'all',
-        dateAfter: '2026-01-01',
-        dateBefore: '2026-07-15',
+        dateAfter: '2026-08-01',
+        dateBefore: '2026-08-21',
       });
-      await batchHistoryPage.waitForReady();
 
       const params = batchHistoryPage.currentQueryParams();
-      expect(params.get('dateAfter')).toBe('2026-01-01');
-      expect(params.get('dateBefore')).toBe('2026-07-15');
+      expect(params.get('dateAfter')).toBe('2026-08-01');
+      expect(params.get('dateBefore')).toBe('2026-08-21');
 
-      await expect(batchHistoryPage.dateRangeButton).toBeVisible();
-
-      await expect(batchHistoryPage.tableRoot).toBeVisible();
+      await expect(batchHistoryPage.dateRangeButton).toHaveText(/Aug 1\s*[–-]\s*21, 2026/);
+      await expect(batchHistoryPage.table.rows.first()).toBeVisible();
+      for (const date of await batchHistoryPage.columnCellTexts(/batch date/i)) {
+        expect(date).toMatch(/^Aug \d{1,2}, 2026/);
+      }
     },
   );
 });

@@ -109,7 +109,7 @@ test.describe('Tham số URL & trạng thái (URL state) — Merchants', () => {
       await merchantsPage.waitForReady();
 
       await expect(merchantsPage.searchInput).toHaveValue('Bleu');
-      await expect(merchantsPage.statusFilter).toHaveText(/^Active$/);
+      await expect(merchantsPage.statusFilter).toHaveAccessibleName('Filter by status: Active');
       await expect(page).toHaveURL(/q=Bleu/);
       await expect(page).toHaveURL(/status=active/);
 
@@ -149,9 +149,9 @@ test.describe('Tham số URL & trạng thái (URL state) — Merchants', () => {
 
       // Default data, unfiltered.
       await expect(merchantsPage.searchInput).toHaveValue('');
-      await expect(merchantsPage.statusFilter).toHaveText(/all statuses/i);
+      await expect(merchantsPage.statusFilter).toHaveAccessibleName('Filter by status');
       expect(await merchantsPage.table.rows.count()).toBeGreaterThan(0);
-      await expect(merchantsPage.resultsFooter).toHaveText(/showing 1 to \d+ of \d+ results/i);
+      await expect(merchantsPage.resultsFooter).toHaveText(/^1–\d+ of \d+$/);
 
       // The unrecognised param is harmless; the malformed page value is discarded.
       await expect(page).not.toHaveURL(/page=abc/);

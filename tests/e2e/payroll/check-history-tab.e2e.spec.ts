@@ -1,5 +1,13 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
+import type { PayrollPage } from '@pages/payroll/PayrollPage';
+
+/** Total from the pager ("1–30 of 64"); the pager is not rendered when empty. */
+const totalOf = async (payrollPage: PayrollPage): Promise<number> => {
+  if ((await payrollPage.paginationSummary.count()) === 0) return 0;
+  const summary = await payrollPage.paginationSummary.innerText();
+  return Number(summary.match(/of (\d+)/)?.[1] ?? NaN);
+};
 
 test.describe('Check History tab — Payroll', () => {
   test.beforeEach(async ({ payrollPage }) => {
@@ -15,8 +23,10 @@ test.describe('Check History tab — Payroll', () => {
       await expect(table).toBeVisible();
       await expect(table.getByRole('columnheader', { name: /staff name/i })).toBeVisible();
       await expect(table.getByRole('columnheader', { name: /created at/i })).toBeVisible();
-      await expect(table.getByRole('columnheader', { name: /check/i })).toBeVisible();
-      await expect(table.getByRole('columnheader', { name: /memo/i })).toBeVisible();
+      await expect(table.getByRole('columnheader', { name: /^check$/i })).toBeVisible();
+      // 2026-10 redesign: MEMO is collapsed ("Hidden at this width") while the
+      // detail panel is shown; it is surfaced as "Period" in that panel and is
+      // covered by TC-PAY-122.
 
       const firstRowText = await payrollPage.checkHistoryTable.rows.first().innerText();
       // Date-only format, e.g. "Jan 5, 2026" — no time-of-day component.
@@ -30,50 +40,67 @@ test.describe('Check History tab — Payroll', () => {
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ payrollPage }) => {
       await expect(payrollPage.paginationSummary).toBeVisible();
-      await expect(payrollPage.paginationSummary).toHaveText(/Showing \d+ to \d+ of \d+ results/);
-      await expect(payrollPage.pageIndicator).toHaveText(/\d+\s*\/\s*\d+/);
+      await expect(payrollPage.paginationSummary).toHaveText(/^1\s*[–-]\s*\d+ of \d+$/);
+      await expect(payrollPage.pageIndicator).toHaveText(/^1\s*\/\s*\d+$/);
       await expect(payrollPage.previousPageButton).toBeDisabled();
 
-      const isNextEnabled = await payrollPage.nextPageButton.isEnabled();
-      if (isNextEnabled) {
-        const beforeIndicator = await payrollPage.pageIndicator.innerText();
-        await payrollPage.goToNextPage();
-        const afterIndicator = payrollPage.pageIndicator;
-        await expect(afterIndicator).not.toHaveText(beforeIndicator);
-        await expect(payrollPage.previousPageButton).toBeEnabled();
-      }
+      // Check History is append-only (64 checks / 3 pages on 2026-10-20), so a
+      // second page is a precondition rather than optional.
+      await expect(payrollPage.nextPageButton).toBeEnabled();
+      const beforeIndicator = await payrollPage.pageIndicator.innerText();
+      const firstPageIds = await payrollPage.checkHistoryTable.rows.allInnerTexts();
+      await payrollPage.goToNextPage();
+      await expect(payrollPage.pageIndicator).not.toHaveText(beforeIndicator);
+      await expect(payrollPage.pageIndicator).toHaveText(/^2\s*\/\s*\d+$/);
+      await expect(payrollPage.previousPageButton).toBeEnabled();
+      await expect
+        .poll(() => payrollPage.checkHistoryTable.rows.allInnerTexts())
+        .not.toEqual(firstPageIds);
     },
   );
 
   test(
     'TC-PAY-102 — Filter by status narrows the check list',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ payrollPage }) => {
+    async ({ payrollPage, page }) => {
       await expect(payrollPage.historyStatusSelect).toBeVisible();
-      const options = await payrollPage.historyStatusSelect.locator('option').allTextContents();
-      const specificOption = options.find((opt) => !/all statuses/i.test(opt));
+      await expect(payrollPage.checkHistoryTable.rows.first()).toBeVisible();
+      const before = await totalOf(payrollPage);
 
-      if (specificOption) {
-        await payrollPage.historyStatusSelect.selectOption({ label: specificOption });
-        await expect(payrollPage.historyStatusSelect).toHaveValue(/.+/);
-        await expect(payrollPage.page.getByRole('table').first()).toBeVisible();
-      }
+      await payrollPage.historyStatusSelect.click();
+      const options = page.getByRole('listbox').getByRole('option');
+      await expect(options.first()).toBeVisible();
+      const labels = (await options.allInnerTexts()).map((label) => label.trim());
+      expect(labels).toEqual(expect.arrayContaining(['Created', 'Printed']));
+      await options.filter({ hasText: /^Printed$/ }).click();
+      await page.keyboard.press('Escape');
+
+      await expect(page).toHaveURL(/status=printed/);
+      await expect(payrollPage.historyStatusSelect).toHaveAccessibleName(/printed/i);
+      await payrollPage.waitForReady();
+      await expect.poll(() => totalOf(payrollPage)).toBeLessThan(before);
     },
   );
 
   test(
     'TC-PAY-103 — Filter by date range narrows the check list',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ payrollPage }) => {
-      await expect(payrollPage.historyDatePresetSelect).toBeVisible();
-      const options = await payrollPage.historyDatePresetSelect.locator('option').allTextContents();
-      const specificOption = options.find((opt) => !/all dates/i.test(opt));
+    async ({ payrollPage, page }) => {
+      await expect(payrollPage.historyDatePresetSelect).toHaveText(/all dates/i);
+      await expect(payrollPage.checkHistoryTable.rows.first()).toBeVisible();
+      const before = await totalOf(payrollPage);
 
-      if (specificOption) {
-        await payrollPage.historyDatePresetSelect.selectOption({ label: specificOption });
-        await expect(payrollPage.historyDatePresetSelect).toHaveValue(/.+/);
-        await expect(payrollPage.page.getByRole('table').first()).toBeVisible();
-      }
+      await payrollPage.historyDatePresetSelect.click();
+      const presets = page.getByRole('listbox', { name: 'Presets' }).getByRole('option');
+      await expect(presets.first()).toBeVisible();
+      await presets.filter({ hasText: /^Last year$/ }).click();
+      await page.keyboard.press('Escape');
+
+      await expect(page).toHaveURL(/dateAfter=/);
+      await expect(payrollPage.historyDatePresetSelect).toHaveText(/last year/i);
+      await payrollPage.waitForReady();
+      // History starts in 2026, so "Last year" must narrow the list.
+      await expect.poll(() => totalOf(payrollPage)).toBeLessThan(before);
     },
   );
 
@@ -141,12 +168,15 @@ test.describe('Check History tab — Payroll', () => {
       await expect(payrollPage.noCheckSelectedMessage).toHaveText(/no check selected/i);
 
       const firstRow = payrollPage.checkHistoryTable.rows.first();
-      const rowText = (await firstRow.innerText()).split('\n')[0].trim();
+      await expect(firstRow).toBeVisible();
+      const checkId = (await firstRow.innerText()).split('\t')[0].trim();
+      expect(checkId).toMatch(/^#\d+$/);
 
-      if (rowText) {
-        await payrollPage.selectCheckHistoryRow(rowText);
-        await expect(payrollPage.noCheckSelectedMessage).toBeHidden();
-      }
+      await firstRow.click();
+      await expect(payrollPage.noCheckSelectedMessage).toBeHidden();
+      const panel = payrollPage.page.getByRole('complementary', { name: /check history detail/i });
+      await expect(panel).toContainText(`Check ${checkId}`);
+      await expect(payrollPage.page).toHaveURL(/checkId=/);
     },
   );
 
@@ -173,13 +203,10 @@ test.describe('Check History tab — Payroll', () => {
 
       await expect.poll(async () => payrollPage.checkHistoryTable.rows.count()).toBe(0);
 
-      // Not a bare header: the screen says something, and the pager reads zero
-      // rather than showing a stale range.
-      await expect(payrollPage.paginationSummary.first()).toHaveText(
-        /showing 0 to 0 of 0 results/i,
-      );
-      await expect(payrollPage.previousPageButton.first()).toBeDisabled();
-      await expect(payrollPage.nextPageButton.first()).toBeDisabled();
+      // Not a bare header: the screen shows an empty state, and no stale range
+      // is left behind (2026-10 redesign: the pager is not rendered when empty).
+      await expect(payrollPage.checksEmptyState).toBeVisible();
+      await expect(payrollPage.paginationSummary).toHaveCount(0);
     },
   );
 });

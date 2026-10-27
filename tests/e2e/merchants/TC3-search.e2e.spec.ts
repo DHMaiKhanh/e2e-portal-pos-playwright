@@ -139,7 +139,10 @@ test.describe('Tìm kiếm merchant (Search) — Merchants', () => {
       await expect(merchantsPage.table.rows).toHaveCount(0);
       await expect(merchantsPage.emptyState).toBeVisible();
       await expect(merchantsPage.emptyState).toHaveText(/no merchants found\./i);
-      await expect(merchantsPage.resultsFooter).toHaveText(/showing 0 to 0 of 0 results/i);
+      // VP-4569: no pagination footer on an empty result; the header count
+      // reads "0 of N merchants" instead of "Showing 0 to 0 of 0 results".
+      await expect(merchantsPage.resultsFooter).toHaveCount(0);
+      await expect(merchantsPage.pageHeader).toContainText(/\b0 of \d+ merchants/);
       await expect(merchantsPage.columnHeaders).toHaveCount(8);
       expect(consoleErrors).toEqual([]);
     },

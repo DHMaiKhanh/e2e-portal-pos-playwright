@@ -27,8 +27,9 @@ test.describe('Tải trang & bố cục — Batch History', () => {
       await expect(batchHistoryPage.heading).toContainText(/Batches/i);
 
       await expect(batchHistoryPage.dateRangeButton).toBeVisible();
-      await expect(batchHistoryPage.statusCombobox).toBeVisible();
-      await expect(batchHistoryPage.statusCombobox).toContainText(/All status/i);
+      await expect(batchHistoryPage.statusFilter).toBeVisible();
+      // Unset status chip == all statuses (no "All status" label since the 2026-10 redesign).
+      await expect(batchHistoryPage.statusFilter).toHaveAccessibleName(/^status$/i);
     },
   );
 
@@ -40,7 +41,7 @@ test.describe('Tải trang & bố cục — Batch History', () => {
 
       await expect(batchHistoryPage.heading).toBeVisible();
       await expect(batchHistoryPage.dateRangeButton).toBeVisible();
-      await expect(batchHistoryPage.statusCombobox).toBeVisible();
+      await expect(batchHistoryPage.statusFilter).toBeVisible();
       await expect(batchHistoryPage.tableRoot).toBeVisible();
 
       const rowCount = await batchHistoryPage.table.rowCount();
@@ -106,7 +107,7 @@ test.describe('Tải trang & bố cục — Batch History', () => {
       expect(page.url()).toBe(urlBeforeReload);
       const paramsAfter = batchHistoryPage.currentQueryParams();
       expect(paramsAfter.toString()).toBe(paramsBefore.toString());
-      await expect(batchHistoryPage.statusCombobox).toContainText(/Open/i);
+      await expect(batchHistoryPage.statusFilter).toContainText(/Open/i);
     },
   );
 
@@ -127,7 +128,8 @@ test.describe('Tải trang & bố cục — Batch History', () => {
       await clientSideNavigate(page, /^Batches$/i);
 
       await test.step('A clear error replaces the table area', async () => {
-        await expect(page.getByText(/error loading batches/i)).toBeVisible({ timeout: 30_000 });
+        await expect(batchHistoryPage.errorState).toBeVisible({ timeout: 30_000 });
+        await expect(page.getByRole('button', { name: /try again/i })).toBeVisible();
         // Not an endless skeleton, and not a blank page.
         await expect(skeletons(page)).toHaveCount(0);
       });

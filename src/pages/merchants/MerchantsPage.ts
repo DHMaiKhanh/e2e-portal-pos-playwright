@@ -23,13 +23,13 @@ export const MerchantColumn = {
 /** The exact header labels, in order — asserted by the table cases. */
 export const MERCHANT_COLUMNS = [
   '#',
-  'MERCHANT',
-  'PACKAGE',
-  'STATUS',
-  'OWNER EMAIL',
-  'OWNER PHONE',
-  'TIMEZONE',
-  'JOINED AT',
+  'Merchant',
+  'Package',
+  'Status',
+  'Owner email',
+  'Owner phone',
+  'Timezone',
+  'Joined at',
 ] as const;
 
 /** The three options the status filter offers (verified 2026-08-18). */
@@ -64,37 +64,45 @@ export class MerchantsPage extends BasePage {
     super(page);
     this.sidebar = new Sidebar(page);
     this.table = new DataTable(page, page.getByRole('table'));
-    this.pagination = new Pagination(page);
-    this.searchInput = page.getByPlaceholder('Search merchants by name or WHMCS ID...');
-    // The trigger is a <button role="combobox"> whose only accessible name is
-    // its aria-label; its text content is the selected value ("All statuses").
-    // While the listbox is open Radix marks the page aria-hidden, so this
-    // locator cannot be resolved by role until the popup closes — read state
-    // from `statusFilterValue` in that window instead.
-    this.statusFilter = page.getByRole('combobox', { name: /filter by status/i });
-    this.resultsFooter = page.getByText(/showing \d+ to \d+ of \d+ results/i);
+    // Since the 2026-10-13 design-system refactor (VP-4569) pagination is a
+    // `<nav aria-label="Pagination">` with "Previous page"/"Next page" icon buttons.
+    this.pagination = new Pagination(page, page.getByRole('navigation', { name: 'Pagination' }));
+    this.searchInput = page.getByPlaceholder('Search merchants...');
+    // Since VP-4569 the status filter is a "filter chip" <button
+    // aria-haspopup="dialog">: aria-label "Filter by status" when unset, and
+    // "Filter by status: <Value>" once a status is picked. It opens a popover
+    // with a cmdk listbox ("All statuses" / "Active" / "Inactive").
+    this.statusFilter = page.getByRole('button', { name: /^filter by status/i });
+    // Range label inside the pagination nav, e.g. "1–16 of 16".
+    this.resultsFooter = page.locator('[data-slot="pos-pagination-range"]');
   }
 
   async waitForReady(): Promise<void> {
     await expect(this.searchInput).toBeVisible();
-    await expect(this.resultsFooter).toBeVisible();
     // Rows or the empty placeholder — whichever the current filter produces.
     await expect(this.table.rows.first().or(this.emptyState)).toBeVisible();
+    // VP-4569: the pagination nav (and its range label) is only rendered when
+    // there is at least one row; the empty state has no footer.
+    if (await this.table.rows.first().isVisible()) {
+      await expect(this.resultsFooter).toBeVisible();
+    }
   }
 
-  /** The page header. Rendered as a `data-slot="page-title"` div, not a heading.
-   *  Renamed from "Merchant Management" to "Merchants" (verified 2026-10-10). */
+  /** The page title — an `<h1>` since VP-4569 (verified 2026-10-20). */
   get pageTitle(): Locator {
-    return this.page.locator('[data-slot="page-title"]').filter({ hasText: 'Merchants' });
+    return this.page.getByRole('heading', { level: 1, name: 'Merchants' });
   }
 
   get pageHeader(): Locator {
-    return this.page.locator('[data-slot="page-header"]');
+    return this.page.locator('[data-slot="pos-page-header"]');
   }
 
   /** Placeholder row shown when nothing matches — text "No merchants found." */
   get emptyState(): Locator {
-    return this.page.locator('[data-slot="empty"]');
+    // VP-4569: the visible "No merchants found." block is rendered OUTSIDE the
+    // <table> (`pos-data-table-empty`); the in-table `[data-slot="empty"]` row
+    // is a zero-size placeholder and is never visible.
+    return this.page.locator('[data-slot="pos-data-table-empty"]');
   }
 
   get columnHeaders(): Locator {
@@ -107,7 +115,7 @@ export class MerchantsPage extends BasePage {
 
   /** Pagination position, e.g. "1 / 1". */
   get pageIndicator(): Locator {
-    return this.page.getByText(/^\d+\s*\/\s*\d+$/);
+    return this.page.locator('[data-slot="pos-pagination-page"]');
   }
 
   /** Status badge in a given row (defaults to the first). */
@@ -116,7 +124,7 @@ export class MerchantsPage extends BasePage {
       .nth(rowIndex)
       .getByRole('cell')
       .nth(MerchantColumn.STATUS)
-      .locator('span');
+      .locator('[data-slot="pos-status-pill"]');
   }
 
   /**
@@ -138,7 +146,9 @@ export class MerchantsPage extends BasePage {
   /** Open the status listbox and pick an option by its visible label. */
   async selectStatus(option: string | RegExp): Promise<void> {
     await this.statusFilter.click();
-    await this.page.getByRole('option', { name: option }).first().click();
+    // Exact match by default — "Active" would otherwise also hit "Inactive".
+    const name = typeof option === 'string' ? new RegExp(`^${option}$`, 'i') : option;
+    await this.page.getByRole('option', { name }).first().click();
     await this.page.waitForTimeout(1_500);
   }
 
@@ -152,22 +162,20 @@ export class MerchantsPage extends BasePage {
   }
 
   /**
-   * The selected value shown on the trigger, read from the DOM.
+   * The selected status shown on the filter chip, read from the DOM.
    *
-   * `statusFilter.textContent()` is unavailable while the listbox is open
-   * (the trigger sits inside an aria-hidden subtree then), so go through the
-   * attribute selector, which is not role-based.
+   * Since VP-4569 an unset chip shows only its name ("Status") and no value;
+   * that state is reported as "All statuses" (the option that clears it).
+   * Read through `data-slot` (not role) so it also works while the popover is
+   * open and the rest of the page is aria-hidden.
    */
   async statusFilterValue(): Promise<string> {
-    return (
-      (
-        await this.page
-          .locator('[aria-label="Filter by status"]')
-          .first()
-          .textContent()
-          .catch(() => '')
-      )?.trim() ?? ''
-    );
+    const value = this.page
+      .locator('[data-slot="pos-filter-chip"][aria-label^="Filter by status"]')
+      .first()
+      .locator('[data-slot="pos-filter-text"]');
+    if ((await value.count()) === 0) return 'All statuses';
+    return ((await value.first().textContent()) ?? '').trim();
   }
 
   /**
@@ -202,10 +210,10 @@ export class MerchantsPage extends BasePage {
     return detail;
   }
 
-  /** Total result count parsed out of "Showing X to Y of Z results". */
+  /** Total result count parsed out of the range label "X–Y of Z". */
   async totalResults(): Promise<number> {
     const text = (await this.resultsFooter.first().textContent()) ?? '';
-    return Number(text.match(/of (\d+) results/i)?.[1] ?? NaN);
+    return Number(text.match(/of (\d+)/i)?.[1] ?? NaN);
   }
 
   /** Navigate with explicit query params, e.g. `{ q: 'Bleu', status: 'active' }`. */
@@ -233,12 +241,9 @@ export class MerchantDetailView {
     await expect(this.generateTokenButton).toBeVisible();
   }
 
+  /** Renamed from "Generate token" to "Sign-in token" by VP-4569. */
   get generateTokenButton(): Locator {
-    return this.page.getByRole('button', { name: /generate token/i });
-  }
-
-  get openInPortalLink(): Locator {
-    return this.page.getByRole('link', { name: /open in portal/i });
+    return this.page.getByRole('button', { name: /sign-in token/i });
   }
 
   /** Tab strip: Overview, Staff, Services, Orders, Devices, Payroll, Income, … */

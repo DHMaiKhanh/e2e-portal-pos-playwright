@@ -605,3 +605,16 @@ Bảng hiển thị `****1111`, nhưng giá trị đầy đủ đọc được t
 - Đã sửa test (fail ở các lần chạy trước trong ngày, đều do test chứ không phải bug app):
   - TC-PAY-065 · search "1001" còn trả về "Lam" (backend match field khác ngoài tên) → yêu cầu staff được tìm còn và danh sách bị lọc bớt
 - Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`
+
+---
+
+## Linear — Task & Bug liên quan
+
+> Nguồn: Linear team VP, label `Portal` — lấy ngày 2026-10-20. Bỏ Canceled, TechDebt/CI và Restaurant Portal.
+> Thứ tự: Bug → đang QC/Review → đã Prod/Done → Todo/Backlog. **3 issue.**
+
+| ID                                                  | Loại | Tiêu đề                                                                           | Trạng thái          | Ưu tiên | Test hiện có                                                    | E2E được? | Ghi chú                                       |
+| --------------------------------------------------- | ---- | --------------------------------------------------------------------------------- | ------------------- | ------- | --------------------------------------------------------------- | --------- | --------------------------------------------- |
+| [VP-3171](https://linear.app/fastboy/issue/VP-3171) | Enh  | [Request] Ticket #1488281_Setup Payroll & sắp xếp lại Menu                        | In Progress         | High    | Chưa                                                            | Một phần  | Ticket hỗ trợ setup Payroll & sắp xếp Menu    |
+| [VP-2236](https://linear.app/fastboy/issue/VP-2236) | Task | [Portal & POS] Apply Staff Compensation Settings to Entire Current Payroll Period | Verified Production | High    | Chưa                                                            | Có        | Compensation áp dụng cho cả kỳ lương hiện tại |
+| [VP-3053](https://linear.app/fastboy/issue/VP-3053) | Enh  | [Payroll Check] Cập nhật UI/Print Layout cho Check                                | Verified Production | High    | Một phần — `payroll/checks-tab-table-actions`, `quick-book-tab` | Có        | Pay to / Memo / print layout của Check        |

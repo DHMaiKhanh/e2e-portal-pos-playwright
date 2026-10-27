@@ -19,6 +19,7 @@ import {
   rptDateLabel,
   rptIsoDay,
   rptParseRows,
+  rptRangeLabel,
 } from '@pages/reports/ReportPagesPage';
 
 /**
@@ -34,19 +35,20 @@ const WEEK_BEFORE = rptIsoDay(-1);
 async function pickPeriod(rp: ReportPagesPage, option: (typeof RPT_PERIOD_OPTIONS)[number]): Promise<void> {
   await rp.periodCombobox.click();
   await rp.page.getByRole('option', { name: option, exact: true }).click();
-  await expect(rp.periodCombobox).toHaveText(option);
+  await expect(rp.periodValue).toHaveText(option);
 }
 
 test.describe('Reports › Income Summary', () => {
   test(
-    'TC-RPT-035 — defaults: today in the range trigger, period Day, "No Row Selected" panel',
+    'TC-RPT-035 — defaults: Today in the range trigger, period Day, no breakdown open',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportPagesPage: rp, page }) => {
       await rp.openWithData(SLUG);
-      await expect(rp.dateRangeButton).toHaveText(rptDateLabel(rptIsoDay(0)));
-      await expect(rp.periodCombobox).toHaveText('Day');
-      await expect(rp.noRowSelected).toBeVisible();
-      await expect(page.getByText(RPT_TEXT.NO_ROW_SELECTED_HINT).first()).toBeVisible();
+      await expect(rp.dateRangeButton).toHaveText('Today');
+      await expect(rp.periodValue).toHaveText('Day');
+      // 2026-10-20: the "No Row Selected" side panel is gone — the breakdown is a sheet opened by a row click.
+      await expect(rp.breakdownDialog).toHaveCount(0);
+      await expect(page.locator('tbody tr[data-state="selected"]')).toHaveCount(0);
     },
   );
 
@@ -59,18 +61,20 @@ test.describe('Reports › Income Summary', () => {
       // the current end again collapses the range onto that day.
       const start = rptIsoDay(0).slice(0, 8) + '01';
       const end = rptIsoDay(-1);
-      test.skip(end.slice(0, 7) !== start.slice(0, 7) || end <= start, 'Too early in the month for a window');
+      expect(end.slice(0, 7) !== start.slice(0, 7) || end <= start, 'Too early in the month for a window').toBeFalsy();
       await rp.openWithData(SLUG);
       await rp.dateRangeButton.click();
+      // 2026-10-20: the picker shows two months and commits on Apply.
       await rp.dayButton(start).click();
-      await expect(page).toHaveURL(new RegExp(`after=${start}`));
       await rp.dayButton(end).click();
+      await expect(rp.calendar).toContainText(rptRangeLabel(start, end));
+      await rp.calendar.getByRole('button', { name: 'Apply', exact: true }).click();
       await expect(page).toHaveURL(new RegExp(`after=${start}&before=${end}`));
-      await page.keyboard.press('Escape');
-      await expect(rp.dateRangeButton).toHaveText(`${rptDateLabel(start)} - ${rptDateLabel(end)}`);
+      await expect(rp.calendar).toBeHidden();
+      await expect(rp.dateRangeButton).toHaveText(rptRangeLabel(start, end));
       await expect(rp.dateRangeButton).toHaveText(RPT_DATE_RANGE_LABEL);
       const days = Number(end.slice(8, 10));
-      await expect(rp.resultsFooter).toHaveText(new RegExp(`of ${days} results$`), { timeout: Timeouts.LONG });
+      await rp.expectTotal(days);
     },
   );
 
@@ -132,7 +136,7 @@ test.describe('Reports › Income Summary', () => {
       expect((await rp.headerLabels()).map((h) => h.toLowerCase())).toEqual(
         RPT_COLUMNS.incomeSummary.map((h) => h.toLowerCase()),
       );
-      await expect(rp.resultsFooter).toHaveText('Showing 1 to 7 of 7 results');
+      await rp.expectTotal(7);
       for (const d of await rp.columnTexts(0)) expect(d).toMatch(RPT_DATE_LABEL);
       for (let c = 1; c <= 4; c++) for (const v of await rp.columnTexts(c)) expect(v).toMatch(RPT_CURRENCY);
     },
@@ -151,37 +155,39 @@ test.describe('Reports › Income Summary', () => {
   );
 
   test(
-    'TC-RPT-043 — clicking a row highlights it and opens the five-group breakdown',
+    'TC-RPT-043 — clicking a row selects it and opens the five-group breakdown sheet',
     { tag: [Tag.REGRESSION, Tag.SMOKE] },
     async ({ reportPagesPage: rp, page }) => {
       await rp.openWithData(SLUG);
-      test.skip((await rp.dataRows().count()) === 0, 'No summary row');
+      expect((await rp.dataRows().count()) === 0, 'No summary row').toBeFalsy();
       const url = page.url();
       await rp.dataRows().first().click();
-      await expect(rp.noRowSelected).toBeHidden({ timeout: Timeouts.MEDIUM });
+      await expect(rp.breakdownDialog).toBeVisible({ timeout: Timeouts.MEDIUM });
       for (const group of RPT_SUMMARY_BREAKDOWN_GROUPS) {
-        await expect(page.getByText(new RegExp(`^${group}$`, 'i')).first()).toBeVisible({ timeout: Timeouts.MEDIUM });
+        await expect(rp.breakdownDialog.getByText(group, { exact: true }).first()).toBeVisible({ timeout: Timeouts.MEDIUM });
       }
-      await expect(rp.dataRows().first()).toHaveClass(/bg-primary/);
+      await expect(rp.dataRows().first()).toHaveAttribute('data-state', 'selected');
       expect(page.url()).toBe(url);
     },
   );
 
   test(
-    'TC-RPT-044 — breakdown PAYMENT DETAILS equals the row Total Payment; SALE DETAILS header equals its Total Payment row',
+    'TC-RPT-044 — breakdown Payment details equals the row Total Payment; Sale details = Net Total + Tip + Tax Collected',
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp, page }) => {
       await rp.openWithData(SLUG);
-      test.skip((await rp.dataRows().count()) === 0, 'No summary row');
+      expect((await rp.dataRows().count()) === 0, 'No summary row').toBeFalsy();
       const rowTotal = rptAmount((await rp.columnTexts(4))[0]);
       await rp.dataRows().first().click();
-      await expect(page.getByText(/^salon earnings$/i).first()).toBeVisible({ timeout: Timeouts.MEDIUM });
+      await expect(rp.breakdownDialog.getByText('Salon earnings', { exact: true })).toBeVisible({ timeout: Timeouts.MEDIUM });
       const text = await rp.rightPanelText();
-      const pay = rptParseRows(ReportPagesPage.section(text, 'PAYMENT DETAILS', RPT_SUMMARY_BREAKDOWN_GROUPS));
+      const pay = rptParseRows(ReportPagesPage.section(text, 'Payment details', RPT_SUMMARY_BREAKDOWN_GROUPS));
       expect(rptAmount(pay[0].value)).toBeCloseTo(rowTotal, 2);
-      expect(rptAmount(pay.filter((r) => r.label === 'Total Payment').pop()!.value)).toBeCloseTo(rowTotal, 2);
-      const sale = rptParseRows(ReportPagesPage.section(text, 'SALE DETAILS', RPT_SUMMARY_BREAKDOWN_GROUPS));
-      expect(rptAmount(sale[0].value)).toBeCloseTo(rptAmount(sale.filter((r) => r.label === 'Total Payment').pop()!.value), 2);
+      const payVal = (l: string) => rptAmount(pay.filter((r) => r.label === l).pop()?.value ?? '');
+      expect(payVal('Amount Collected') + payVal('Gift Card Redemption')).toBeCloseTo(rowTotal, 2);
+      const sale = rptParseRows(ReportPagesPage.section(text, 'Sale details', RPT_SUMMARY_BREAKDOWN_GROUPS));
+      const saleVal = (l: string) => rptAmount(sale.filter((r) => r.label === l).pop()?.value ?? '');
+      expect(rptAmount(sale[0].value)).toBeCloseTo(saleVal('Net Total') + saleVal('Tip') + saleVal('Tax Collected'), 2);
     },
   );
 
@@ -229,10 +235,10 @@ test.describe('Reports › Income Summary', () => {
     async ({ reportPagesPage: rp, page }) => {
       const q = { after: rptIsoDay(-60), before: rptIsoDay(-1), period: 'monthly' };
       await rp.openWithData(SLUG, q);
-      await expect(rp.periodCombobox).toHaveText('Month');
+      await expect(rp.periodValue).toHaveText('Month');
       await page.reload({ waitUntil: 'domcontentloaded' });
       await rp.waitForData();
-      await expect(rp.periodCombobox).toHaveText('Month');
+      await expect(rp.periodValue).toHaveText('Month');
       expect(rp.param('period')).toBe('monthly');
       for (const label of await rp.columnTexts(0)) expect(label).toMatch(RPT_MONTH_LABEL);
     },
@@ -242,7 +248,7 @@ test.describe('Reports › Income Summary', () => {
     'TC-RPT-048 — a reversed range (after > before) is swapped or rejected with a message',
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp }) => {
-      test.fail(true, 'Product bug: reversed range is accepted, labelled "Oct 13 - Oct 1" and silently returns 0 rows');
+      // Product bug (re-checked 2026-10-20): the reversed range is accepted, labelled "Oct 19 – 13, 2026" and renders no rows.
       await rp.openWithData(SLUG, { after: WEEK_BEFORE, before: WEEK_AFTER });
       const counts = await rp.footerCounts();
       expect(counts.total).toBe(7);

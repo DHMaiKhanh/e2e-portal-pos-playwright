@@ -29,8 +29,8 @@ test.describe('Bảo mật & Phân quyền — Overview (chưa đăng nhập)', 
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ page }) => {
       await expectUnauthenticatedRedirect(page, Urls.DASHBOARD, [
-        page.getByRole('button', { name: /generate token/i }),
-        page.getByText(/total payment/i),
+        page.getByText(/merchant information/i),
+        page.getByText(/^Today:/),
         page.getByRole('link', { name: /^Overview$/i }),
         page.getByRole('button', { name: /open pos #\d+ details/i }),
       ]);

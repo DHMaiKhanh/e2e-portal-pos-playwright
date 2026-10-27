@@ -150,19 +150,14 @@ test.describe('Định dạng dữ liệu & trạng thái biên (Data / Edge) �
       ).toBeVisible();
       await expect(staffsPage.table.rows).toHaveCount(0);
 
-      // "0 to 0 of 0" is the correct reading here — what must not appear is a
-      // range implying rows that are not on screen.
-      const footer = (
-        await staffsPage.resultsFooter
-          .first()
-          .innerText()
-          .catch(() => '')
-      ).trim();
-      if (footer) {
-        expect(footer).toMatch(/showing 0 to 0 of 0 results/i);
-      }
-      await expect(staffsPage.pagination.nextButton).toBeDisabled();
-      await expect(staffsPage.pagination.prevButton).toBeDisabled();
+      // What must not appear is a range implying rows that are not on screen.
+      // Since the 2026-10-13 refactor the pager (range + Previous/Next) is
+      // removed entirely on an empty result, so no enabled paging control and
+      // no range text may remain.
+      await expect(staffsPage.resultsFooter).toHaveCount(0);
+      await expect(
+        staffsPage.page.getByRole('button', { name: /^(previous|next) page$/i, disabled: false }),
+      ).toHaveCount(0);
     },
   );
 });

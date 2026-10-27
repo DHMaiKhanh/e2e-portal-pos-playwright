@@ -105,9 +105,7 @@ test.describe('Tab navigation — Payroll', () => {
         const landed = currentPage() ?? '1';
         const checksOwnPages = checksHadSecondPage ? ['1', '2'] : ['1'];
         expect(checksOwnPages).toContain(landed);
-        await expect(payrollPage.paginationSummary.first()).toContainText(
-          /showing \d+ to \d+ of \d+ results/i,
-        );
+        await expect(payrollPage.paginationSummary.first()).toHaveText(/\d+\s*[–-]\s*\d+ of \d+/);
       });
     },
   );

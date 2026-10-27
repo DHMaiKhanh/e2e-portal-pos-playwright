@@ -561,3 +561,34 @@
 - Lệnh: `ENV=stage npm run test:report` (full suite, headless, 8 workers, `https://v2.dev-fastboypay.com`)
 - Kết quả: 36 passed, 0 failed, 2 skipped (tổng 38) — toàn suite 705 passed, 0 failed, 130 skipped
 - Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`
+
+---
+
+## Linear — Task & Bug liên quan
+
+> Nguồn: Linear team VP, label `Portal` — lấy ngày 2026-10-20. Bỏ Canceled, TechDebt/CI và Restaurant Portal.
+> Thứ tự: Bug → đang QC/Review → đã Prod/Done → Todo/Backlog. **7 issue.**
+
+| ID                                                  | Loại    | Tiêu đề                                                                    | Trạng thái          | Ưu tiên | Test hiện có                                    | E2E được?                | Ghi chú                                  |
+| --------------------------------------------------- | ------- | -------------------------------------------------------------------------- | ------------------- | ------- | ----------------------------------------------- | ------------------------ | ---------------------------------------- |
+| [VP-4295](https://linear.app/fastboy/issue/VP-4295) | Task    | [PORTAL] Thêm thông tin Auth Code cho thanh toán card trên Receipt         | Verified Production | Urgent  | Một phần — `orders/order-detail-page` (receipt) | Có                       | Auth Code + Charge Date trên receipt     |
+| [VP-4304](https://linear.app/fastboy/issue/VP-4304) | Task    | [PORTAL] Hiển thị chữ ký khách trên receipt của order                      | Verified Production | High    | Một phần — `orders/order-detail-page` (receipt) | Có                       | Chữ ký khách trên receipt order          |
+| [VP-4584](https://linear.app/fastboy/issue/VP-4584) | Enh     | [PORTAL] Receipt Details: sửa policy "below" thành "above" ở Portal        | Verified Production | Urgent  | Một phần — `orders/order-detail-page` (receipt) | Có                       | Policy "below" → "above"                 |
+| [VP-2676](https://linear.app/fastboy/issue/VP-2676) | Feature | [POS/Portal] Hỗ trợ Manual Refund bằng Cash/Other                          | Todo                | Low     | Chưa                                            | Chưa (chưa có tính năng) | Manual Refund Cash/Other                 |
+| [VP-3832](https://linear.app/fastboy/issue/VP-3832) | Feature | [PORTAL] Show the origin platform on the order lists                       | Todo                | High    | Chưa                                            | Chưa (chưa có tính năng) | Cột Opened on trên order list            |
+| [VP-3833](https://linear.app/fastboy/issue/VP-3833) | Feature | [PORTAL] Show the origin device on the order detail page                   | Todo                | Medium  | Chưa                                            | Chưa (chưa có tính năng) | Thiết bị tạo order trên order detail     |
+| [VP-3951](https://linear.app/fastboy/issue/VP-3951) | Feature | [PORTAL] Show the opening device and the charging terminal on order detail | Todo                | High    | Chưa                                            | Chưa (chưa có tính năng) | Opened on / Charged by trên order detail |
+
+## Đã loại bỏ / thay đổi (2026-10-20)
+
+Không xoá TC nào. Cập nhật locator/kỳ vọng theo UI mới (VP-4569, 2026-10-13):
+
+- Bộ lọc Status / Payment method / Staff không còn option "All …"; reset bằng nút "Clear <tên> filter". Chip mặc định chỉ hiển thị "Staff", "Payment method", "Status" (TC-ORD-002, 011, 014, 016, 019).
+- Option đổi sang sentence-case: "Last 7 days", "Gift card", "Cancel issue", "Partial refunded", "Refund issue" (TC-ORD-007, 014, 016). Payment method còn 4 option (TC-ORD-014).
+- Pagination hiển thị "1–3 of 3" thay cho "Showing 1 to 3 of 3 results" (TC-ORD-004, 025). Empty state: "No matching results" (TC-ORD-006).
+- Khoảng ngày tuỳ chỉnh phải bấm "Apply" (TC-ORD-010).
+- "Back to orders" → breadcrumb "Orders" (TC-ORD-029); "Re-open order" nằm trong menu "More actions" (TC-ORD-031); heading chi tiết là "#<mã order>" (TC-ORD-030..034).
+- Icon thẻ là ảnh trang trí (alt=""), brand đọc qua group "Paid with <brand> ending <4 số>" (TC-ORD-024).
+- TC-ORD-015: order nhiều tender (vd. "•••• 2402+3") có chứa Cash cũng hợp lệ.
+
+Kết quả 2026-10-20: 39/39 PASS (sau khi sửa). Không còn TC fail.

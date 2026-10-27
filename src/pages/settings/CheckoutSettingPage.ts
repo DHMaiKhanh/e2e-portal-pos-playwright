@@ -97,6 +97,8 @@ export interface CapturedSettingWrite {
 // API Platform routes may carry a format suffix (`/sys_settings.jsonld`, `/sys_settings/{id}.jsonld`).
 const SYS_SETTING_ITEM = /\/sys_settings\/([^/?.]+)/;
 const SYS_SETTING_COLLECTION = /\/sys_settings(\.\w+)?(\?|$)/;
+const POS_API_HOST = /\/\/volt-pos\./;
+const AUTH_REFRESH = /\/refresh_token(\?|$)/;
 
 /** The flag value may travel as an object or as a JSON string. */
 const parseValue = (raw: unknown): unknown => {
@@ -192,6 +194,12 @@ export class CheckoutSettingPage extends BasePage {
         return;
       }
       if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
+        await route.fallback();
+        return;
+      }
+      // Only POS API writes are faked. Auth traffic (`sys.*` SSO, `POST /refresh_token`)
+      // must reach the backend: a faked refresh hands the app no token and it logs out.
+      if (!POS_API_HOST.test(url) || AUTH_REFRESH.test(url)) {
         await route.fallback();
         return;
       }

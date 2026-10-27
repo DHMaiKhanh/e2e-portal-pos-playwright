@@ -1189,3 +1189,17 @@ Sinh code test bằng skill `testcase-to-code` từ tài liệu này → `tests/
 - Lệnh: `ENV=stage npm run test:report` (full suite, headless, 8 workers, `https://v2.dev-fastboypay.com`)
 - Kết quả: 118 passed, 0 failed, 51 skipped (tổng 169) — toàn suite 705 passed, 0 failed, 130 skipped
 - Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`
+
+---
+
+## Linear — Task & Bug liên quan
+
+> Nguồn: Linear team VP, label `Portal` — lấy ngày 2026-10-20. Bỏ Canceled, TechDebt/CI và Restaurant Portal.
+> Thứ tự: Bug → đang QC/Review → đã Prod/Done → Todo/Backlog. **4 issue.**
+
+| ID                                                  | Loại    | Tiêu đề                                                                   | Trạng thái          | Ưu tiên | Test hiện có                                   | E2E được?                | Ghi chú                                           |
+| --------------------------------------------------- | ------- | ------------------------------------------------------------------------- | ------------------- | ------- | ---------------------------------------------- | ------------------------ | ------------------------------------------------- |
+| [VP-2017](https://linear.app/fastboy/issue/VP-2017) | Task    | [Request] Issue 3: Data Import Features                                   | Done                | Medium  | Chưa                                           | Một phần                 | Import hàng loạt (member, gift card, menu, staff) |
+| [VP-2655](https://linear.app/fastboy/issue/VP-2655) | Feature | [Portal] Enhance Onboarding - Impl integration checks with multi gateway. | Verified Production | High    | Có — `onboarding/TC4-step1-integration-status` | Có                       | Integration check nhiều gateway                   |
+| [VP-3077](https://linear.app/fastboy/issue/VP-3077) | Task    | [Onboarding] Bổ sung Start Date cho Payroll Period setting                | Todo                | High    | Chưa                                           | Chưa (chưa có tính năng) | Start Date cho Payroll Period khi onboarding      |
+| [VP-3088](https://linear.app/fastboy/issue/VP-3088) | Task    | [Portal] Onboarding Bổ sung Start Date cho Payroll Period setting         | Todo                | Medium  | Chưa                                           | Chưa (chưa có tính năng) | Phần Portal của VP-3077 (cha: VP-3077)            |

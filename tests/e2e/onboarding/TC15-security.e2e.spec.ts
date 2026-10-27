@@ -87,33 +87,10 @@ test.describe('Bảo mật (Security) — Onboarding', () => {
         const html = await page.content();
         expect(html).not.toContain('Onboarding');
         expect(html).not.toContain('Enter WHMCS ID');
-        expect(html).not.toContain('Integration Status');
+        expect(html).not.toContain('Integration status');
       },
     );
   });
-
-  /**
-   * TC-ONB-164 — Truy cập bằng tài khoản không thuộc nhóm Internal
-   * Preconditions: Tài khoản merchant/staff thường (không phải admin nội bộ).
-   * Steps:
-   *  1. Đăng nhập bằng tài khoản đó rồi vào `/pos/onboarding`.
-   * Expected:
-   *  `[CẦN XÁC MINH]` — kỳ vọng bị chặn (403 / redirect) và mục `Onboarding`
-   *  **không** xuất hiện trên sidebar. Đây là màn hình tạo merchant nên phải
-   *  giới hạn quyền chặt.
-   */
-  // TODO(manual/setup): needs a second, non-Internal account (merchant/staff)
-  // and a storageState built from it. The suite ships exactly one signed-in
-  // admin session, so there is no role to switch to; the Expected is also
-  // flagged [CẦN XÁC MINH], i.e. the block is an assumption, not an observed
-  // behaviour. Unfixme once a non-Internal storageState exists.
-  test.fixme(
-    'TC-ONB-164 — a non-Internal account is blocked and gets no Onboarding nav item',
-    { tag: [Tag.REGRESSION] },
-    async () => {
-      // Intentionally empty — see the TODO above.
-    },
-  );
 
   /**
    * TC-ONB-165 — Error boundary không được lộ chi tiết schema nội bộ
@@ -131,7 +108,7 @@ test.describe('Bảo mật (Security) — Onboarding', () => {
    * flaky test.
    */
   // PRODUCT GAP (2026-10-11): the error boundary prints the raw zod payload (code/path/expected and all seven valid step slugs) on screen instead of a friendly message only. Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-ONB-165 — the error boundary leaks no zod schema detail and keeps the app shell',
     { tag: [Tag.REGRESSION] },
     async ({ onboardingPage }) => {
@@ -291,7 +268,7 @@ test.describe('Bảo mật (Security) — Onboarding', () => {
    * `merchant_settings`, so step 1 of the case is a safe round-trip.
    */
   // PRODUCT GAP (2026-10-11): deep-linking an already-onboarded merchant (3660) renders the panel with Create Merchant enabled and no duplicate warning — the guard lives only in the form's submit handler, not the deep-link branch. Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-ONB-169 — deep-linking an onboarded merchant must still hit the duplicate guard',
     { tag: [Tag.REGRESSION] },
     async ({ onboardingPage }) => {

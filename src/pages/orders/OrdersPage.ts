@@ -46,6 +46,7 @@ export class OrdersPage extends BasePage {
   readonly backToOrdersLink: Locator;
   readonly receiptButton: Locator;
   readonly reOpenOrderButton: Locator;
+  readonly moreActionsButton: Locator;
   readonly orderInformationSection: Locator;
   readonly serviceDetailsSection: Locator;
   readonly paymentDetailsSection: Locator;
@@ -86,7 +87,10 @@ export class OrdersPage extends BasePage {
 
     this.staffFilterButton = page.locator('[data-slot="order-filters-staff"]');
     this.staffFilterPanel = page.getByRole('menu').or(page.getByRole('dialog'));
-    this.allStaffOption = page.getByRole('option', { name: /^all staff$/i });
+    // VP-4569 (2026-10-13): the staff picker is a searchable combobox listing
+    // only real staff — there is no "All staff" option any more; clearing goes
+    // through the "Clear staff filter" button beside the chip instead.
+    this.allStaffOption = this.staffFilterPanel.getByRole('combobox', { name: 'Staff' });
 
     this.paymentMethodCombobox = page.getByRole('button', { name: /^Payment method(:|$)/ });
 
@@ -97,15 +101,23 @@ export class OrdersPage extends BasePage {
     this.paginationSummary = page.locator('[data-slot="pos-pagination-range"]');
     this.pageIndicator = page.locator('[data-slot="pos-pagination-page"]');
 
-    this.emptyStateMessage = page.getByText(/no orders found/i);
+    // VP-4569: the empty state reads "No matching results" (was "No orders found").
+    this.emptyStateMessage = page.getByText(/no matching results|no orders found/i);
 
     // Order detail heading label is dynamic ("Order #OD260707-...").
-    this.orderDetailHeading = page
-      .locator('[data-slot="pos-page-heading"]')
-      .filter({ hasText: /OD\d+/ });
-    this.backToOrdersLink = page.getByRole('link', { name: /back to orders/i });
+    // The level-1 heading is "#<order code>"; mocked codes are not always
+    // "OD<digits>" (e.g. "OD-NOCUST-0032"), so only the "#OD" prefix is assumed.
+    this.orderDetailHeading = page.getByRole('heading', { level: 1, name: /^#OD/ });
+    // VP-4569: the "Back to orders" link became the "Orders" crumb of the
+    // page breadcrumb.
+    this.backToOrdersLink = page
+      .getByRole('navigation', { name: 'Breadcrumb' })
+      .getByRole('link', { name: 'Orders', exact: true });
     this.receiptButton = page.getByRole('button', { name: 'Receipt', exact: true });
-    this.reOpenOrderButton = page.getByRole('button', { name: /re-open order/i });
+    // VP-4569: "Re-open order" moved into the header's "More actions" menu
+    // (call openMoreActions() first).
+    this.moreActionsButton = page.getByRole('button', { name: 'More actions' });
+    this.reOpenOrderButton = page.getByRole('menuitem', { name: /re-open order/i });
     // Detail sections are cards; match their title element rather than any text
     // on the page. A bare getByText(/payment details/i) also matches the
     // transaction rows inside the card, which trips strict mode.
@@ -144,6 +156,24 @@ export class OrdersPage extends BasePage {
    * a new request — so the response wait is best-effort (bounded) rather than required.
    */
   private async chooseOption(trigger: Locator, option: string): Promise<void> {
+    // VP-4569: the filter popovers no longer carry an "All …" reset option; a
+    // chip is reset with the "Clear <name> filter" button rendered beside it.
+    const reset = /^All (statuses|methods|staff)$/i.exec(option);
+    if (reset) {
+      const name = { statuses: 'status', methods: 'payment method', staff: 'staff' }[
+        reset[1].toLowerCase() as 'statuses' | 'methods' | 'staff'
+      ];
+      const clear = this.page.getByRole('button', { name: `Clear ${name} filter`, exact: true });
+      if (await clear.count()) {
+        const resp = this.page
+          .waitForResponse((res) => res.url().includes('/orders?'), { timeout: 3_000 })
+          .catch(() => undefined);
+        await clear.click();
+        await resp;
+      }
+      await this.waitForReady();
+      return;
+    }
     await trigger.click();
     const responsePromise = this.page
       .waitForResponse((res) => res.url().includes('/orders?'), { timeout: 3_000 })
@@ -281,8 +311,11 @@ export class OrdersPage extends BasePage {
         .filter({ hasText: new RegExp(`^${day}$`) })
         .first();
     await dayCell(startDay).click();
-    const responsePromise = this.page.waitForResponse((res) => res.url().includes('/orders?'));
     await dayCell(endDay).click();
+    // VP-4569: the range is only applied on "Apply" (the popover also holds
+    // the presets and a "Cancel" button).
+    const responsePromise = this.page.waitForResponse((res) => res.url().includes('/orders?'));
+    await this.datePickerDialog.getByRole('button', { name: 'Apply', exact: true }).click();
     await responsePromise;
     await this.waitForReady();
   }
@@ -321,9 +354,16 @@ export class OrdersPage extends BasePage {
    * `/orders?` request, so we wait on the URL rather than a network response.
    */
   async clearPaymentMethod(): Promise<void> {
-    await this.paymentMethodCombobox.click();
-    await this.page.getByRole('option', { name: 'All methods', exact: true }).click();
+    await this.page
+      .getByRole('button', { name: 'Clear payment method filter', exact: true })
+      .click();
     await this.page.waitForURL(/paymentMethod=all/);
+  }
+
+  /** Opens the order detail header's "More actions" menu (Refund, Re-open order). */
+  async openMoreActions(): Promise<void> {
+    await this.moreActionsButton.click();
+    await expect(this.page.getByRole('menu', { name: 'More actions' })).toBeVisible();
   }
 
   /**

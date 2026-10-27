@@ -667,3 +667,42 @@ Page Object: `src/pages/merchants/MerchantsPage.ts` — kèm `MerchantDetailView
 - Lệnh: `ENV=stage npm run test:report` (full suite, headless, 8 workers, `https://v2.dev-fastboypay.com`)
 - Kết quả: 78 passed, 0 failed, 4 skipped (tổng 82) — toàn suite 705 passed, 0 failed, 130 skipped
 - Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`
+
+---
+
+## Linear — Task & Bug liên quan
+
+> Nguồn: Linear team VP, label `Portal` — lấy ngày 2026-10-20. Bỏ Canceled, TechDebt/CI và Restaurant Portal.
+> Thứ tự: Bug → đang QC/Review → đã Prod/Done → Todo/Backlog. **1 issue.**
+
+| ID                                                  | Loại    | Tiêu đề                                                              | Trạng thái   | Ưu tiên | Test hiện có | E2E được? | Ghi chú                                     |
+| --------------------------------------------------- | ------- | -------------------------------------------------------------------- | ------------ | ------- | ------------ | --------- | ------------------------------------------- |
+| [VP-3871](https://linear.app/fastboy/issue/VP-3871) | Feature | [PORTAL] Confirm pending device registrations from the merchant page | QC Completed | High    | Chưa         | Có        | Tab Pending: duyệt/từ chối thiết bị đăng ký |
+
+---
+
+## Đã loại bỏ / thay đổi (2026-10-20)
+
+> Bối cảnh: Portal refactor sang design system mới (Linear VP-4569, deploy 2026-10-13). Theo quyết định của user: **sửa locator, giữ test case**; mọi test phải kết thúc PASS hoặc FAIL (không còn skip/fixme). Chạy lại trên DEV `https://v2.dev-fastboypay.com` với `ENV=stage`.
+
+**Thay đổi UI đã cập nhật vào page object / spec (không xoá TC nào):**
+
+- Tiêu đề trang là `<h1>Merchants</h1>` trong `header[data-slot=pos-page-header]`; `document.title` = `Merchants | Portal` (gap cũ của TC-MCH-003 đã được fix → TC-MCH-003 PASS, assert heading thay vì "không có heading").
+- Ô tìm kiếm: placeholder `Search merchants...`. Filter trạng thái là **filter chip** `button "Filter by status"` → `"Filter by status: Active|Inactive"` khi đã chọn (popover + listbox cmdk); thêm nút `Columns` (menu ẩn/hiện cột) và `Clear status filter`.
+- Header cột viết hoa kiểu câu (`Merchant`, `Owner email`, `Joined at`…). Cột `Timezone`/`Joined at` (và `Owner phone` ở 1024/768) **tự ẩn theo độ rộng** thay vì cuộn ngang → TC-MCH-101/102/103 cập nhật kỳ vọng (6 cột ở 1366, 5 cột ở 1024/768, ở 768 sidebar thu thành rail 56px và bảng cuộn trong `scroll-area-viewport`).
+- Footer phân trang: `nav "Pagination"` với range `1–16 of 16`, nút `Previous page`/`Next page`, chỉ báo `1 / 1`; **không render footer khi kết quả rỗng** (header hiển thị `0 of N merchants`). Empty state `No merchants found.` nằm ngoài `<table>` (`[data-slot=pos-data-table-empty]`).
+- Sidebar route admin: chỉ còn nhóm `Internal` (Merchants, Onboarding, Packages, All Orders, Devices, `Users & Roles` là link; `System`, `Report Configuration V4` là submenu); các link store-scoped `/pos/nail/undefined/*` đã biến mất. Desktop có nút `Collapse sidebar`/`Expand sidebar` (trạng thái lưu localStorage `pos-sidebar-collapsed`, test tự khôi phục) → TC-MCH-015 viết lại: collapse/expand giữ mục active + drawer mobile 375px.
+- Mục active đánh dấu `aria-current="page"` + `data-on="true"` (TC-MCH-011).
+- Chi tiết merchant: URL `?merchantId=<id>` (không còn JSON-quoted), nút `Sign-in token` (thay `Generate token`), **không còn link `Open in portal`** → TC-MCH-072 viết lại: chọn merchant không đổi sidebar và không có link store-scoped nào trên route admin.
+- TC-MCH-054/094: `?page=2` / `?page=9999` vẫn không bị kẹp về trang hợp lệ (hiển thị empty state, label range có lúc vẫn `1–16 of 16`) — ghi defect annotation như trước, test PASS ở phần "không crash".
+
+**Đã xoá:** không có.
+
+**Còn FAIL (cố ý, không phải lỗi locator):**
+
+| TC         | Lý do                                                                                                                                   | Phân loại     |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
+| TC-MCH-052 | DEV chỉ có 16 merchant (≤ page size 30) → không có trang 2 để Next/Previous. Precondition `total > PAGE_SIZE` fail với message rõ ràng. | Thiếu dữ liệu |
+| TC-MCH-055 | Chỉ 16 merchant Active → không thể kiểm tra giữ filter khi sang trang.                                                                  | Thiếu dữ liệu |
+
+Kết quả lần chạy cuối (2026-10-20, `--retries=0`): **80 test — 78 PASS, 2 FAIL** (2 fail trên đều do thiếu dữ liệu). Các lỗi `page.goto` timeout / thiếu element lẻ tẻ khi DEV quá tải đã chạy lại và PASS.

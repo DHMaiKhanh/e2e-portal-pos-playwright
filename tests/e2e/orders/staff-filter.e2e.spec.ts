@@ -18,7 +18,9 @@ test.describe('Bộ lọc Staff — Orders', () => {
       await ordersPage.openStaffFilter();
 
       await expect(ordersPage.staffFilterPanel).toBeVisible();
+      // VP-4569: no "All staff" option — the panel is a searchable list of staff.
       await expect(ordersPage.allStaffOption).toBeVisible();
+      await expect(ordersPage.staffFilterPanel.getByRole('option').first()).toBeVisible();
     },
   );
 

@@ -118,64 +118,6 @@ test.describe('Bước 4 — `Photos` — Onboarding', () => {
   );
 
   /**
-   * TC-ONB-089 — Upload ảnh PNG hợp lệ
-   * Steps:
-   *  1. `setInputFiles` một file PNG < 5MB vào `#storeLogoObjFid`.
-   *  2. Chờ xử lý.
-   * Expected:
-   *  Hiện preview ảnh (thay cho "Click to upload"); không có lỗi; có tuỳ chọn
-   *  xoá/thay ảnh. [CẦN XÁC MINH] nhãn chính xác của nút xoá/thay.
-   */
-  // TODO(manual/setup): needs a PNG fixture asset (none exists in the repo) and
-  // selecting a file pushes the object at the DEV backend; the remove/replace
-  // control's label is marked [CẦN XÁC MINH] and cannot be asserted yet.
-  test.fixme(
-    'TC-ONB-089 — a valid PNG under 5MB shows a preview with remove/replace',
-    { tag: [Tag.REGRESSION] },
-    async () => {
-      // Arrange: place a <5MB PNG fixture on disk, setInputFiles into
-      // #storeLogoObjFid, then assert the preview replaces "Click to upload"
-      // and the (verified) remove/replace control appears.
-    },
-  );
-
-  /**
-   * TC-ONB-090 — Upload file vượt 5MB bị từ chối
-   * Steps:
-   *  1. Upload file PNG ~6MB.
-   * Expected:
-   *  Hiện lỗi/toast báo vượt dung lượng; ảnh **không** được nhận.
-   *  [CẦN XÁC MINH] nội dung thông báo.
-   */
-  // TODO(manual/setup): needs a ~6MB PNG fixture and the rejection message text
-  // is marked [CẦN XÁC MINH]; the oversize attempt may still hit the DEV upload
-  // endpoint before it is refused.
-  test.fixme('TC-ONB-090 — a file above 5MB is rejected', { tag: [Tag.REGRESSION] }, async () => {
-    // Arrange: generate a ~6MB PNG, setInputFiles into #storeLogoObjFid, then
-    // assert the size error/toast and that no preview is rendered.
-  });
-
-  /**
-   * TC-ONB-091 — Upload định dạng không hỗ trợ
-   * Steps:
-   *  1. Lần lượt upload `.pdf`, `.gif`, `.svg`, `.txt`.
-   * Expected:
-   *  Bị từ chối với thông báo rõ ràng (chỉ chấp nhận PNG/JPG). [CẦN XÁC MINH]
-   *  liệu chặn bằng thuộc tính `accept` hay bằng validate sau khi chọn.
-   */
-  // TODO(manual/setup): needs .pdf/.gif/.svg/.txt fixtures and the doc records
-  // it as unverified whether the block is the `accept` attribute or a
-  // post-select validation, so there is no message to assert against yet.
-  test.fixme(
-    'TC-ONB-091 — unsupported file types are rejected',
-    { tag: [Tag.REGRESSION] },
-    async () => {
-      // Arrange: setInputFiles a .pdf, .gif, .svg and .txt in turn and assert
-      // each is refused with the PNG/JPG-only message.
-    },
-  );
-
-  /**
    * TC-ONB-092 — `Skip` ở bước 4
    * Steps:
    *  1. Bấm "Skip".
@@ -204,45 +146,6 @@ test.describe('Bước 4 — `Photos` — Onboarding', () => {
 
       // Skipping must not persist anything.
       expect(photoWrites).toEqual([]);
-    },
-  );
-
-  /**
-   * TC-ONB-093 — Lưu ảnh thành công
-   * Preconditions: WHMCS ID dùng-một-lần, đã chọn ít nhất 1 ảnh.
-   * Steps:
-   *  1. Bấm "Save Changes".
-   * Expected:
-   *  [CẦN XÁC MINH — hành động ghi] Toast "Photos saved successfully"; chuyển
-   *  sang bước `Package`.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID.
-  test.fixme(
-    'TC-ONB-093 — Save Changes persists photos and advances to Package',
-    { tag: [Tag.REGRESSION] },
-    async () => {
-      // Arrange: deep-link step 4 with a single-use WHMCS ID, attach one photo,
-      // click Save Changes, then assert the ONBOARDING_TOASTS.PHOTOS toast and
-      // the move to ?step=pos-package.
-    },
-  );
-
-  /**
-   * TC-ONB-094 — Lưu khi chưa chọn ảnh nào
-   * Steps:
-   *  1. Vào bước 4, không chọn ảnh, bấm "Save Changes".
-   * Expected:
-   *  [CẦN XÁC MINH] — kỳ vọng cho phép (ảnh là tuỳ chọn, đã có nút `Skip`) và
-   *  vẫn chuyển bước, không báo lỗi.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID; the
-  // outcome is additionally marked [CẦN XÁC MINH].
-  test.fixme(
-    'TC-ONB-094 — Save Changes with no photo selected still advances',
-    { tag: [Tag.REGRESSION] },
-    async () => {
-      // Arrange: deep-link step 4 with a single-use WHMCS ID, attach nothing,
-      // click Save Changes, then assert no validation error and the step advance.
     },
   );
 });

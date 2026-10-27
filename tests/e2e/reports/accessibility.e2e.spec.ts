@@ -35,7 +35,7 @@ test.describe('Reports — accessibility', () => {
   );
 
   test(
-    'TC-RPT-098 — keyboard: Tab walks search → preset → date → switch → Export → sort headers; Enter sorts',
+    'TC-RPT-098 — keyboard: Tab walks search → date → switch → Expand table → Export → sort headers; Enter sorts',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportPagesPage: rp, page }) => {
       await rp.openWithData(ReportPageSlug.STAFF_INCOME);
@@ -50,9 +50,11 @@ test.describe('Reports — accessibility', () => {
           }),
         );
       }
-      expect(order[0]).toBe('Report Date Range preset');
-      expect(order[1]).toBe('Report date range');
-      expect(order[2]).toBe('switch');
+      // 2026-10-20: the range preset moved into the range popover; an
+      // "Expand table" control now sits before Export.
+      expect(order[0]).toBe('Report date range');
+      expect(order[1]).toBe('switch');
+      expect(order[2]).toBe('Expand table');
       expect(order[3]).toBe('Export');
       expect(order[4]).toMatch(/^Sort by Staff/);
       expect(order[5]).toMatch(/^Sort by Orders/);
@@ -80,11 +82,10 @@ test.describe('Reports — accessibility', () => {
     'TC-RPT-100 — each report exposes its name as a page heading',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportPagesPage: rp, page }) => {
-      test.fail(true, 'Product gap: the report name is a <div data-slot="page-title">, no h1–h6');
       const spec = RPT_PAGES[0];
       await rp.open(spec.slug);
       await expect(rp.pageTitle).toBeVisible({ timeout: Timeouts.LONG });
-      await expect(page.getByRole('heading', { name: spec.label })).toBeVisible({ timeout: Timeouts.SHORT });
+      await expect(page.getByRole('heading', { name: spec.label, level: 1 })).toBeVisible({ timeout: Timeouts.SHORT });
     },
   );
 });

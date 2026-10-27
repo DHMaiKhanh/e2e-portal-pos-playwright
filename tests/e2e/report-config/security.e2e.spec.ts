@@ -22,7 +22,14 @@ test.describe('Bảo mật (Security) — Report Configuration (chưa đăng nh�
       for (const screen of REPORT_CONFIG_SCREEN_NAMES) {
         // Under a parallel run the server-side bounce can exceed the helper's
         // default 10 s expect timeout, so wait for it explicitly first.
-        await page.goto(REPORT_CONFIG_SCREENS[screen].path, { waitUntil: 'domcontentloaded' });
+        // Starting from /login (2nd screen on), Chromium intermittently reports the
+        // bounced navigation as ERR_ABORTED — the redirect still happens, so
+        // tolerate that one error and assert on where the page ends up.
+        await page
+          .goto(REPORT_CONFIG_SCREENS[screen].path, { waitUntil: 'domcontentloaded' })
+          .catch((e: Error) => {
+            if (!/ERR_ABORTED/.test(e.message)) throw e;
+          });
         await page.waitForURL(/\/login/, { timeout: 30_000 });
         await expectUnauthenticatedRedirect(page, REPORT_CONFIG_SCREENS[screen].path, [
           page.getByRole('table'),
@@ -77,17 +84,6 @@ test.describe('Bảo mật (Security) — Report Configuration', () => {
   );
 
   /**
-   * TC-RCF-163 — Tài khoản không phải admin không thấy/không vào được module
-   */
-  // TODO(setup): needs a second, limited-role storageState (staff/owner). The suite
-  // holds a single admin session; add `test.use({ storageState: <limited.json> })`.
-  test.fixme(
-    'TC-RCF-163 — a non-admin account cannot see the Report Configuration group or open its routes',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
-  );
-
-  /**
    * TC-RCF-164 — Mở/đóng mọi dialog không phát sinh request ghi nào
    */
   test(
@@ -104,21 +100,26 @@ test.describe('Bảo mật (Security) — Report Configuration', () => {
       await pages.goto();
       await pages.openAdd();
       await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+      // One Cancel click must close the untouched form (defect D11).
+      await expect(page.getByRole('dialog')).toHaveCount(0);
       for (const a of ['Edit', 'Clone']) {
-        await pages.rowAction(a, 0).click();
+        await pages.clickRowAction(a, 0);
         await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
         await expect(page.getByRole('dialog')).toHaveCount(0);
       }
-      await pages.rowAction('Delete', 0).click();
+      await pages.clickRowAction('Delete', 0);
       await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel' }).click();
 
       const blocks = reportConfigPage.on('blocks');
+      // Every DEV block is a system block (Delete disabled) — unlock the first row.
+      await blocks.unlockSystemRows();
       await blocks.goto();
       await blocks.openAdd();
       await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
-      await blocks.rowAction('Clone', 0).click();
+      await expect(page.getByRole('dialog')).toHaveCount(0);
+      await blocks.clickRowAction('Clone', 0);
       await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
-      await blocks.rowAction('Delete', 0).click();
+      await blocks.clickRowAction('Delete', 0);
       await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel' }).click();
 
       expect(writes).toEqual([]);

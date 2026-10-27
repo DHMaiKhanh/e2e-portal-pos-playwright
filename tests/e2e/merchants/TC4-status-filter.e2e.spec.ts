@@ -63,7 +63,7 @@ test.describe('Lọc theo trạng thái (Status filter) — Merchants', () => {
       await merchantsPage.selectStatus(/^Active$/);
 
       await expect(page).toHaveURL(/status=active/);
-      await expect(merchantsPage.statusFilter).toHaveText(/^Active$/);
+      await expect(merchantsPage.statusFilter).toHaveAccessibleName('Filter by status: Active');
 
       const statuses = await merchantsPage.columnValues(MerchantColumn.STATUS);
       expect(statuses.length).toBeGreaterThan(0);
@@ -94,7 +94,7 @@ test.describe('Lọc theo trạng thái (Status filter) — Merchants', () => {
       await merchantsPage.selectStatus(/^Inactive$/);
 
       await expect(page).toHaveURL(/status=inactive/);
-      await expect(merchantsPage.statusFilter).toHaveText(/^Inactive$/);
+      await expect(merchantsPage.statusFilter).toHaveAccessibleName('Filter by status: Inactive');
 
       const statuses = await merchantsPage.columnValues(MerchantColumn.STATUS);
       if (statuses.length > 0) {
@@ -105,7 +105,9 @@ test.describe('Lọc theo trạng thái (Status filter) — Merchants', () => {
         // Not the previous, stale list — an explicit empty state.
         await expect(merchantsPage.emptyState).toBeVisible();
         await expect(merchantsPage.emptyState).toHaveText(/no merchants found\./i);
-        await expect(merchantsPage.resultsFooter).toHaveText(/showing 0 to 0 of 0 results/i);
+        // VP-4569: no pagination footer on an empty result; header reads "0 of N merchants".
+        await expect(merchantsPage.resultsFooter).toHaveCount(0);
+        await expect(merchantsPage.pageHeader).toContainText(/\b0 of \d+ merchants/);
       }
     },
   );
@@ -135,7 +137,7 @@ test.describe('Lọc theo trạng thái (Status filter) — Merchants', () => {
       await expect(page).toHaveURL(/status=active/);
       // Applying the filter did not wipe the keyword out of the input.
       await expect(merchantsPage.searchInput).toHaveValue('a');
-      await expect(merchantsPage.statusFilter).toHaveText(/^Active$/);
+      await expect(merchantsPage.statusFilter).toHaveAccessibleName('Filter by status: Active');
 
       // AND is proven two ways: every remaining row satisfies the status half,
       // and the result set is a subset of the keyword-only set (so the keyword
@@ -173,7 +175,7 @@ test.describe('Lọc theo trạng thái (Status filter) — Merchants', () => {
 
       // Reset writes `status=all` rather than dropping the param.
       await expect(page).toHaveURL(/status=all/);
-      await expect(merchantsPage.statusFilter).toHaveText(/all statuses/i);
+      await expect(merchantsPage.statusFilter).toHaveAccessibleName('Filter by status');
       expect(await merchantsPage.totalResults()).toBe(totalBefore);
     },
   );
@@ -202,7 +204,7 @@ test.describe('Lọc theo trạng thái (Status filter) — Merchants', () => {
       await merchantsPage.waitForReady();
 
       await expect(page).toHaveURL(urlWithFilter);
-      await expect(merchantsPage.statusFilter).toHaveText(/^Active$/);
+      await expect(merchantsPage.statusFilter).toHaveAccessibleName('Filter by status: Active');
       for (const status of await merchantsPage.columnValues(MerchantColumn.STATUS)) {
         expect(status).toMatch(/^Active$/i);
       }

@@ -20,13 +20,14 @@ test.describe('Responsive / đa thiết bị — Customers', () => {
     async ({ customersPage, page }) => {
       // The app's collapse breakpoint is 768px: at 768 and up the icon rail +
       // full sidebar stay visible with no toggle needed (verified against the
-      // real app — width=768 renders identically to desktop). The mobile
-      // hamburger "Toggle Sidebar" trigger only appears just below that.
+      // real app 2026-10-20 — width=768 still shows `aside "Sidebar"`). The
+      // mobile "Open navigation" trigger only appears just below that.
       await page.setViewportSize({ width: 767, height: 1024 });
       await customersPage.goto();
       await expect(customersPage.searchInput).toBeVisible();
-      const toggleButton = page.getByRole('button', { name: /toggle sidebar/i });
+      const toggleButton = page.getByRole('button', { name: 'Open navigation' });
       await expect(toggleButton).toBeVisible();
+      await expect(customersPage.sidebar.panel).toBeHidden();
     },
   );
 

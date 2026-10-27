@@ -92,23 +92,24 @@ test.describe('Điều hướng (Navigation) — Customers', () => {
     'TC-CUS-017 — Toggle Sidebar collapses/expands without leaving Customers',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ customersPage, page }) => {
-      // The "Toggle Sidebar" trigger only renders in the mobile header (it's
-      // hidden from the `md` breakpoint up, where the icon rail + full
-      // sidebar are always visible instead) — exercise it at a mobile width.
+      // Since the 2026-10-13 refactor the mobile trigger is "Open navigation"
+      // (below 768px; desktop shows "Collapse sidebar" instead) and it opens
+      // `dialog "Navigation"` — exercise it at a mobile width.
       await page.setViewportSize({ width: 375, height: 812 });
       await customersPage.goto();
-      const toggleButton = page.getByRole('button', { name: /toggle sidebar/i });
+      const toggleButton = page.getByRole('button', { name: 'Open navigation' });
       await expect(toggleButton).toBeVisible();
       const urlBefore = page.url();
 
-      // Opening the drawer unmounts the trigger itself (it sits behind the
-      // overlay), so it can't be clicked again to close — dismiss it via the
-      // dialog's own backdrop instead.
+      // Dismiss via the sheet's own backdrop.
       await toggleButton.click();
       await expect(page).toHaveURL(urlBefore);
-      const dialog = page.getByRole('dialog');
+      const dialog = customersPage.sidebar.mobileDrawer;
       await expect(dialog).toBeVisible();
-      await expect(customersPage.sidebar.item('Customers')).toHaveAttribute('aria-current', 'page');
+      await expect(dialog.getByRole('link', { name: 'Customers', exact: true })).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
 
       // Click the overlay clear of the drawer panel itself (which occupies
       // the left portion of the screen and would intercept the click).

@@ -3,7 +3,7 @@ import { Tag } from '@/types/testTags';
 import { ReportPageSlug, Urls, posStoreBase, reportPageUrl } from '@constants/urls';
 import { Timeouts } from '@configs/constants/timeouts';
 import { expectCrossStoreBlocked, expectUnauthenticatedRedirect } from '@helpers/security';
-import { clientSideNavigate, expireSessionResponses, landOnShell } from '@helpers/network';
+import { expireSessionResponses, landOnShell } from '@helpers/network';
 import { RPT_DATA_PAGES } from '@pages/reports/ReportPagesPage';
 
 /**
@@ -72,11 +72,12 @@ test.describe('Reports — security (signed in)', () => {
   test(
     'TC-RPT-105 — a session that expires mid-flow sends the user to /login',
     { tag: [Tag.REGRESSION, Tag.AUTH] },
-    async ({ page }) => {
+    async ({ page, reportPagesPage: rp }) => {
       await landOnShell(page, Urls.DASHBOARD);
-      await page.getByRole('button', { name: 'Reports', exact: true }).click();
+      await rp.expandReportsGroup();
       await expireSessionResponses(page);
-      await clientSideNavigate(page, /^Staff Income$/);
+      // The v1 "Staff Income" link inside the Reports accordion (Reports V4 has a link of the same name).
+      await rp.reportLink('Staff Income').click({ noWaitAfter: true }).catch(() => {});
       await expect(page).toHaveURL(/\/login/, { timeout: Timeouts.LONG });
     },
   );

@@ -2,13 +2,8 @@ import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
 
 /**
- * Overview screen — "User Menu & Logout" area (lean core).
- *
- * The avatar user-menu opens and exposes a clearly-labeled Logout entry. The
- * actual logout click is intentionally out of the lean core: it clears — and may
- * server-side revoke — the shared authenticated session, which would poison the
- * reused storageState for every other spec. That belongs in an isolated,
- * disposable auth context/project.
+ * User menu (sidebar foot, "Open user menu"). Logging out is NOT exercised: it
+ * would invalidate the shared session every other test relies on.
  */
 test.describe('User Menu & Logout — Overview', () => {
   test.beforeEach(async ({ dashboardPage }) => {
@@ -18,10 +13,23 @@ test.describe('User Menu & Logout — Overview', () => {
   test(
     'TC-OVW-143 — opens the user menu and lists a clearly labeled Logout item',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
-    async ({ dashboardPage }) => {
+    async ({ dashboardPage, page }) => {
       await dashboardPage.openUserMenu();
+
       await expect(dashboardPage.logoutMenuItem).toBeVisible();
-      await expect(dashboardPage.logoutMenuItem).toHaveText(/log ?out|sign out/i);
+      await expect(dashboardPage.logoutMenuItem).toBeEnabled();
+      await expect(dashboardPage.logoutMenuItem).toHaveAccessibleName(/log ?out|sign ?out/i);
+
+      // Every menu entry carries a non-empty label.
+      const items = page.getByRole('menu').getByRole('menuitem');
+      const count = await items.count();
+      expect(count).toBeGreaterThan(1);
+      for (let i = 0; i < count; i++) {
+        expect(((await items.nth(i).textContent()) ?? '').trim().length).toBeGreaterThan(0);
+      }
+
+      await page.keyboard.press('Escape');
+      await expect(dashboardPage.logoutMenuItem).toBeHidden();
     },
   );
 });

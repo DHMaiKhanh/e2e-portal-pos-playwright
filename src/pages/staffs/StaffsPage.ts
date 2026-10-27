@@ -24,33 +24,53 @@ export class StaffsPage extends BasePage {
   constructor(page: Page) {
     super(page);
     this.sidebar = new Sidebar(page);
+    // Re-verified 2026-10-20 after the 2026-10-13 design-system refactor:
+    // search "Search name, code, phone…", filter chips "Filter by staff
+    // status: Active" / "Sort staff: Custom order" (each opens a popover
+    // listbox of options), "Add staff" (was "Create"), and the pager is
+    // `navigation "Pagination"` with "1–30 of 70" / "1 / 3".
     this.table = new DataTable(page, page.getByRole('table'));
-    this.pagination = new Pagination(page);
-    this.searchInput = page.getByPlaceholder(/search by nick name, staff code, phone/i);
-    this.statusFilter = page.getByRole('combobox').filter({ hasText: /^active$|^inactive$/i });
-    // The sort combobox no longer shows "Newest/Oldest first" as its resting
-    // value (default is now "POS order"), so match its stable accessible name.
-    this.sortFilter = page.getByRole('combobox', { name: /sort staff/i });
+    this.pagination = new Pagination(page, page.getByRole('navigation', { name: 'Pagination' }));
+    this.searchInput = page.getByPlaceholder(/search name, code, phone/i);
+    this.statusFilter = page.getByRole('button', { name: /filter by staff status/i });
+    this.sortFilter = page.getByRole('button', { name: /sort staff/i });
     this.exportButton = page.getByRole('button', { name: /^export$/i });
-    this.createButton = page.getByRole('button', { name: /^create$/i });
-    this.resultsFooter = page.getByText(/showing \d+ to \d+ of \d+ results/i);
+    this.createButton = page.getByRole('button', { name: /^add staff$/i });
+    this.resultsFooter = page.locator('[data-slot="pos-pagination-range"]');
   }
 
   async waitForReady(): Promise<void> {
-    await expect(this.searchInput).toBeVisible();
+    await expect(this.searchInput).toBeVisible({ timeout: Timeouts.NAVIGATION });
     // Wait for the data fetch to resolve so callers don't click/assert on rows
-    // that are still skeleton placeholders (hydration/loading race).
-    await expect(this.resultsFooter).toBeVisible();
+    // that are still skeleton placeholders (hydration/loading race). An empty
+    // result replaces rows + pager with the empty state.
+    await expect(this.resultsFooter.or(this.emptyState).first()).toBeVisible({
+      timeout: Timeouts.NAVIGATION,
+    });
     const firstRowOrEmpty = this.table.rows.first().or(this.emptyState);
     await expect(firstRowOrEmpty).toBeVisible();
-    if (await this.table.rows.first().isVisible()) {
-      await expect(this.table.rows.first()).not.toHaveText('', { timeout: 15_000 });
-    }
+    // Either a populated first row or the (non-empty) empty state — evaluated
+    // as one retrying assertion so a refetch that swaps rows for the empty
+    // state mid-wait does not fail on a detached row.
+    await expect(firstRowOrEmpty.first()).not.toHaveText('', { timeout: 15_000 });
   }
 
   async search(term: string): Promise<void> {
     await this.searchInput.fill(term);
+    // The search is debounced into the URL (`search=<term>`); wait for it,
+    // then for the refreshed list.
+    if (term.trim()) {
+      await expect(this.page).toHaveURL(/[?&]search=/, { timeout: Timeouts.MEDIUM });
+    }
     await this.page.waitForTimeout(400);
+    await this.waitForReady();
+  }
+
+  /** Pick an option from the status / sort filter popover. */
+  async chooseFilterOption(filter: Locator, option: string | RegExp): Promise<void> {
+    await filter.click();
+    await this.page.getByRole('option', { name: option }).click();
+    await this.page.keyboard.press('Escape');
   }
 
   async clearSearch(): Promise<void> {
@@ -72,12 +92,34 @@ export class StaffsPage extends BasePage {
     return dialog;
   }
 
+  get importButton(): Locator {
+    return this.page.getByRole('button', { name: /^import$/i });
+  }
+
+  async openImportDialog(): Promise<ImportStaffDialog> {
+    await this.importButton.click();
+    const dialog = new ImportStaffDialog(this.page);
+    await dialog.waitForVisible();
+    return dialog;
+  }
+
   async openStaffRow(text: string): Promise<void> {
-    await this.table.rowContaining(text).click();
+    await this.openStaff(this.table.rowContaining(text));
+  }
+
+  /**
+   * Open a staff's detail page. Since the 2026-10-13 refactor clicking the ROW
+   * does nothing — the nickname text in the first cell is the link target.
+   */
+  async openStaff(row: Locator = this.table.rows.first()): Promise<void> {
+    const name = row.getByRole('cell').first();
+    await expect(name).not.toHaveText('', { timeout: Timeouts.MEDIUM });
+    await name.locator('span, a').first().or(name).first().click();
+    await expect(this.page).toHaveURL(/\/staffs\/[0-9a-f-]{20,}/, { timeout: Timeouts.MEDIUM });
   }
 
   get pageIndicator(): Locator {
-    return this.page.getByText(/^\d+\s*\/\s*\d+$/);
+    return this.page.locator('[data-slot="pos-pagination-page"]');
   }
 
   /** Column headers, in doc order: STAFF, PHONE, EMAIL, CODE, JOINED AT, STATUS. */
@@ -91,12 +133,12 @@ export class StaffsPage extends BasePage {
 
   /** Empty-state text shown when the table has zero matching rows. */
   get emptyState(): Locator {
-    return this.page.locator('[data-slot="empty"]');
+    return this.page.locator('[data-slot="pos-empty-state"]');
   }
 
   get pageTitle(): Locator {
-    // The list header text changed from "Staffs" to "Staff Members".
-    return this.page.locator('[data-slot="page-title"]').getByText(/^staff members$/i);
+    // The list header text changed from "Staffs" to "Staff Members" (h1).
+    return this.page.getByRole('heading', { level: 1, name: /^staff members$/i });
   }
 
   /**
@@ -175,38 +217,43 @@ export class StaffsPage extends BasePage {
   }
 }
 
-/** "Create New Staff" dialog. */
+/**
+ * "New staff" dialog (was "Create New Staff" before the 2026-10-13 refactor).
+ * Fields carry stable ids: #firstName #lastName #nickname #role #status
+ * #staffCode #ssn #isAllowBooking #phone #email #address #city #state
+ * #postalCode #country.
+ */
 export class CreateStaffDialog extends BaseModal {
   constructor(page: Page) {
-    super(page, page.getByRole('dialog', { name: /create new staff/i }));
+    super(page, page.getByRole('dialog', { name: /^(new staff|create new staff)$/i }));
   }
 
   get firstNameInput(): Locator {
-    return this.root.getByLabel(/first name/i);
+    return this.root.locator('#firstName');
   }
 
   get lastNameInput(): Locator {
-    return this.root.getByLabel(/last name/i);
+    return this.root.locator('#lastName');
   }
 
   get nickNameInput(): Locator {
-    return this.root.getByLabel(/nick name/i);
+    return this.root.locator('#nickname');
   }
 
   get phoneInput(): Locator {
-    return this.root.getByLabel(/phone/i);
+    return this.root.locator('#phone');
   }
 
   get emailInput(): Locator {
-    return this.root.getByLabel(/email/i);
+    return this.root.locator('#email');
   }
 
   get staffCodeInput(): Locator {
-    return this.root.getByLabel(/staff code/i);
+    return this.root.locator('#staffCode');
   }
 
   get staffRoleSelect(): Locator {
-    return this.root.getByRole('combobox', { name: /staff role/i });
+    return this.root.getByRole('combobox', { name: /^(staff )?role$/i });
   }
 
   get statusSelect(): Locator {
@@ -231,11 +278,12 @@ export class CreateStaffDialog extends BaseModal {
   }
 
   get ssnInput(): Locator {
-    return this.root.getByLabel(/ssn/i);
+    // Not getByLabel(/ssn/): the "Show SSN" reveal button matches it too.
+    return this.root.locator('#ssn');
   }
 
   get streetAddressInput(): Locator {
-    return this.root.getByLabel(/street address/i);
+    return this.root.locator('#address');
   }
 
   get countrySelect(): Locator {
@@ -268,22 +316,19 @@ export class CreateStaffDialog extends BaseModal {
   }
 
   get cityInput(): Locator {
-    return this.root.getByLabel(/^city$/i);
+    return this.root.locator('#city');
   }
 
   get zipCodeInput(): Locator {
-    return this.root.getByLabel(/postal\/zip code|zip code/i);
+    return this.root.locator('#postalCode');
   }
 
   get colorPicker(): Locator {
-    return this.root
-      .locator('[data-slot="field"]')
-      .filter({ hasText: /^color$/i })
-      .locator('[data-slot="field-content"]');
+    return this.root.getByRole('radiogroup', { name: 'Color' });
   }
 
   get uploadPhotoButton(): Locator {
-    return this.root.getByRole('button', { name: /^upload$/i });
+    return this.root.getByRole('button', { name: /^upload( photo)?$/i });
   }
 
   /**
@@ -349,18 +394,18 @@ export class CreateStaffDialog extends BaseModal {
   }
 }
 
-/** "Export Employee" dialog. */
+/** "Export staff" dialog (was "Export Employee" before the 2026-10-13 refactor). */
 export class ExportStaffDialog extends BaseModal {
   constructor(page: Page) {
-    super(page, page.getByRole('dialog', { name: /export employee/i }));
+    super(page, page.getByRole('dialog', { name: /^export (staff|employee)$/i }));
   }
 
   get excelFormatOption(): Locator {
-    return this.root.getByText(/excel \(\.xlsx\)/i);
+    return this.root.getByRole('radio', { name: /^excel/i });
   }
 
   get csvFormatOption(): Locator {
-    return this.root.getByText(/csv \(\.csv\)/i);
+    return this.root.getByRole('radio', { name: /^csv/i });
   }
 
   get exportButton(): Locator {
@@ -376,15 +421,15 @@ export class ExportStaffDialog extends BaseModal {
   }
 
   get statusFilterSelect(): Locator {
-    return this.root.locator('#export-statuses');
+    return this.root.locator('#staff-export-statuses');
   }
 
   get compensationTypeFilterSelect(): Locator {
-    return this.root.locator('#export-compensation-types');
+    return this.root.locator('#staff-export-compensation-types');
   }
 
   get roleFilterSelect(): Locator {
-    return this.root.locator('#export-roles');
+    return this.root.locator('#staff-export-roles');
   }
 
   /** Column checkbox by exact label, e.g. columnCheckbox(/first name/i). */
@@ -393,19 +438,93 @@ export class ExportStaffDialog extends BaseModal {
   }
 
   get basicInfoGroupHeading(): Locator {
-    return this.root.getByText(/basic info/i);
+    return this.root.getByRole('heading', { name: /^basic info$/i });
   }
 
   get contactGroupHeading(): Locator {
-    return this.root.getByText(/^contact$/i);
+    return this.root.getByRole('heading', { name: /^contact$/i });
   }
 
   get workInfoGroupHeading(): Locator {
-    return this.root.getByText(/work info/i);
+    return this.root.getByRole('heading', { name: /^work info$/i });
   }
 
   async submit(): Promise<void> {
     await this.exportButton.click();
+  }
+}
+
+/** One row of `POST /import/staff` → `ImportResult.errors.member`. */
+export interface ImportRowError {
+  row: number;
+  errors: { key: string; message: string }[];
+}
+
+/** Body of `POST /import/staff`. */
+export interface ImportResult {
+  message: string;
+  importedCount: number;
+  failedCount: number;
+  errors: { member: ImportRowError[] };
+}
+
+/**
+ * "Import staff" dialog. Choosing a file only previews it client-side ("N rows
+ * ready to import"); every real check (duplicate code, phone format) runs on
+ * the server when "Confirm import" posts the file to `POST /import/staff`. Rows
+ * that fail come back as `ImportResult.errors` and the dialog stays open with a
+ * banner and a "Show error in <column>" button on each bad cell.
+ */
+export class ImportStaffDialog extends BaseModal {
+  constructor(page: Page) {
+    super(page, page.getByRole('dialog', { name: /import staff/i }));
+  }
+
+  get fileInput(): Locator {
+    return this.root.locator('input[type="file"]');
+  }
+
+  get downloadTemplateButton(): Locator {
+    return this.root.getByRole('button', { name: /download template/i });
+  }
+
+  get readyText(): Locator {
+    return this.root.getByText(/\d+ rows? ready to import/i);
+  }
+
+  get confirmImportButton(): Locator {
+    return this.root.getByRole('button', { name: /confirm import/i });
+  }
+
+  /** "1 of 1 rows have errors — fix them in your file and re-upload". */
+  get errorBanner(): Locator {
+    return this.root.getByText(/\d+ of \d+ rows? (have|has) errors/i);
+  }
+
+  /** The error marker on a cell, by its column header, e.g. `Employee Code (*)`. */
+  cellErrorButton(column: string): Locator {
+    return this.root.getByRole('button', { name: `Show error in ${column}` });
+  }
+
+  get cellErrorButtons(): Locator {
+    return this.root.getByRole('button', { name: /^show error in /i });
+  }
+
+  async chooseCsv(name: string, csv: string): Promise<void> {
+    await this.fileInput.setInputFiles({ name, mimeType: 'text/csv', buffer: Buffer.from(csv) });
+    await expect(this.readyText).toBeVisible();
+  }
+
+  /** Clicks "Confirm import" and returns the server's verdict. */
+  async confirmImport(): Promise<ImportResult> {
+    const response = this.page.waitForResponse(
+      (r) => /\/import\/staff$/.test(new URL(r.url()).pathname) && r.request().method() === 'POST',
+      { timeout: Timeouts.LONG },
+    );
+    await this.confirmImportButton.click();
+    const res = await response;
+    expect(res.ok(), `POST /import/staff → ${res.status()}`).toBeTruthy();
+    return (await res.json()) as ImportResult;
   }
 }
 
@@ -431,6 +550,11 @@ export class StaffDetailPage extends BasePage {
 
   get statusBadge(): Locator {
     return this.page.getByText(/^(active|inactive)$/i).first();
+  }
+
+  /** Header "Status" switch. It saves on click (`PUT /staffs/<id>`), there is no Save button. */
+  get statusToggle(): Locator {
+    return this.page.getByRole('switch', { name: /toggle staff status/i });
   }
 
   get appointmentStaffToggle(): Locator {

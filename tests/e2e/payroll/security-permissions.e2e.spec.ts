@@ -1,6 +1,8 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
 import { expectCrossStoreBlocked } from '@helpers/security';
+import { env } from '@configs/env/loadEnv';
+import { Urls } from '@constants/urls';
 
 test.describe('Security & permissions — Payroll', () => {
   test.beforeEach(async ({ payrollPage }) => {
@@ -33,12 +35,12 @@ test.describe('Security & permissions — Payroll', () => {
    * its input (confirmed while writing TC-PAY-083), so the masking is only ever
    * skin-deep.
    *
-   * Left as `fixme` rather than a red test so the suite stays actionable, and
-   * kept here (not folded into TC-PAY-080, which pins the UI masking that does
-   * hold) so the finding is not lost. Un-fixme once the API returns only the
-   * last 4 digits.
+   * Kept as a real, failing assertion (not folded into TC-PAY-080, which pins
+   * the UI masking that does hold) so the finding is not lost. Re-measured on
+   * 2026-10-20: `/bank_accounts` still returns "1234567890" / "111111111" /
+   * "12453467777" in full. It goes green once the API returns only the last 4.
    */
-  test.fixme(
+  test(
     'TC-PAY-140 — bank account numbers never exposed unmasked',
     { tag: [Tag.REGRESSION] },
     async ({ payrollPage, page }) => {
@@ -88,7 +90,9 @@ test.describe('Security & permissions — Payroll', () => {
     'TC-PAY-141 — payroll data scoped to current store only',
     { tag: [Tag.REGRESSION] },
     async ({ isolatedPage }) => {
-      await expectCrossStoreBlocked(isolatedPage, (storeId) => `/pos/${storeId}/payroll`);
+      await expectCrossStoreBlocked(isolatedPage, (storeId) =>
+        Urls.PAYROLL.replace(`/${env.STORE_ID}/`, `/${storeId}/`),
+      );
 
       const body = await isolatedPage.locator('body').innerText();
 
@@ -96,7 +100,7 @@ test.describe('Security & permissions — Payroll', () => {
       // amounts, no masked account numbers, no pay-period ranges.
       expect(body, 'a currency amount leaked from another store').not.toMatch(/\$[\d,]+\.\d{2}/);
       expect(body, 'a masked account number leaked from another store').not.toMatch(/\*{2,}\d+/);
-      expect(body).not.toMatch(/showing \d+ to \d+ of \d+ results/i);
+      expect(body).not.toMatch(/\d+\s*[–-]\s*\d+ of \d+/);
     },
   );
 });

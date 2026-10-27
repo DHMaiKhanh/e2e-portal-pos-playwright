@@ -13,8 +13,8 @@ import {
   rptBlockSort,
   rptDateLabel,
   rptIsoDay,
-  rptParseRows,
-  rptRowValue,
+  rptRangeLabel,
+  rptStripLabel,
 } from '@pages/reports/ReportPagesPage';
 
 /**
@@ -25,7 +25,7 @@ const BLOCK = 'income-staff';
 
 async function openWithRows(rp: ReportPagesPage, query?: Record<string, string>): Promise<void> {
   await rp.openWithData(SLUG, query);
-  test.skip((await rp.dataRows().count()) === 0, 'No staff income on this store for the range');
+  expect((await rp.dataRows().count()) === 0, 'No staff income on this store for the range').toBeFalsy();
 }
 
 /** Type into the search box and wait for `search=` + a footer refresh. */
@@ -38,33 +38,31 @@ async function search(rp: ReportPagesPage, term: string): Promise<void> {
   await rp.waitForData();
 }
 
-async function summary(rp: ReportPagesPage) {
-  const text = await rp.rightPanelText();
-  return rptParseRows(ReportPagesPage.section(text, 'STAFF SUMMARY', ['__none__']), { counts: true });
-}
+/** Summary strip value (2026-10-20 labels: Staff, Orders, Subtotal, Supply Fee, Tip, Income). */
+const summary = (rp: ReportPagesPage, label: string): Promise<string> => rp.stripValue(label);
 
 test.describe('Reports › Staff Income', () => {
   test(
-    'TC-RPT-049 — defaults: today, switch off, empty search, six columns and STAFF SUMMARY',
+    'TC-RPT-049 — defaults: Today, switch off, empty search, six columns and the summary strip',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportPagesPage: rp, page }) => {
       await rp.openWithData(SLUG);
-      await expect(rp.dateRangeButton).toHaveText(rptDateLabel(rptIsoDay(0)));
+      await expect(rp.dateRangeButton).toHaveText('Today');
       await expect(rp.noIncomeSwitch).toHaveAttribute('aria-checked', 'false');
       await expect(rp.staffSearch).toHaveValue('');
       await expect(page.getByText('By Staff', { exact: true })).toBeVisible();
       expect((await rp.headerLabels()).map((h) => h.toLowerCase())).toEqual(
         RPT_COLUMNS.staffIncome.map((h) => h.toLowerCase()),
       );
-      await expect(rp.staffSummaryTrigger).toHaveAttribute('aria-expanded', 'true');
-      for (const label of ['Total Staff', 'Total Orders', 'Total Subtotal', 'Total Supply Fee', 'Total Tip', 'Total Income']) {
-        await expect(page.getByText(label, { exact: true }).first()).toBeVisible();
+      await expect(rp.staffSummary).toBeVisible();
+      for (const label of ['Staff', 'Orders', 'Subtotal', 'Supply Fee', 'Tip', 'Income']) {
+        await expect(rp.staffSummary.getByText(rptStripLabel(label))).toBeVisible();
       }
     },
   );
 
   test(
-    'TC-RPT-050 — searching an existing staff filters rows, writes search= and scopes STAFF SUMMARY',
+    'TC-RPT-050 — searching an existing staff filters rows, writes search= and scopes the summary strip',
     { tag: [Tag.REGRESSION, Tag.SMOKE] },
     async ({ reportPagesPage: rp }) => {
       await openWithRows(rp);
@@ -75,7 +73,7 @@ test.describe('Reports › Staff Income', () => {
       expect(names.length).toBeGreaterThan(0);
       for (const n of names) expect(n.toLowerCase()).toContain(name.toLowerCase());
       const { total } = await rp.footerCounts();
-      await expect.poll(async () => rptAmount(rptRowValue(await summary(rp), 'Total Staff'))).toBe(total);
+      await expect.poll(async () => rptAmount(await summary(rp, 'Staff'))).toBe(total);
     },
   );
 
@@ -85,7 +83,7 @@ test.describe('Reports › Staff Income', () => {
     async ({ reportPagesPage: rp }) => {
       await openWithRows(rp);
       const name = (await rp.columnTexts(0)).find((n) => /[a-z]{3}/i.test(n));
-      test.skip(!name, 'No alphabetic staff name to slice');
+      expect(!name, 'No alphabetic staff name to slice').toBeFalsy();
       const partial = name!.replace(/[^a-z]/gi, '').slice(0, 3);
       await search(rp, partial.toUpperCase());
       const names = await rp.columnTexts(0);
@@ -101,9 +99,9 @@ test.describe('Reports › Staff Income', () => {
       await rp.openWithData(SLUG);
       await search(rp, 'zzzz-no-such-staff-xyz');
       await expect(rp.emptyRow).toBeVisible();
-      await expect(rp.resultsFooter).toHaveText('Showing 0 to 0 of 0 results');
-      await expect.poll(async () => rptRowValue(await summary(rp), 'Total Staff')).toBe('0');
-      expect(rptRowValue(await summary(rp), 'Total Income')).toBe('$0.00');
+      await rp.expectTotal(0);
+      await expect.poll(async () => summary(rp, 'Staff')).toBe('0');
+      expect(await summary(rp, 'Income')).toBe('$0.00');
     },
   );
 
@@ -175,20 +173,19 @@ test.describe('Reports › Staff Income', () => {
   );
 
   test(
-    'TC-RPT-058 — STAFF SUMMARY totals equal the column sums of a single-page table',
+    'TC-RPT-058 — summary strip totals equal the column sums of a single-page table',
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp }) => {
       await openWithRows(rp);
       const { total } = await rp.footerCounts();
-      test.skip(total > RPT_PAGE_SIZE, 'More than one page — column sums would be partial');
+      expect(total > RPT_PAGE_SIZE, 'More than one page — column sums would be partial').toBeFalsy();
       const sum = async (c: number) => (await rp.columnTexts(c)).map(rptAmount).reduce((a, b) => a + b, 0);
-      const s = await summary(rp);
-      expect(rptAmount(rptRowValue(s, 'Total Staff'))).toBe(total);
-      expect(rptAmount(rptRowValue(s, 'Total Orders'))).toBe(await sum(1));
-      expect(rptAmount(rptRowValue(s, 'Total Subtotal'))).toBeCloseTo(await sum(2), 1);
-      expect(rptAmount(rptRowValue(s, 'Total Supply Fee'))).toBeCloseTo(await sum(3), 1);
-      expect(rptAmount(rptRowValue(s, 'Total Tip'))).toBeCloseTo(await sum(4), 1);
-      expect(rptAmount(rptRowValue(s, 'Total Income'))).toBeCloseTo(await sum(5), 1);
+      expect(rptAmount(await summary(rp, 'Staff'))).toBe(total);
+      expect(rptAmount(await summary(rp, 'Orders'))).toBe(await sum(1));
+      expect(rptAmount(await summary(rp, 'Subtotal'))).toBeCloseTo(await sum(2), 1);
+      expect(rptAmount(await summary(rp, 'Supply Fee'))).toBeCloseTo(await sum(3), 1);
+      expect(rptAmount(await summary(rp, 'Tip'))).toBeCloseTo(await sum(4), 1);
+      expect(rptAmount(await summary(rp, 'Income'))).toBeCloseTo(await sum(5), 1);
     },
   );
 
@@ -199,7 +196,7 @@ test.describe('Reports › Staff Income', () => {
       const after = rptIsoDay(-7);
       const before = rptIsoDay(-1);
       await rp.openWithData(SLUG, { after, before });
-      await expect(rp.dateRangeButton).toHaveText(`${rptDateLabel(after)} - ${rptDateLabel(before)}`);
+      await expect(rp.dateRangeButton).toHaveText(rptRangeLabel(after, before));
     },
   );
 
@@ -214,18 +211,18 @@ test.describe('Reports › Staff Income', () => {
   );
 
   test(
-    'TC-RPT-106 — the range preset lists ten presets; Yesterday rewrites after/before and the label',
+    'TC-RPT-106 — the range popover lists its presets; Yesterday rewrites after/before and the label',
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp, page }) => {
       await rp.openWithData(SLUG);
-      await expect(rp.rangePresetCombobox).toHaveText('Today');
-      await rp.rangePresetCombobox.click();
-      await expect(page.getByRole('option')).toHaveText([...RPT_RANGE_PRESETS]);
-      await page.getByRole('option', { name: 'Yesterday', exact: true }).click();
+      await expect(rp.dateRangeButton).toHaveText('Today');
+      await rp.dateRangeButton.click();
+      await expect(rp.rangePresets.getByRole('option')).toHaveText([...RPT_RANGE_PRESETS]);
+      await rp.rangePresets.getByRole('option', { name: 'Yesterday', exact: true }).click();
       const day = rptIsoDay(-1);
       await expect(page).toHaveURL(new RegExp(`after=${day}&before=${day}`));
-      await expect(rp.dateRangeButton).toHaveText(rptDateLabel(day));
-      await expect(rp.rangePresetCombobox).toHaveText('Yesterday');
+      await expect(rp.dateRangeButton).toHaveText('Yesterday');
+      await expect(rp.calendar).toBeHidden();
       await rp.waitForData();
     },
   );

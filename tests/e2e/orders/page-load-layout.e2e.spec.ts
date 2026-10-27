@@ -40,21 +40,29 @@ test.describe('Tải trang & Bố cục — Orders', () => {
       await expect(ordersPage.quickFilterCombobox).toContainText(/Last 7 Days/i);
       await expect(ordersPage.dateRangeButton).toBeVisible();
       await expect(ordersPage.staffFilterButton).toBeVisible();
-      await expect(ordersPage.staffFilterButton).toContainText(/All staff/i);
+      // VP-4569: unfiltered chips show just their name ("Staff", "Payment
+      // method", "Status") instead of "All staff" / "All methods" / "All statuses".
+      await expect(ordersPage.staffFilterButton).toHaveText(/^Staff$/);
       await expect(ordersPage.paymentMethodCombobox).toBeVisible();
-      await expect(ordersPage.paymentMethodCombobox).toContainText(/All method/i);
+      await expect(ordersPage.paymentMethodCombobox).toHaveText(/^Payment method$/);
       await expect(ordersPage.statusFilter).toBeVisible();
-      await expect(ordersPage.statusFilter).toContainText(/All status/i);
+      await expect(ordersPage.statusFilter).toHaveText(/^Status$/);
 
       await expect(page.getByRole('table')).toBeVisible();
       // Column header reads "ORDER ID" (was "OD ID").
-      await expect(page.getByText(/order id/i)).toBeVisible();
-      await expect(page.getByText(/payment method/i)).toBeVisible();
-      await expect(page.getByText(/staff/i).first()).toBeVisible();
-      await expect(page.getByText(/customer/i).first()).toBeVisible();
-      await expect(page.getByText(/status/i).first()).toBeVisible();
-      await expect(page.getByText(/amount/i)).toBeVisible();
-      await expect(page.getByText(/date\/time/i)).toBeVisible();
+      // Column headers, scoped to the table: since VP-4569 the filter chips
+      // ("Staff", "Payment method", "Status") reuse the same words.
+      for (const header of [
+        'Order ID',
+        'Payment method',
+        'Staff',
+        'Customer',
+        'Status',
+        'Amount',
+        'Date/time',
+      ]) {
+        await expect(page.getByRole('columnheader', { name: header, exact: true })).toBeVisible();
+      }
 
       await expect(ordersPage.paginationSummary).toBeVisible();
     },

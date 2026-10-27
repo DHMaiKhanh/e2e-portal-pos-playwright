@@ -17,7 +17,7 @@ test.describe('Định dạng dữ liệu (Data display & formatting) — Custom
         const phone = (await rows.nth(i).getByRole('cell').nth(1).textContent())?.trim() ?? '';
         if (phone !== '—' && phone !== '') {
           // Phones are masked in the list: only the last four digits are shown.
-          expect(phone).toMatch(/^\(\*{3}\) \*{3}-\d{4}$/);
+          expect(phone).toMatch(CustomersPage.MASKED_PHONE);
         }
       }
     },
@@ -54,7 +54,7 @@ test.describe('Định dạng dữ liệu (Data display & formatting) — Custom
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ customersPage }) => {
       const cells = await customersPage.rowCells();
-      const visited = cells.filter((row) => row[CustomersPage.Column.LAST_VISIT] !== '-');
+      const visited = cells.filter((row) => row[CustomersPage.Column.LAST_VISIT] !== '—');
 
       // Most of the store has visited, so requiring at least one is safe — and
       // the old version's skip would have hidden a page of blank dates.
@@ -84,7 +84,7 @@ test.describe('Định dạng dữ liệu (Data display & formatting) — Custom
         15,
       );
 
-      test.skip(row === null, 'No never-visited customer currently exists in the store');
+      expect(row === null, 'No never-visited customer currently exists in the store').toBeFalsy();
 
       const lastVisit = (row as string[])[CustomersPage.Column.LAST_VISIT];
       // A never-visited row shows a non-empty placeholder, never a formatted date.
@@ -105,7 +105,7 @@ test.describe('Định dạng dữ liệu (Data display & formatting) — Custom
       // A nameless customer must still be reachable by phone, or the row is
       // useless to the operator — that is the point of the placeholder. The list
       // masks all but the last four digits — e.g. "(***) ***-4444".
-      expect((row as string[])[CustomersPage.Column.PHONE]).toMatch(/^\(\*{3}\) \*{3}-\d{4}$/);
+      expect((row as string[])[CustomersPage.Column.PHONE]).toMatch(CustomersPage.MASKED_PHONE);
     },
   );
 
@@ -136,7 +136,7 @@ test.describe('Định dạng dữ liệu (Data display & formatting) — Custom
       const zeroStateValues = new Set<string>();
       for (let i = 0; i < count; i++) {
         const lastVisit = (await rows.nth(i).getByRole('cell').nth(7).textContent())?.trim() ?? '';
-        if (lastVisit === '-') {
+        if (lastVisit === '—') {
           const totalVisits =
             (await rows.nth(i).getByRole('cell').nth(4).textContent())?.trim() ?? '';
           zeroStateValues.add(totalVisits);
@@ -167,7 +167,10 @@ test.describe('Định dạng dữ liệu (Data display & formatting) — Custom
         15,
       );
 
-      test.skip(row === null, 'No customer with a special-character name currently in the store');
+      expect(
+        row === null,
+        'No customer with a special-character name currently in the store',
+      ).toBeFalsy();
 
       const name = (row as string[])[CustomersPage.Column.NAME];
       const specialRow = customersPage.table.rowContaining(name);

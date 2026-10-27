@@ -1,5 +1,6 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
+import { Urls } from '@constants/urls';
 
 test.describe('Checks tab — table & actions — Payroll', () => {
   test.beforeEach(async ({ payrollPage }) => {
@@ -65,77 +66,62 @@ test.describe('Checks tab — table & actions — Payroll', () => {
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ payrollPage }) => {
       await payrollPage.searchStaffName('zzzznotreal');
+      // 2026-10 redesign: the no-match state reuses the generic empty-state
+      // block (title "No payroll checks yet") and the pager is not rendered.
       await expect(payrollPage.checksEmptyState).toBeVisible();
-      await expect(payrollPage.checksEmptyState).toContainText(/no checks found/i);
+      await expect(payrollPage.checksTable.rows).toHaveCount(0);
+      await expect(payrollPage.paginationSummary).toHaveCount(0);
     },
   );
 
   /**
-   * Steps: Open the sort select (default "Created") and choose an alternate option if available.
-   * Expected: Row order updates according to the selected sort; reverting to "Created" restores
-   * original (most-recent-first) order.
-   */
-  /**
-   * Seeded data is not needed to check that sorting *sorts*: read the order,
-   * change the option, read it again, and assert the sequence actually changed
-   * and then came back. That is a property of the control, not of any
-   * particular pair of rows, so live data is stable enough after all.
+   * Steps: Open the "Created" selector (default "Created") and choose an alternate option.
+   * Expected: The listed checks update according to the selection; reverting to "Created"
+   * restores the original list.
+   *
+   * 2026-10 redesign: the "Created" control is the status filter chip
+   * ("Check status: Created", options Created / Printed / Voided / Deleted /
+   * Archived) and its value lives in the URL (`status=`). Read the IDs, switch
+   * to another status, assert the list changed, then switch back and assert it
+   * is restored. Read-only — filtering never writes.
    */
   test(
-    'TC-PAY-023 — "Created" sort/column selector changes row order',
+    'TC-PAY-023 — "Created" status selector changes the listed checks',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ payrollPage, page }) => {
       const idsInOrder = async (): Promise<string[]> =>
         (await payrollPage.checksTable.rows.allInnerTexts()).map((row) =>
           (row.split('\t')[1] ?? '').trim(),
         );
+      const pickStatus = async (label: string): Promise<void> => {
+        await payrollPage.checksSortSelect.click();
+        await page.getByRole('option', { name: label, exact: true }).click();
+        await page.keyboard.press('Escape');
+        await expect(payrollPage.checksSortSelect).toHaveAccessibleName(
+          new RegExp(`check status: ${label}`, 'i'),
+        );
+        await payrollPage.waitForReady();
+      };
 
-      // The shared DEV store sometimes holds a single check; a sort reorder can
-      // only be observed with at least two rows, and checks cannot be seeded
-      // from the UI without mutating the shared store. Settle on the table, then
-      // skip with a clear reason when the data is too thin — rather than the 30s
-      // poll-then-fail this used to do.
       await expect(
-        payrollPage.checksTable.rows.first().or(payrollPage.checksEmptyState),
+        payrollPage.checksTable.rows.first().or(payrollPage.checksEmptyState).first(),
       ).toBeVisible();
-      const rowCount = await payrollPage.checksTable.rows.count();
-      test.skip(
-        rowCount < 2,
-        `Checks store holds ${rowCount} check(s); need >= 2 to observe a sort reorder.`,
-      );
+      await expect(payrollPage.checksSortSelect).toHaveAccessibleName(/check status: created/i);
       const original = await idsInOrder();
-
-      await expect(payrollPage.checksSortSelect).toBeVisible({ timeout: 30_000 });
-
-      // The sort persists between runs, so the starting value is read rather
-      // than assumed to be "Created" — and restored at the end so this case
-      // does not leak its choice into the next one.
-      const initialSort = (await payrollPage.checksSortSelect.innerText()).trim();
 
       await payrollPage.checksSortSelect.click();
       const options = page.getByRole('option');
       await expect(options.first()).toBeVisible();
       const labels = (await options.allInnerTexts()).map((label) => label.trim());
-      const alternative = labels.find((label) => label !== initialSort);
+      expect(labels).toContain('Printed');
+      await page.keyboard.press('Escape');
 
-      if (!alternative) {
-        // Only one sort exists — then the control must at least be a real,
-        // enabled select rather than dead chrome.
-        await page.keyboard.press('Escape');
-        await expect(payrollPage.checksSortSelect).toBeEnabled();
-        return;
-      }
+      await pickStatus('Printed');
+      await expect(page).toHaveURL(/status=printed/);
+      await expect.poll(idsInOrder).not.toEqual(original);
 
-      try {
-        await page.getByRole('option', { name: alternative, exact: true }).click();
-        await payrollPage.waitForReady();
-        await expect.poll(idsInOrder).not.toEqual(original);
-      } finally {
-        await payrollPage.checksSortSelect.click();
-        await page.getByRole('option', { name: initialSort, exact: true }).first().click();
-        await payrollPage.waitForReady();
-        await expect.poll(idsInOrder).toEqual(original);
-      }
+      await pickStatus('Created');
+      await expect.poll(idsInOrder).toEqual(original);
     },
   );
 
@@ -154,23 +140,29 @@ test.describe('Checks tab — table & actions — Payroll', () => {
     'TC-PAY-024 — "All dates" preset filter narrows results by date range',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ payrollPage, page }) => {
+      // "1–30 of 64"; the pager is not rendered at all for an empty result.
       const totalResults = async (): Promise<number> => {
+        if ((await payrollPage.paginationSummary.count()) === 0) return 0;
         const summary = await payrollPage.paginationSummary.first().innerText();
-        return Number(summary.match(/of (\d+) results/i)?.[1] ?? NaN);
+        return Number(summary.match(/of (\d+)/i)?.[1] ?? NaN);
       };
 
       await expect(payrollPage.checksTable.rows.first()).toBeVisible();
       const allDatesTotal = await totalResults();
       expect(allDatesTotal).toBeGreaterThan(0);
 
+      await expect(payrollPage.checksDatePresetSelect).toHaveText(/all dates/i);
       await payrollPage.checksDatePresetSelect.click();
-      const options = page.getByRole('option');
+      const options = page.getByRole('listbox', { name: 'Presets' }).getByRole('option');
       await expect(options.first()).toBeVisible();
       const labels = (await options.allInnerTexts()).map((label) => label.trim());
-      const narrower = labels.find((label) => !/all dates/i.test(label));
+      const narrower = labels.find((label) => /^last year$/i.test(label)) ?? labels[0];
       expect(narrower, `no narrower preset offered: ${labels.join(', ')}`).toBeTruthy();
 
-      await page.getByRole('option', { name: narrower as string, exact: true }).click();
+      await options.filter({ hasText: narrower }).first().click();
+      await page.keyboard.press('Escape');
+      await expect(page).toHaveURL(/dateAfter=/);
+      await expect(payrollPage.checksDatePresetSelect).toHaveText(narrower);
       await payrollPage.waitForReady();
 
       await expect.poll(async () => totalResults()).toBeLessThanOrEqual(allDatesTotal);
@@ -186,9 +178,17 @@ test.describe('Checks tab — table & actions — Payroll', () => {
   test(
     'TC-PAY-025 — "Pick a date range" opens a custom range picker',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ payrollPage }) => {
-      await expect(payrollPage.pickDateRangeButton).toBeVisible();
+    async ({ payrollPage, page }) => {
+      // 2026-10 redesign: the "All dates" trigger opens one popover holding the
+      // presets list and a range calendar — there is no separate button.
       await expect(payrollPage.pickDateRangeButton).toBeEnabled();
+      await payrollPage.pickDateRangeButton.click();
+      const picker = page.getByRole('dialog').filter({ has: page.getByRole('grid') });
+      await expect(picker).toBeVisible();
+      await expect(picker.getByRole('grid').first()).toBeVisible();
+      await expect(picker.getByRole('button', { name: /previous month/i })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(picker).toBeHidden();
     },
   );
 
@@ -210,25 +210,29 @@ test.describe('Checks tab — table & actions — Payroll', () => {
    * state (not fully checked) since not all rows are selected.
    */
   /**
-   * The store holds 35 checks, so three rows are always there — no seeding
-   * required. Rows are addressed by index within the current page, which is
-   * exactly what the case describes.
+   * Pinned to the "Printed" status (14 checks on 2026-10-20): the default
+   * "Created" view holds a single check on the shared DEV store. Rows are
+   * addressed by index within the current page, which is exactly what the case
+   * describes. Selecting rows is client-side only — no bulk action is clicked.
    */
   test(
     'TC-PAY-027 — selecting individual rows works independently of Select all',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ payrollPage }) => {
+    async ({ payrollPage, page }) => {
+      await page.goto(`${Urls.PAYROLL}?tab=checks&status=printed`, {
+        waitUntil: 'domcontentloaded',
+      });
+      await payrollPage.waitForReady();
       const rows = payrollPage.checksTable.rows;
-      await expect(rows.first().or(payrollPage.checksEmptyState)).toBeVisible();
+      await expect(rows.first().or(payrollPage.checksEmptyState).first()).toBeVisible();
       const rowCount = await rows.count();
       // Partial selection needs a middle row left unchecked, so at least three
-      // checks. The shared DEV store sometimes holds fewer, and checks cannot be
-      // seeded from the UI without mutating it — skip with a clear reason rather
-      // than fail on data.
-      test.skip(
+      // checks. Checks cannot be seeded without mutating the shared store, so a
+      // thinner store fails here as a missing precondition.
+      expect(
         rowCount < 3,
         `Checks store holds ${rowCount} check(s); need >= 3 to exercise partial selection.`,
-      );
+      ).toBeFalsy();
 
       const first = payrollPage.rowSelectCheckbox(0);
       const third = payrollPage.rowSelectCheckbox(2);
@@ -297,20 +301,38 @@ test.describe('Checks tab — table & actions — Payroll', () => {
   );
 
   test(
-    'TC-PAY-029 — Add Staff button opens the add-staff flow',
+    'TC-PAY-029 — Create check (formerly Add Staff) button opens the create-checks flow',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ payrollPage }) => {
-      await expect(payrollPage.addStaffButton).toBeVisible();
+    async ({ payrollPage, page }) => {
+      // 2026-10 redesign: "Add Staff" is now the header "Create check" button,
+      // opening the bulk "Create checks" dialog (period, bank, staff picker).
+      // Closed without creating anything.
       await expect(payrollPage.addStaffButton).toBeEnabled();
+      await payrollPage.addStaffButton.click();
+      const dialog = page.getByRole('dialog', { name: /create checks/i });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole('combobox', { name: /payroll period/i })).toBeVisible();
+      await expect(dialog.getByRole('button', { name: /^create check$/i })).toBeDisabled();
+      await dialog
+        .getByRole('button', { name: /^close$/i })
+        .last()
+        .click();
+      await expect(dialog).toBeHidden();
     },
   );
 
   test(
     'TC-PAY-030 — Edit Signature button opens the signature editor',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ payrollPage }) => {
-      await expect(payrollPage.editSignatureButton).toBeVisible();
+    async ({ payrollPage, page }) => {
       await expect(payrollPage.editSignatureButton).toBeEnabled();
+      await payrollPage.editSignatureButton.click();
+      const dialog = page.getByRole('dialog', { name: /edit signature/i });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole('button', { name: /save signature/i })).toBeVisible();
+      // Cancel — never save a signature on the shared store.
+      await dialog.getByRole('button', { name: /^cancel$/i }).click();
+      await expect(dialog).toBeHidden();
     },
   );
 

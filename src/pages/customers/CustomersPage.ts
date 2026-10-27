@@ -31,18 +31,20 @@ export class CustomersPage extends BasePage {
   constructor(page: Page) {
     super(page);
     this.sidebar = new Sidebar(page);
-    this.activePanel = page.locator('[data-slot="tabs-content"][data-state="active"]');
+    // Since the 2026-10-13 design-system refactor (verified 2026-10-20) the tab
+    // panels are `[role=tabpanel][data-slot="pos-tabs-content"]`, the pager is
+    // `navigation "Pagination"` (range "1–30 of 16,803", indicator "1 / 561",
+    // "Previous page"/"Next page"), and the group filter is a chip button whose
+    // accessible name is "Group" (or "Group: <name>" once a group is picked).
+    this.activePanel = page.locator('[role="tabpanel"][data-state="active"]');
     this.table = new DataTable(page, this.activePanel.getByRole('table'));
     this.pagination = new Pagination(
       page,
-      this.activePanel
-        .locator('div')
-        .filter({ has: page.getByRole('button', { name: /^previous$/i }) })
-        .last(),
+      this.activePanel.getByRole('navigation', { name: 'Pagination' }),
     );
     this.searchInput = page.getByPlaceholder(/search by name, phone/i);
-    this.groupFilter = page.getByRole('button', { name: /all groups/i });
-    this.resultsFooter = this.activePanel.getByText(/showing \d+ to \d+ of \d+ results/i);
+    this.groupFilter = page.locator('[data-slot="customer-filters-group"]');
+    this.resultsFooter = this.activePanel.locator('[data-slot="pos-pagination-range"]');
   }
 
   async waitForReady(): Promise<void> {
@@ -91,14 +93,19 @@ export class CustomersPage extends BasePage {
     await this.groupFilter.click();
   }
 
-  /** Locate the group-filter button by its current label (changes once a group is selected). */
-  groupFilterButtonWithLabel(label: string | RegExp): Locator {
-    return this.page.getByRole('button', { name: label });
+  /** The group-filter chip once `label` is selected (accessible name "Group: <label>"). */
+  groupFilterButtonWithLabel(label: string): Locator {
+    return this.page.getByRole('button', { name: `Group: ${label}`, exact: true });
   }
 
-  async selectGroup(name: string | RegExp): Promise<void> {
+  /** The chip's "x" that clears the selected group (replaces the old "All Groups" option). */
+  get clearGroupButton(): Locator {
+    return this.page.getByRole('button', { name: 'Clear group filter' });
+  }
+
+  async selectGroup(name: string): Promise<void> {
     await this.openGroupFilter();
-    await this.page.getByRole('option', { name }).click();
+    await this.page.getByRole('option', { name, exact: true }).click();
   }
 
   async openCustomerRow(text: string): Promise<void> {
@@ -106,7 +113,7 @@ export class CustomersPage extends BasePage {
   }
 
   get pageIndicator(): Locator {
-    return this.activePanel.getByText(/^\d+\s*\/\s*\d+$/);
+    return this.activePanel.locator('[data-slot="pos-pagination-page"]');
   }
 
   /** Column headers, in doc order: NAME, PHONE, EMAIL, GROUP, TOTAL VISITS, POINTS, CASHBACK BALANCE, LAST VISIT. */
@@ -120,11 +127,30 @@ export class CustomersPage extends BasePage {
 
   /** Empty-state text shown when the table has zero matching rows. */
   get emptyState(): Locator {
-    return this.activePanel.locator('[data-slot="empty"]');
+    // The visible empty state ("No matching results") sits below the table since
+    // the 2026-10-13 refactor; the old in-table `[data-slot="empty"]` row is now zero-size.
+    return this.activePanel.locator('[data-slot="pos-empty-state"]');
   }
 
   get pageTitle(): Locator {
-    return this.page.getByText(/^customers$/i).first();
+    return this.page.getByRole('heading', { level: 1, name: /^customers$/i });
+  }
+
+  /**
+   * The list masks phones to their last four digits. The cell renders
+   * `img "Phone ending in 4533"` with visible text "••• ••• 4533".
+   */
+  static readonly MASKED_PHONE = /^•{3} •{3} \d{4}$/;
+
+  /** Last four phone digits of a row's PHONE cell, read from its accessible label. */
+  async phoneSuffix(row: Locator): Promise<string> {
+    const label =
+      (await row
+        .getByRole('cell')
+        .nth(CustomersPage.Column.PHONE)
+        .getByRole('img')
+        .getAttribute('aria-label')) ?? '';
+    return label.match(/(\d{4})$/)?.[1] ?? '';
   }
 
   async findByPhone(phone: string): Promise<Locator> {
@@ -147,7 +173,7 @@ export class CustomersPage extends BasePage {
   /** Total pages, read from the "n / m" indicator. */
   async totalPages(): Promise<number> {
     const text = (await this.pageIndicator.textContent())?.trim() ?? '';
-    const total = Number(text.split('/')[1]?.trim());
+    const total = Number(text.split('/')[1]?.replace(/,/g, '').trim());
     // The indicator is part of waitForReady's settled state, so an unparseable
     // value means the screen is broken rather than merely slow — say so here
     // instead of letting a caller silently skip itself.
@@ -165,7 +191,9 @@ export class CustomersPage extends BasePage {
   /** Every row on the current page, split into trimmed cell text. */
   async rowCells(): Promise<string[][]> {
     const rows = await this.table.rows.allInnerTexts();
-    return rows.map((row) => row.split('\t').map((cell) => cell.trim()));
+    // The masked phone renders on two lines ("••• •••\n4533"); collapse
+    // whitespace so every cell is a single-line string ("••• ••• 4533").
+    return rows.map((row) => row.split('\t').map((cell) => cell.replace(/\s+/g, ' ').trim()));
   }
 
   /**

@@ -87,7 +87,7 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Merchants', () 
   // PRODUCT GAP (2026-10-11): the in-page header and nav label render "Merchants"
   // but document.title is still the stale "Merchant Management | Portal" — the app
   // never updated the browser title to match the renamed page. Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-MCH-003 — page title "Merchants" renders in the page header',
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ merchantsPage, page }) => {
@@ -104,8 +104,9 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Merchants', () 
       // green the day the app updates `document.title` to match.
       await expect(page).toHaveTitle(/Merchants/);
 
-      // Documented gap: no heading element carries the page title.
-      await expect(page.getByRole('heading', { name: /^merchants$/i })).toHaveCount(0);
+      // Since VP-4569 (2026-10-13) the title is a real <h1> (the old
+      // 'no heading' gap was fixed) — assert the heading role now.
+      await expect(page.getByRole('heading', { level: 1, name: /^merchants$/i })).toHaveCount(1);
     },
   );
 
@@ -129,11 +130,16 @@ test.describe('Tải trang & bố cục (Page load / Layout) — Merchants', () 
 
       await expect(merchantsPage.statusFilter).toHaveCount(1);
       await expect(merchantsPage.statusFilter).toBeEnabled();
-      await expect(merchantsPage.statusFilter).toHaveText(/all statuses/i);
+      // VP-4569: the unset filter chip shows only its name "Status" — no value
+      // — which is the "All statuses" state.
+      await expect(merchantsPage.statusFilter).toHaveAccessibleName('Filter by status');
+      expect(await merchantsPage.statusFilterValue()).toBe('All statuses');
 
-      // The toolbar carries no other control — the list screen is read-only
-      // (asserted in full by TC-MCH-073).
-      await expect(page.getByRole('combobox')).toHaveCount(1);
+      // The toolbar carries no other filter control — only the search box, the
+      // status chip and the (view-only) "Columns" visibility menu. The list
+      // screen is read-only (asserted in full by TC-MCH-073).
+      await expect(page.getByRole('combobox')).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Columns' })).toHaveCount(1);
     },
   );
 

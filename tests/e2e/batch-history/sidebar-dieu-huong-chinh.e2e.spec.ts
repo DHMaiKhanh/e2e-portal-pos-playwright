@@ -120,28 +120,44 @@ test.describe('Sidebar / điều hướng chính — Batch History', () => {
    * 1. Ở Batch History, bấm nút thu gọn sidebar.
    * Expected:
    * Sidebar thu gọn về dạng chỉ icon; nội dung chính reflow lại; bấm lần nữa
-   * khôi phục về trạng thái mở rộng, "Batch History" vẫn được highlight.
-   */
-  /**
-   * Live verification changed what this case can assert. There is no desktop
-   * collapse button: from 768px up the nav is a permanent 218px column with the
-   * trigger present but hidden. The collapse affordance only exists at mobile
-   * widths, where the column is replaced by a drawer the trigger opens.
+   * khôi phục về trạng thái mở rộng, "Batches" vẫn được highlight.
    *
-   * So the case now covers both halves of that contract on this screen.
+   * Since the 2026-10-13 redesign the desktop nav has a real "Collapse sidebar"
+   * button again; collapsed, the column becomes a ~56px icon rail whose control
+   * reads "Expand sidebar".
    */
   test(
     'TC-BH-009 — thu gọn/mở sidebar hoạt động đúng trên màn hình này',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ batchHistoryPage }) => {
-      await test.step('Desktop: the nav is permanently expanded, with no collapse control', async () => {
-        await batchHistoryPage.waitForReady();
-        await expect(batchHistoryPage.sidebar.panel).toBeVisible();
-        await expect(batchHistoryPage.sidebar.toggle).toBeHidden();
-        await expect(batchHistoryPage.sidebar.item('Batches')).toHaveAttribute(
-          'aria-current',
-          'page',
-        );
+    async ({ batchHistoryPage, page }) => {
+      const panel = batchHistoryPage.sidebar.panel;
+      const expandButton = page.getByRole('button', { name: /^expand sidebar$/i });
+      const batchesLink = batchHistoryPage.sidebar.item(/^Batches$/);
+
+      await expect(panel).toBeVisible();
+      const expandedWidth = (await panel.boundingBox())!.width;
+      const contentBefore = (await batchHistoryPage.tableRoot.boundingBox())!.width;
+
+      await test.step('Collapse to the icon rail', async () => {
+        await batchHistoryPage.sidebar.toggle.click();
+        await expect(expandButton).toBeVisible();
+        await expect
+          .poll(async () => (await panel.boundingBox())!.width)
+          .toBeLessThan(expandedWidth);
+        await expect(batchesLink).toHaveAttribute('aria-current', 'page');
+        // Main content reflows into the freed space.
+        await expect
+          .poll(async () => (await batchHistoryPage.tableRoot.boundingBox())!.width)
+          .toBeGreaterThan(contentBefore);
+      });
+
+      await test.step('Expand back, highlight kept', async () => {
+        await expandButton.click();
+        await expect(page.getByRole('button', { name: /^collapse sidebar$/i })).toBeVisible();
+        await expect
+          .poll(async () => Math.round((await panel.boundingBox())!.width))
+          .toBe(Math.round(expandedWidth));
+        await expect(batchesLink).toHaveAttribute('aria-current', 'page');
       });
     },
   );
@@ -159,7 +175,7 @@ test.describe('Sidebar / điều hướng chính — Batch History', () => {
 
         // The permanent column is gone; the nav lives behind the trigger.
         await expect(batchHistoryPage.sidebar.toggle).toBeVisible();
-        await expect(page.locator('[data-slot="sidebar"]')).toHaveCount(0);
+        await expect(batchHistoryPage.sidebar.panel).toHaveCount(0);
 
         await batchHistoryPage.sidebar.toggle.click();
         await expect(batchHistoryPage.sidebar.mobileDrawer).toBeVisible();
@@ -169,12 +185,8 @@ test.describe('Sidebar / điều hướng chính — Batch History', () => {
         await expect(activeItem).toBeVisible();
         await expect(activeItem).toHaveAttribute('aria-current', 'page');
 
-        // Dismiss by tapping the backdrop to the right of the panel — the way a
-        // user can. Force-clicking the trigger does NOT work here: the open sheet
-        // is painted over it, so a forced click lands on the "FastboyPay home"
-        // link at the drawer's top-left and navigates off the ledger to `/`.
-        // (Escape does not dismiss this sheet either.)
-        await page.locator('[data-slot="sheet-overlay"]').click({ position: { x: 340, y: 600 } });
+        // Escape dismisses the drawer (verified 2026-10-20 on the redesigned shell).
+        await page.keyboard.press('Escape');
         await expect(batchHistoryPage.sidebar.mobileDrawer).toBeHidden();
 
         // The ledger underneath survived the round trip.

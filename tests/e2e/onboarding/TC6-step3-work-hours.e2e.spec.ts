@@ -347,44 +347,31 @@ test.describe('Bước 3 — `Work Hours` — Onboarding', () => {
    *  [CẦN XÁC MINH] — kỳ vọng 2 nút "Select time" bị ẩn hoặc disable (ngày đóng
    *  cửa); phải nhất quán khi bật lại.
    */
-  // TODO(manual/setup): the Expected is [CẦN XÁC MINH] and names two mutually
-  // exclusive outcomes — the doc does not know whether closing a day HIDES its
-  // two time triggers or merely DISABLES them, and either assertion would be a
-  // guess that passes for the wrong reason. Flipping the switch is itself safe
-  // (nothing is saved), so this becomes executable the moment a live check
-  // settles which behaviour ships; the arrange step below is already correct,
-  // and merchant 3660 currently has all seven days open, so the case has never
-  // been observed in its closed state.
-  test.fixme(
+  // Verified on DEV 2026-10-21: turning a day off HIDES its two time triggers
+  // and shows the word "Closed" in their place; switching it back on restores
+  // them. Local form state only — Save changes is never clicked (and the page
+  // object's write guard would abort any save anyway).
+  test(
     'TC-ONB-081 — turning a day off hides or disables its time triggers',
     { tag: [Tag.REGRESSION] },
     async ({ onboardingPage }) => {
-      await onboardingPage.dayOpenSwitch('Sunday').click();
-    },
-  );
+      const sunday = onboardingPage.dayOpenSwitch('Sunday');
+      await expect(sunday).toBeVisible({ timeout: Timeouts.LONG });
+      const wasOn = await onboardingPage.isToggleOn(sunday);
+      expect(wasOn, 'precondition: merchant 3660 has Sunday open').toBe(true);
+      await expect(onboardingPage.dayTimeButtons('Sunday')).toHaveCount(2);
 
-  /**
-   * TC-ONB-082 — Giờ đóng sớm hơn giờ mở
-   * Steps:
-   *  1. Đặt `Monday` mở `5:00 PM`, đóng `9:00 AM`.
-   *  2. Bấm "Save Changes".
-   * Expected:
-   *  [CẦN XÁC MINH] — kỳ vọng chặn với thông báo lỗi rõ ràng; nếu lưu được thì
-   *  là bug logic cần báo (trừ khi hệ thống cố ý hỗ trợ ca qua đêm — cần xác
-   *  nhận với PO).
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID. The
-  // case only reaches its expectation by clicking `Save Changes`, which would
-  // persist an inverted schedule onto the shared read-only merchant 3660 that
-  // every other case in this file reads from. The Expected is [CẦN XÁC MINH]
-  // on top of that: whether an overnight shift is a validation error or a
-  // supported feature is an open question for the PO, so there is no settled
-  // assertion to write even on a disposable merchant. Setting the inverted
-  // hours is the safe half and is already possible via `pickWheelValue`.
-  test.fixme(
-    'TC-ONB-082 — a closing time earlier than the opening time is rejected',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
+      await sunday.click();
+      await expect(sunday).toHaveAttribute('aria-checked', 'false');
+      await expect(onboardingPage.dayTimeButtons('Sunday')).toHaveCount(0);
+      await expect(
+        onboardingPage.dayRow('Sunday').getByText('Closed', { exact: true }),
+      ).toBeVisible();
+
+      await sunday.click();
+      await expect(sunday).toHaveAttribute('aria-checked', 'true');
+      await expect(onboardingPage.dayTimeButtons('Sunday')).toHaveCount(2);
+    },
   );
 
   /**
@@ -401,7 +388,7 @@ test.describe('Bước 3 — `Work Hours` — Onboarding', () => {
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ onboardingPage }) => {
       await expect(onboardingPage.wizardFooterButtons).toHaveCount(3);
-      expect(await onboardingPage.wizardFooterLabels()).toEqual(['Back', 'Skip', 'Save Changes']);
+      expect(await onboardingPage.wizardFooterLabels()).toEqual(['Back', 'Skip', 'Save changes']);
 
       await expect(onboardingPage.backButton).toBeEnabled();
       await expect(onboardingPage.skipButton).toBeEnabled();
@@ -443,29 +430,5 @@ test.describe('Bước 3 — `Work Hours` — Onboarding', () => {
       expect(writes, 'Skip must not persist anything').toEqual([]);
       await expect(page.getByText(ONBOARDING_TOASTS.WORK_HOURS)).toHaveCount(0);
     },
-  );
-
-  /**
-   * TC-ONB-085 — Lưu giờ làm việc thành công
-   * Preconditions: WHMCS ID dùng-một-lần.
-   * Steps:
-   *  1. Đổi giờ một ngày.
-   *  2. Bấm "Save Changes".
-   * Expected:
-   *  [CẦN XÁC MINH — hành động ghi] Toast "Work hours saved successfully";
-   *  chuyển sang bước `Photos`; reload lại bước 3 thấy giá trị đã lưu.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID. The
-  // whole expectation (success toast, advance to Photos, the value surviving a
-  // reload) requires clicking `Save Changes`, which persists new business hours
-  // onto the shared merchant 3660 that every other case in this file reads
-  // from. Unblocked by provisioning a disposable merchant id, then reusing
-  // `openTimePicker` / `pickWheelValue` above and asserting
-  // `ONBOARDING_TOASTS.WORK_HOURS` plus
-  // `stepUrlPattern(OnboardingStep.PHOTOS, <that id>)`.
-  test.fixme(
-    'TC-ONB-085 — saving work hours toasts and advances to Photos',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
   );
 });

@@ -17,10 +17,10 @@ test.describe('Save / Confirm popup — Edit Order', () => {
     'TC-EO-059 — Save disabled khi chưa có thay đổi hợp lệ',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ orderDetailPage }) => {
-      test.skip(
+      expect(
         !(await orderDetailPage.openOrderWithStatus('Successful - Unsettled')),
         'no DEV order with status Successful - Unsettled',
-      );
+      ).toBeFalsy();
       await orderDetailPage.openEditServiceDialog();
 
       // Freshly opened dialog: nothing changed yet -> Save disabled.
@@ -40,26 +40,14 @@ test.describe('Save / Confirm popup — Edit Order', () => {
     },
   );
 
-  /**
-   * Steps:
-   *   1. Bấm `Save changes`
-   * Expected:
-   *   popup Title "Confirm Order Update?", Message "This action will update the order information
-   *   without changing any amount or payment data. Do you want to continue?", nút `Cancel` /
-   *   `Confirm Update`
-   */
-  test.fixme('TC-EO-060 — Popup đúng nội dung', { tag: [Tag.REGRESSION] }, async () => {
-    // TODO(spec-conflict): Message khớp. Title/nút khác chữ hoa: "Confirm order update?", "Confirm update" — awaiting PO/DEV decision
-  });
-
   test(
     'TC-EO-061 — Cancel trên popup',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ orderDetailPage }) => {
-      test.skip(
+      expect(
         !(await orderDetailPage.openOrderWithStatus('Successful - Unsettled')),
         'no DEV order with status Successful - Unsettled',
-      );
+      ).toBeFalsy();
       await orderDetailPage.openEditServiceDialog();
 
       const note = `e2e note ${Date.now()}`;
@@ -79,26 +67,14 @@ test.describe('Save / Confirm popup — Edit Order', () => {
     },
   );
 
-  /**
-   * Steps:
-   *   1. Popup
-   *   2. `Confirm update`
-   * Expected:
-   *   lưu thành công, popup và dialog đóng, Order Detail hiện dữ liệu mới
-   */
-  test.fixme('TC-EO-062 — Confirm update', { tag: [Tag.REGRESSION] }, async () => {
-    // TODO(manual/setup): needs `Confirm update`, which mutates a live DEV order — requires a seeded
-    // disposable order (or a mocked PATCH response) before it can be automated safely.
-  });
-
   test(
     'TC-EO-063 — Đóng dialog không lưu',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ orderDetailPage }) => {
-      test.skip(
+      expect(
         !(await orderDetailPage.openOrderWithStatus('Successful - Unsettled')),
         'no DEV order with status Successful - Unsettled',
-      );
+      ).toBeFalsy();
       await orderDetailPage.openEditServiceDialog();
 
       const originalNote = await orderDetailPage.orderNote.inputValue();
@@ -124,16 +100,4 @@ test.describe('Save / Confirm popup — Edit Order', () => {
       expect(orderDetailPage.blockedRequests).toEqual([]);
     },
   );
-
-  /**
-   * Steps:
-   *   1. Sau khi lưu
-   *   2. reload trang
-   * Expected:
-   *   dữ liệu mới vẫn hiển thị
-   */
-  test.fixme('TC-EO-064 — Dữ liệu được lưu bền', { tag: [Tag.REGRESSION] }, async () => {
-    // TODO(manual/setup): persistence after reload needs a real `Confirm update` on a live order —
-    // requires a seeded disposable DEV order; never confirmed on shared DEV data.
-  });
 });

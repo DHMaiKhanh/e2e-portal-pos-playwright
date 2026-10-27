@@ -12,7 +12,7 @@ test.describe('Reports — negative & edge', () => {
     'TC-RPT-087 — an unknown report slug shows a not-found message, not a blank page',
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp, page }) => {
-      test.fail(true, 'Product bug: /report-pages/does-not-exist renders a blank body with an empty document.title');
+      // Product bug seen 2026-10-13: a blank body with an empty document.title.
       await rp.open('does-not-exist');
       await expect(page.getByText(/not found|does not exist|no report|404/i).first()).toBeVisible({
         timeout: Timeouts.LONG,
@@ -25,11 +25,15 @@ test.describe('Reports — negative & edge', () => {
     'TC-RPT-088 — a non-date after/before falls back to the default date instead of an error screen',
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp }) => {
-      test.fail(true, 'Product bug: after=garbage shows "This merchant is not available. Invalid time value"');
+      // Product bug seen 2026-10-13: "This merchant is not available. Invalid time value".
+      // Re-checked 2026-10-20: the trigger reads "Invalid Date" and every block shows
+      // "This report could not be loaded. Request failed with status code 400".
       await rp.open(ReportPageSlug.DAILY_SALE, { after: 'garbage', before: 'garbage' });
-      await rp.waitForData();
-      await expect(rp.reportDateButton).toBeVisible();
+      await expect(rp.reportDateButton).toBeVisible({ timeout: Timeouts.LONG });
+      await expect(rp.reportDateButton).not.toHaveText(/Invalid Date/);
+      await expect(rp.page.getByText('This report could not be loaded.')).toHaveCount(0);
       await expect(rp.merchantUnavailable).toHaveCount(0);
+      await rp.waitForData();
     },
   );
 
@@ -37,7 +41,7 @@ test.describe('Reports — negative & edge', () => {
     'TC-RPT-089 — an impossible calendar date (2026-13-45) is rejected, never labelled "Invalid Date"',
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp, page }) => {
-      test.fail(true, 'Product bug: trigger reads "Invalid Date - <before>" and the table renders blank');
+      // Product bug seen 2026-10-13: the trigger read "Invalid Date - <before>" and the table rendered blank.
       await rp.open(ReportPageSlug.STAFF_INCOME, { after: '2026-13-45', before: '2026-10-13' });
       await expect(rp.dateRangeButton).toBeVisible({ timeout: Timeouts.LONG });
       await expect(page.getByText(/Invalid Date/)).toHaveCount(0, { timeout: Timeouts.SHORT });
@@ -51,7 +55,7 @@ test.describe('Reports — negative & edge', () => {
       await rp.openWithData(ReportPageSlug.DAILY_SALE, { after: '2020-01-01', before: '2020-01-01' });
       await expect(rp.reportDateButton).toHaveText('Jan 1, 2020');
       await expect(rp.emptyRow).toBeVisible();
-      await expect(rp.resultsFooter).toHaveText('Showing 0 to 0 of 0 results');
+      await rp.expectTotal(0);
     },
   );
 

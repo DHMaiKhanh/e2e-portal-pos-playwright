@@ -1,5 +1,6 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
+import { CustomersPage } from '@pages/customers/CustomersPage';
 
 test.describe('Hành động chính (Core actions) — Customers', () => {
   test.beforeEach(async ({ customersPage }) => {
@@ -17,12 +18,26 @@ test.describe('Hành động chính (Core actions) — Customers', () => {
       await expect(options.first()).toBeVisible();
       expect(await options.count()).toBeGreaterThan(1);
 
-      const firstOption = options.first();
-      const groupName = (await firstOption.textContent())?.trim() ?? '';
-      await firstOption.click();
+      // Pinned to "Rich" — a store-100004 group that has members on DEV
+      // (verified 2026-10-20: 2 customers). The first option ("VIP") is empty,
+      // which would only exercise the empty state.
+      const groupName = 'Rich';
+      await page.getByRole('option', { name: groupName, exact: true }).click();
 
       await expect(customersPage.groupFilterButtonWithLabel(groupName)).toBeVisible();
+      await expect(page).toHaveURL(/[?&]group=/);
       await expect(customersPage.pageIndicator).toHaveText(/1\s*\/\s*\d+/);
+      const rows = customersPage.table.rows;
+      await expect(rows.first()).toBeVisible();
+      // Every remaining row belongs to the picked group. Poll: the filtered
+      // page replaces the unfiltered one only after its own fetch settles.
+      await expect
+        .poll(async () =>
+          (await customersPage.rowCells()).every((cells) =>
+            cells[CustomersPage.Column.GROUP].split(/,\s*/).includes(groupName),
+          ),
+        )
+        .toBe(true);
     },
   );
 
@@ -40,11 +55,14 @@ test.describe('Hành động chính (Core actions) — Customers', () => {
       await firstOption.click();
       await expect(customersPage.groupFilterButtonWithLabel(groupName)).toBeVisible();
 
-      await customersPage.groupFilterButtonWithLabel(groupName).click();
-      await page.getByRole('option', { name: /all groups/i }).click();
+      // The old "All Groups" option is gone: the chip now carries its own
+      // "Clear group filter" (x) control.
+      await customersPage.clearGroupButton.click();
 
-      await expect(customersPage.groupFilter).toBeVisible();
+      await expect(customersPage.groupFilter).toHaveAccessibleName('Group');
+      await expect(page).not.toHaveURL(/[?&]group=/);
       await expect(customersPage.pageIndicator).toHaveText(/1\s*\/\s*\d+/);
+      await expect(customersPage.resultsFooter).toContainText(/^1–30 of [\d,]+$/);
     },
   );
 
@@ -65,7 +83,7 @@ test.describe('Hành động chính (Core actions) — Customers', () => {
       await customersPage.pagination.next();
       await expect(page).toHaveURL(/page=2&orderCreatedAt=desc/);
       await expect(customersPage.pageIndicator).toHaveText(/2\s*\/\s*\d+/);
-      await expect(customersPage.resultsFooter).toContainText(/showing 31 to 60 of \d+ results/i);
+      await expect(customersPage.resultsFooter).toContainText(/^31–60 of [\d,]+$/);
       await expect(customersPage.pagination.prevButton).toBeEnabled();
     },
   );

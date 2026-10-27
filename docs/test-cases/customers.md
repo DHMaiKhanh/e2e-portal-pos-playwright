@@ -905,3 +905,42 @@
 - Đã sửa test (fail ở các lần chạy trước trong ngày, đều do test chứ không phải bug app):
   - TC-CUS-027 · khách "Hung Vo" không còn trên stage → lấy tên từ dòng đầu tiên rồi search
 - Report chi tiết: `npm run report` (reports/html) · Dashboard: `npm run dashboard:open`
+
+---
+
+## Linear — Task & Bug liên quan
+
+> Nguồn: Linear team VP, label `Portal` — lấy ngày 2026-10-20. Bỏ Canceled, TechDebt/CI và Restaurant Portal.
+> Thứ tự: Bug → đang QC/Review → đã Prod/Done → Todo/Backlog. **3 issue.**
+
+| ID                                                  | Loại    | Tiêu đề                                                           | Trạng thái      | Ưu tiên | Test hiện có                                       | E2E được? | Ghi chú                                                          |
+| --------------------------------------------------- | ------- | ----------------------------------------------------------------- | --------------- | ------- | -------------------------------------------------- | --------- | ---------------------------------------------------------------- |
+| [VP-1171](https://linear.app/fastboy/issue/VP-1171) | Task    | Cashback Wallet – Implement Cashback History                      | Ready to Review | Low     | Một phần — `customers/TC7-detail-modal`            | Có        | Cashback Wallet ledger                                           |
+| [VP-1860](https://linear.app/fastboy/issue/VP-1860) | Task    | [Portal] Cashback Wallet (Cashback history) - Customer Management | Ready to Review | Low     | Một phần — `customers/TC7-detail-modal`            | Có        | Cashback history (cha: VP-876)                                   |
+| [VP-3665](https://linear.app/fastboy/issue/VP-3665) | Feature | [PORTAL] Mask customer phone to last 4 digits everywhere it shows | Done            | High    | Có — `customers/TC4-search`, `TC6-data-formatting` | Có        | Mask phone `(***) ***-1234` ở mọi nơi (cả orders, edit-customer) |
+
+---
+
+## Đã loại bỏ / thay đổi (2026-10-20)
+
+Bối cảnh: UI Portal đổi sang design system mới ngày 2026-10-13 (Linear VP-4569). Giữ nguyên toàn bộ test case, chỉ sửa locator/assertion theo DOM thật (quét lại 2026-10-20 trên DEV, store 100004).
+
+**Không xoá test nào** — 78 test.
+
+**Thay đổi chính (locator / hành vi mới):**
+
+- Tab panel: `[role=tabpanel][data-state=active]` (bỏ `[data-slot="tabs-content"]`). Tiêu đề trang: `h1 "Customers"`.
+- Pager: `navigation "Pagination"`; range `"1–30 of 16,803"` (bỏ "Showing x to y of z results"); chỉ số trang `[data-slot=pos-pagination-page]`; nút `Previous page` / `Next page`.
+- Kết quả rỗng: hiển thị empty state `"No matching results"` (`[data-slot=pos-empty-state]`) và **ẩn toàn bộ pager** → TC-CUS-031/042/056 kiểm tra "không còn nút phân trang nào bật / không còn range cũ".
+- Filter nhóm: chip `button "Group"` → `"Group: <tên>"`; bỏ option "All Groups", dùng nút `Clear group filter` (TC-CUS-021). TC-CUS-020 ghim nhóm **"Rich"** (có 2 khách trên DEV; nhóm đầu "VIP" rỗng) và kiểm tra mọi dòng thuộc nhóm.
+- Số điện thoại che: `img "Phone ending in 4533"`, text `"••• ••• 4533"` (trước là `(***) ***-4533`) → `CustomersPage.MASKED_PHONE`.
+- Placeholder ô trống là `—` (em dash) cả ở LAST VISIT → TC-CUS-039/046/050 dùng `—` (trước dùng `-` nên 039/050 không assert gì).
+- Trang chi tiết: không còn nút "Save changes" khi form chưa sửa → `waitForReady` dựa vào ô Name + tab Profile; TC-CUS-055 kiểm tra tab Profile còn active.
+- Thứ tự Tab (TC-CUS-066): search → Group → Columns → dòng đầu tiên (dòng có tabindex=0).
+- Mobile (TC-CUS-017/063): nút `"Open navigation"` (< 768px) mở `dialog "Navigation"`.
+- Lỗi tải danh sách (TC-CUS-060): `"Couldn't load customers"` + `Try again`.
+- Cross-store (TC-CUS-076): thêm segment `/nail/`, chấp nhận thông điệp mới `"We couldn't load this merchant"` + vùng `"Your merchants"` (viết inline vì helper dùng chung còn chờ chuyển đổi).
+
+**Còn FAIL (cố ý giữ):**
+
+- TC-CUS-029 — **bug sản phẩm**: tìm theo SĐT không chuẩn hoá ký tự phân cách: `3301` có kết quả nhưng `33-01` / `(33) 01` trả rỗng.

@@ -14,7 +14,7 @@ const MONEY = /\$[\d,]+\.\d{2}/;
 /** Opens an editable (Successful - Unsettled) order and its Edit service details dialog; skips if none. */
 async function openEditableServiceDialog(orderDetailPage: OrderDetailPage): Promise<void> {
   const opened = await orderDetailPage.openOrderWithStatus('Successful - Unsettled');
-  test.skip(!opened, 'no DEV order with status Successful - Unsettled');
+  expect(!opened, 'no DEV order with status Successful - Unsettled').toBeFalsy();
   await orderDetailPage.openEditServiceDialog();
 }
 
@@ -98,41 +98,6 @@ test.describe('Sửa Service name & Note — Edit Order', () => {
     },
   );
 
-  /**
-   * Steps:
-   *   1. Chọn service có giá trong Setting khác giá dòng
-   *   2. lưu
-   * Expected: giá dòng, subtotal, tổng order không đổi. `service_id` không đổi (BE chỉ lưu name)
-   */
-  test.fixme(
-    'TC-EO-028 — Đổi sang service khác giá thì giá dòng giữ nguyên',
-    { tag: [Tag.REGRESSION] },
-    async () => {
-      // TODO(manual/setup): needs `Confirm update` on a seeded order plus an API check of
-      // service_id — cannot mutate live DEV data.
-    },
-  );
-
-  /**
-   * Steps:
-   *   1. Xoá trống `Service name`
-   * Expected (spec VP-2593 TC18): validate, `Save changes` bị chặn
-   */
-  test.fixme('TC-EO-029 — Tên service trống', { tag: [Tag.REGRESSION] }, async () => {
-    // TODO(spec-conflict): scan shows `Save changes` stays ENABLED after clearing `Service name`
-    // (no validation seen) — awaiting PO/DEV decision.
-  });
-
-  /**
-   * Steps:
-   *   1. Gõ từ khoá vào `Search service…`
-   * Expected: danh sách lọc đúng. Không khớp thì hiện empty state
-   */
-  test.fixme('TC-EO-030 — Tìm trong catalog', { tag: [Tag.REGRESSION] }, async () => {
-    // TODO(manual/setup): filter behavior and the empty-state text were not captured in the scan
-    // (🔍) — needs live verification of the catalog list/empty-state markup.
-  });
-
   // Persistence (🔍: note saved/shown after save, waiting on BE) is NOT covered — it needs
   // `Confirm update`. Only the ✅ textbox part is asserted.
   test(
@@ -173,14 +138,4 @@ test.describe('Sửa Service name & Note — Edit Order', () => {
       expect(orderDetailPage.blockedRequests).toEqual([]);
     },
   );
-
-  /**
-   * Steps:
-   *   1. Sau khi đổi tên service
-   * Expected: report liên quan hiện tên mới, số tiền giữ nguyên
-   */
-  test.fixme('TC-EO-033 — Report Service hiện tên mới', { tag: [Tag.REGRESSION] }, async () => {
-    // TODO(manual/setup): requires a persisted rename (`Confirm update`) and a report check
-    // afterwards — cannot mutate live DEV data.
-  });
 });

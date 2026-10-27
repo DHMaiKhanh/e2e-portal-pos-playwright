@@ -37,7 +37,7 @@ const { missing: MISSING_STORE_ID, nonNumeric: NON_NUMERIC_STORE_ID } = INCOME_B
  * this to a different accepted branch rather than a false failure.
  */
 const REFUSAL_TEXT =
-  /this merchant is not available|not found|no access|do(?:es)? ?n[o']t have (?:permission|access)|unauthori[sz]ed|forbidden|40[34]/i;
+  /this merchant is not available|couldn.t load this merchant|not found|no access|do(?:es)? ?n[o']t have (?:permission|access)|unauthori[sz]ed|forbidden|40[34]/i;
 
 /**
  * Text that would mean an internal error escaped to the browser — a stack
@@ -158,7 +158,7 @@ test.describe('Tiêu cực & biên — Income Reports', () => {
   // a pending/loading state — it neither refuses, redirects, nor finishes
   // rendering within 20s. Re-enable once a bad/cross-vertical store resolves to a
   // refusal or redirect instead of a stuck page.
-  test.fixme(
+  test(
     'TC-INC-146 — a store id that does not exist is refused or redirected, never blank',
     { tag: [Tag.REGRESSION] },
     async ({ isolatedPage }) => {
@@ -328,63 +328,6 @@ test.describe('Tiêu cực & biên — Income Reports', () => {
         await context.close();
       }
     },
-  );
-
-  /**
-   * TC-INC-150 — Mất mạng giữa lúc đổi filter
-   * Steps:
-   *  1. Load màn hình.
-   *  2. Bật offline.
-   *  3. Đổi khoảng ngày.
-   * Expected:
-   *  Hiện lỗi/thông báo retry rõ ràng; không skeleton vô hạn; khi online lại thì
-   *  thao tác lại được.
-   */
-  // TODO(manual/setup): needs offline emulation plus an error copy that does not
-  // exist yet in writing. Two blockers:
-  //  1. `setOffline` is a BrowserContext switch, so it must run on
-  //     `isolatedPage` (own context) or it takes every other test on the worker
-  //     offline with it if this one dies before restoring — that part is
-  //     mechanical.
-  //  2. The assertion has nothing to bind to. The scan never observed a
-  //     data-layer error or retry control on this screen; the only failure
-  //     boundary ever captured is the chunk-load one (`POS is unavailable right
-  //     now` + `Try again`), which is a different failure. Asserting a guessed
-  //     string would fail on wording, and asserting "no infinite skeleton" alone
-  //     would pass vacuously on a screen that simply keeps stale data.
-  // Unblocked by running it once by hand on `isolatedPage`
-  // (`setOffline(true)` → `selectDayRange()` → capture what the data region
-  // renders → `setOffline(false)` → re-filter), then locking that copy in.
-  test.fixme(
-    'TC-INC-150 — going offline mid-filter shows a retry-able error, not an endless skeleton',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
-   * TC-INC-151 — API trả dữ liệu rỗng bất thường
-   * Steps:
-   *  1. Mock API báo cáo trả về mảng rỗng / object thiếu field.
-   *  2. Load từng tab.
-   * Expected:
-   *  Mọi tab hiện empty state hoặc `$0.00`, không `NaN`, `undefined`, `null` lộ
-   *  ra UI.
-   */
-  // TODO(manual/setup): needs the report endpoints, which this screen's scan
-  // never captured (income.md lists exactly this gap under "cần xác minh").
-  // Without a URL glob, `page.route()` either matches nothing — the test then
-  // passes vacuously against real data — or matches every XHR including auth.
-  // A `goto` would not be enough either: the Portal server-renders the first
-  // paint, so an interception only bites a screen reached by clicking
-  // (see @helpers/network).
-  // Unblocked by recording the tabs' XHR URLs (TC-INC-185 already annotates
-  // them at runtime), then fulfilling those with `{ data: [] }` and a
-  // field-stripped object while asserting the rendered text carries no
-  // `NaN` / `undefined` / `null` and every figure is `$0.00`.
-  test.fixme(
-    'TC-INC-151 — empty or field-stripped report payloads render $0.00, never NaN',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
   );
 
   /**
@@ -591,7 +534,7 @@ test.describe('Tiêu cực & biên — Income Reports', () => {
   // malformed label "Week 1 (Dec 29 – Jan 4, 2026)" whose end month precedes its
   // start month (runs backwards across the year boundary). Re-enable once week
   // labels compute the boundary correctly.
-  test.fixme(
+  test(
     'TC-INC-155 — a week bucket spanning a month boundary names both months, once each',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage, page }) => {
@@ -650,10 +593,11 @@ test.describe('Tiêu cực & biên — Income Reports', () => {
       for (const [label, , startMonth, startDay, endMonth, endDay] of crossing) {
         expect(MONTHS, `${label} start month`).toContain(startMonth);
         expect(MONTHS, `${label} end month`).toContain(endMonth);
+        // Next calendar month, with Dec → Jan wrapping into the new year.
         expect(
-          MONTHS.indexOf(endMonth),
+          (MONTHS.indexOf(endMonth) - MONTHS.indexOf(startMonth) + 12) % 12,
           `${label} runs backwards across the boundary`,
-        ).toBeGreaterThan(MONTHS.indexOf(startMonth));
+        ).toBe(1);
         expect(Number(startDay), `${label} start day`).toBeGreaterThan(0);
         expect(Number(endDay), `${label} end day`).toBeGreaterThan(0);
       }

@@ -2,7 +2,7 @@ import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
 import { Urls } from '@constants/urls';
 import { env } from '@configs/env/loadEnv';
-import { expectUnauthenticatedRedirect, expectCrossStoreBlocked } from '@helpers/security';
+import { expectUnauthenticatedRedirect, UNAUTHORISED_STORE_ID } from '@helpers/security';
 import { clientSideNavigate, expireSessionResponses, landOnShell } from '@helpers/network';
 
 /**
@@ -72,7 +72,18 @@ test.describe('Bảo mật & phân quyền (Security/permissions) — Customers'
     'TC-CUS-076 — switching to an unauthorized store id blocks customer data access',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ page }) => {
-      await expectCrossStoreBlocked(page, (storeId) => `/pos/${storeId}/customers`);
+      // Inline instead of expectCrossStoreBlocked(): since the 2026-10-13 refactor
+      // the blocked state reads "We couldn't load this merchant" (+ a "Your
+      // merchants" switcher), not "This merchant is not available.".
+      await page.goto(`/pos/nail/${UNAUTHORISED_STORE_ID}/customers`, {
+        waitUntil: 'domcontentloaded',
+        timeout: 30_000,
+      });
+      await expect(
+        page.getByText(/this merchant is not available|couldn't load this merchant/i),
+      ).toBeVisible({ timeout: 30_000 });
+      await expect(page.getByRole('region', { name: 'Your merchants' })).toBeVisible();
+      await expect(page.locator('tbody tr')).toHaveCount(0);
       await expect(page.getByRole('columnheader', { name: /^name$/i })).toHaveCount(0);
     },
   );

@@ -9,13 +9,17 @@ import { Tag } from '@/types/testTags';
  * no create / edit / clone / delete / publish can reach the DEV Portal. Each test
  * ends by asserting no unexpected write was attempted.
  *
- * Verified on DEV 2026-10-13:
- *  - Add / Edit / Clone are `role=dialog`; Delete is `role=alertdialog`.
+ * Verified on DEV 2026-10-13, re-verified 2026-10-26 after the redesign:
+ *  - Add ("New page") / Edit ("Edit page") / Clone ("Clone Page") are
+ *    `role=dialog`; Delete is `role=alertdialog` ("Delete page?").
  *  - Publish fires `POST /report_pages/<id>/publish` on ONE click, no confirm.
- *  - Build layout (and clicking the row) opens `/report-config/pages/<uuid>`
- *    ("Page Builder | Portal").
+ *  - Clicking the row opens `/report-config/pages/<uuid>` ("Page builder |
+ *    Portal"); the old "Build layout" row action is gone.
  *  - Layout badges open the live report in a new tab:
- *    `/report-pages/<slug>` (Web) or `?layout=pos` (POS Window).
+ *    `/report-pages/<slug>` (Web) or `?layout=pos` (POS window).
+ *  - Cancel / Close on an untouched New page form need TWO clicks: blurring the
+ *    auto-focused Name runs validation, the error list pushes the footer down
+ *    and the first click is lost (defect D11 — kept red in TC-RCF-072).
  */
 const UUID = '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}';
 
@@ -25,16 +29,16 @@ test.describe('Hành động dòng & dialog — Pages', () => {
   });
 
   /**
-   * TC-RCF-070 — Mỗi dòng Pages có 5 hành động icon
+   * TC-RCF-070 — Mỗi dòng Pages có menu hành động: Publish, Edit, Clone, Delete
    */
   test(
-    'TC-RCF-070 — every page row offers Publish, Build layout, Edit, Clone, Delete',
+    'TC-RCF-070 — every page row offers Publish, Edit, Clone, Delete',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportConfigPage: rc }) => {
       const n = await rc.table.rows.count();
       for (let i = 0; i < n; i++) {
-        for (const action of rc.spec.rowActions)
-          await expect(rc.rowAction(action, i)).toBeVisible();
+        const names = await rc.rowActionNames(i);
+        for (const action of rc.spec.rowActions) expect(names, `row ${i + 1}`).toContain(action);
       }
     },
   );
@@ -48,14 +52,14 @@ test.describe('Hành động dòng & dialog — Pages', () => {
     async ({ reportConfigPage: rc, page }) => {
       const blocked = await rc.guardWrites();
       await rc.openAdd();
-      const d = page.getByRole('dialog', { name: 'Add Page' });
+      const d = page.getByRole('dialog', { name: 'New page' });
       await expect(d).toBeVisible();
       await expect(d).toContainText('The slug comes from the name and is fixed after creation.');
-      await expect(d.getByLabel('Name')).toHaveAttribute('placeholder', 'Income Reports');
+      await expect(d.getByLabel('Name')).toHaveAttribute('placeholder', 'Income reports');
       await expect(d.getByLabel('Name')).toHaveValue('');
-      await expect(d.getByRole('radio', { name: 'A Page Of Its Own' })).toBeChecked();
+      await expect(d.getByRole('radio', { name: 'A page of its own' })).toBeChecked();
       await expect(
-        d.getByRole('radio', { name: 'A Fragment Of Another Screen' }),
+        d.getByRole('radio', { name: 'A fragment of another screen' }),
       ).not.toBeChecked();
       await expect(d.getByRole('switch', { name: 'Hidden in menu' })).toHaveAttribute(
         'aria-checked',
@@ -65,10 +69,12 @@ test.describe('Hành động dòng & dialog — Pages', () => {
         'aria-checked',
         'true',
       );
-      await expect(d.locator('#required\\.permission')).toHaveText('None');
-      await expect(d.locator('#required\\.passcode')).toHaveText('None');
+      await expect(d.getByRole('combobox', { name: 'Requires permission' })).toHaveText('None');
+      await expect(d.getByRole('combobox', { name: 'Requires passcode' })).toHaveText('None');
       await expect(d.getByRole('button', { name: 'Cancel' })).toBeVisible();
-      await expect(d.getByRole('button', { name: 'Create' })).toBeEnabled();
+      await expect(d.getByRole('button', { name: 'Create page' })).toBeEnabled();
+      // One Cancel click must close the untouched form (defect D11: the first
+      // click is swallowed by the on-blur validation re-layout).
       await d.getByRole('button', { name: 'Cancel' }).click();
       await expect(d).toBeHidden();
       expect(blocked).toEqual([]);
@@ -84,7 +90,7 @@ test.describe('Hành động dòng & dialog — Pages', () => {
     async ({ reportConfigPage: rc, page }) => {
       const blocked = await rc.guardWrites();
       await rc.openAdd();
-      const d = page.getByRole('dialog', { name: 'Add Page' });
+      const d = page.getByRole('dialog', { name: 'New page' });
       await d.getByLabel('Name').fill('E2E Probe Page 01');
       await expect(d).toContainText('e2e-probe-page-01');
       await d.getByLabel('Name').fill('  Mixed CASE  & Symbols!! ');
@@ -103,9 +109,17 @@ test.describe('Hành động dòng & dialog — Pages', () => {
     async ({ reportConfigPage: rc, page }) => {
       const blocked = await rc.guardWrites();
       await rc.openAdd();
-      const d = page.getByRole('dialog', { name: 'Add Page' });
-      await d.getByRole('button', { name: 'Create' }).click();
+      const d = page.getByRole('dialog', { name: 'New page' });
+      await d.getByRole('button', { name: 'Create page' }).click();
       await expect(d).toContainText('Name must contain letters or numbers to make a slug');
+      // The second message is the raw schema text (same family as defect D3).
+      if (/slug must be kebab-case/.test(await d.innerText())) {
+        test.info().annotations.push({
+          type: 'defect',
+          description:
+            'D3: New page also lists the raw validator text "slug must be kebab-case, starting with a letter"',
+        });
+      }
       await expect(d).toBeVisible();
       expect(blocked).toEqual([]);
     },
@@ -120,9 +134,10 @@ test.describe('Hành động dòng & dialog — Pages', () => {
     async ({ reportConfigPage: rc, page }) => {
       const blocked = await rc.guardWrites();
       await rc.openAdd();
-      const d = page.getByRole('dialog', { name: 'Add Page' });
+      const d = page.getByRole('dialog', { name: 'New page' });
       await d.getByLabel('Name').fill('!!!');
-      await d.getByRole('button', { name: 'Create' }).click();
+      await expect(d.getByText('—', { exact: true })).toBeVisible();
+      await d.getByRole('button', { name: 'Create page' }).click();
       await expect(d).toContainText('Name must contain letters or numbers to make a slug');
       expect(blocked).toEqual([]);
     },
@@ -137,9 +152,9 @@ test.describe('Hành động dòng & dialog — Pages', () => {
     async ({ reportConfigPage: rc, page }) => {
       const writes = await rc.mockWrites(422);
       await rc.openAdd();
-      const d = page.getByRole('dialog', { name: 'Add Page' });
+      const d = page.getByRole('dialog', { name: 'New page' });
       await d.getByLabel('Name').fill('E2E Probe Page 01');
-      await d.getByRole('button', { name: 'Create' }).click();
+      await d.getByRole('button', { name: 'Create page' }).click();
       await expect.poll(() => writes.length).toBe(1);
       expect(writes[0].method).toBe('POST');
       expect(writes[0].url).toMatch(/\/report_pages\.jsonld$/);
@@ -150,6 +165,8 @@ test.describe('Hành động dòng & dialog — Pages', () => {
         usage: 'standalone',
         active: true,
         required: {},
+        // Since the redesign the page header title is seeded from the name.
+        header: { title: 'E2E Probe Page 01', actions: [] },
       });
       // The violation is mapped back onto the Name field; the dialog stays open.
       await expect(d).toContainText('E2E mocked rejection');
@@ -165,7 +182,7 @@ test.describe('Hành động dòng & dialog — Pages', () => {
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportConfigPage: rc, page }) => {
       const blocked = await rc.guardWrites();
-      const d = page.getByRole('dialog', { name: 'Add Page' });
+      const d = page.getByRole('dialog', { name: 'New page' });
       await rc.openAdd();
       await d.getByLabel('Name').fill('should not persist');
       await d.getByRole('button', { name: 'Cancel' }).click();
@@ -189,7 +206,7 @@ test.describe('Hành động dòng & dialog — Pages', () => {
   );
 
   /**
-   * TC-RCF-078 — Dialog "Edit Page" điền sẵn dữ liệu; slug chỉ đọc
+   * TC-RCF-078 — Dialog "Edit page" điền sẵn dữ liệu; slug chỉ đọc
    */
   test(
     'TC-RCF-078 — Edit Page is prefilled, shows the fixed slug and publish state, Cancel saves nothing',
@@ -197,16 +214,16 @@ test.describe('Hành động dòng & dialog — Pages', () => {
     async ({ reportConfigPage: rc, page }) => {
       const blocked = await rc.guardWrites();
       const { name, slug } = await rc.nameAndSlug(0);
-      const published = (await rc.columnValues(rc.columnIndex('PUBLISHED')))[0];
-      await rc.rowAction('Edit', 0).click();
-      const d = page.getByRole('dialog', { name: 'Edit Page' });
+      const published = (await rc.columnValues(rc.columnIndex('Published')))[0];
+      await rc.clickRowAction('Edit', 0);
+      const d = page.getByRole('dialog', { name: 'Edit page' });
       await expect(d).toBeVisible();
       await expect(d.getByLabel('Name')).toHaveValue(name);
       await expect(d).toContainText(slug);
       await expect(d).toContainText(published);
       // Slug is text, not an input: Name is the only textbox.
       await expect(d.getByRole('textbox')).toHaveCount(1);
-      await expect(d.getByRole('button', { name: 'Save Changes' })).toBeVisible();
+      await expect(d.getByRole('button', { name: 'Save changes', exact: true })).toBeVisible();
       await d.getByRole('button', { name: 'Cancel' }).click();
       await expect(d).toBeHidden();
       expect(blocked).toEqual([]);
@@ -222,7 +239,7 @@ test.describe('Hành động dòng & dialog — Pages', () => {
     async ({ reportConfigPage: rc, page }) => {
       const blocked = await rc.guardWrites();
       const { name, slug } = await rc.nameAndSlug(0);
-      await rc.rowAction('Clone', 0).click();
+      await rc.clickRowAction('Clone', 0);
       const d = page.getByRole('dialog', { name: 'Clone Page' });
       await expect(d).toContainText(`Creates a new custom page from “${name}”`);
       await expect(d.getByLabel('Name')).toHaveAttribute('placeholder', `Copy of ${name}`);
@@ -245,7 +262,7 @@ test.describe('Hành động dòng & dialog — Pages', () => {
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportConfigPage: rc, page }) => {
       const writes = await rc.mockWrites(422);
-      await rc.rowAction('Clone', 0).click();
+      await rc.clickRowAction('Clone', 0);
       const d = page.getByRole('dialog', { name: 'Clone Page' });
       await d.getByRole('button', { name: 'Clone', exact: true }).click();
       await expect.poll(() => writes.length).toBe(1);
@@ -265,8 +282,8 @@ test.describe('Hành động dòng & dialog — Pages', () => {
       const blocked = await rc.guardWrites();
       const total = await rc.totalResults();
       const { name } = await rc.nameAndSlug(0);
-      await rc.rowAction('Delete', 0).click();
-      const a = page.getByRole('alertdialog', { name: 'Delete Page?' });
+      await rc.clickRowAction('Delete', 0);
+      const a = page.getByRole('alertdialog', { name: 'Delete page?' });
       await expect(a).toContainText(`This will permanently delete the page "${name}".`);
       await a.getByRole('button', { name: 'Cancel' }).click();
       await expect(a).toBeHidden();
@@ -284,7 +301,7 @@ test.describe('Hành động dòng & dialog — Pages', () => {
     async ({ reportConfigPage: rc, page }) => {
       const writes = await rc.mockWrites(422);
       const last = (await rc.table.rows.count()) - 1;
-      await rc.rowAction('Publish', last).click();
+      await rc.clickRowAction('Publish', last);
       await expect.poll(() => writes.length).toBeGreaterThanOrEqual(1);
       expect(writes[0].method).toBe('POST');
       expect(writes[0].url).toMatch(new RegExp(`/report_pages/${UUID}/publish$`));
@@ -301,26 +318,25 @@ test.describe('Hành động dòng & dialog — Pages', () => {
   );
 
   /**
-   * TC-RCF-084 — Build layout mở Page Builder (cả khi click vào dòng)
+   * TC-RCF-084 — Click vào dòng mở Page Builder (menu không còn "Build layout")
    */
   test(
-    'TC-RCF-084 — Build layout (and clicking the row) opens the Page Builder for that page',
+    'TC-RCF-084 — clicking a page row opens the Page builder for that page',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportConfigPage: rc, page }) => {
       const blocked = await rc.guardWrites();
-      await rc.rowAction('Build layout', 0).click();
+      const { name, slug } = await rc.nameAndSlug(0);
+      await rc.row(0).getByRole('cell').first().click();
       await expect(page).toHaveURL(new RegExp(`/report-config/pages/${UUID}$`), {
         timeout: 30_000,
       });
-      const builderUrl = page.url();
-      await expect(page).toHaveTitle('Page Builder | Portal');
-      await expect(page.getByRole('button', { name: 'Page filters' })).toBeVisible({
+      await expect(page).toHaveTitle('Page builder | Portal');
+      await expect(page.getByRole('heading', { level: 1, name })).toBeVisible({
         timeout: 30_000,
       });
-
-      await rc.goto();
-      await rc.row(0).getByRole('cell').first().click();
-      await expect(page).toHaveURL(builderUrl);
+      await expect(page.locator('#pos-main').getByRole('banner')).toContainText(slug);
+      await expect(page.getByRole('tablist', { name: 'Layout variant' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Page filters' })).toBeVisible();
       expect(blocked).toEqual([]);
     },
   );
@@ -329,11 +345,11 @@ test.describe('Hành động dòng & dialog — Pages', () => {
    * TC-RCF-085 — Badge layout mở report thật ở tab mới
    */
   test(
-    'TC-RCF-085 — layout badges open the live report in a new tab (Web / POS Window)',
+    'TC-RCF-085 — layout badges open the live report in a new tab (Web / POS window)',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportConfigPage: rc, page }) => {
       const idx = await rc.table.rows
-        .filter({ hasText: 'POS Window' })
+        .filter({ hasText: 'POS window' })
         .first()
         .evaluate((r) => (r as HTMLTableRowElement).sectionRowIndex);
       const { slug } = await rc.nameAndSlug(idx);
@@ -344,7 +360,8 @@ test.describe('Hành động dòng & dialog — Pages', () => {
       await expect(webTab).toHaveURL(new RegExp(`/report-pages/${slug}$`));
       await webTab.close();
 
-      const pos = rc.row(idx).getByRole('button', { name: 'POS Window', exact: true });
+      const pos = rc.row(idx).getByRole('button', { name: 'POS window', exact: true });
+      await expect(pos).toHaveAttribute('title', 'Open the page as a POS window reader sees it');
       const [posTab] = await Promise.all([page.context().waitForEvent('page'), pos.click()]);
       await expect(posTab).toHaveURL(new RegExp(`/report-pages/${slug}\\?layout=pos$`));
       await posTab.close();

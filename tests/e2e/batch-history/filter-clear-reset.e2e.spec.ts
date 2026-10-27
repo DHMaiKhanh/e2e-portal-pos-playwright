@@ -23,16 +23,27 @@ test.describe('Filter — clear/reset — Batch History', () => {
     'TC-BH-022 — "Clear filters" reset về khoảng ngày và status mặc định',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ batchHistoryPage }) => {
-      // Apply a non-default status filter.
+      const defaultRange = (await batchHistoryPage.dateRangeButton.innerText()).trim();
+
+      // Apply a non-default date range and status filter.
+      await batchHistoryPage.gotoWithParams({
+        page: '1',
+        status: 'all',
+        dateAfter: '2026-08-01',
+        dateBefore: '2026-08-21',
+      });
+      await expect(batchHistoryPage.dateRangeButton).not.toHaveText(defaultRange);
       await batchHistoryPage.selectStatus('Closed');
       await expect(batchHistoryPage.clearFiltersButton).toBeVisible();
 
       // Click Clear filters.
       await batchHistoryPage.clearFilters();
 
-      // Status resets back to "All status" and Clear filters disappears.
-      await expect(batchHistoryPage.statusCombobox).toHaveText(/All status/i);
-      expect(await batchHistoryPage.isClearFiltersVisible()).toBeFalsy();
+      // Status chip resets to unset ("all") and Clear filters disappears.
+      await expect(batchHistoryPage.statusFilter).toHaveAccessibleName(/^status$/i);
+      expect(batchHistoryPage.currentQueryParams().get('status') ?? 'all').toBe('all');
+      await expect(batchHistoryPage.dateRangeButton).toHaveText(defaultRange);
+      await expect(batchHistoryPage.clearFiltersButton).toBeHidden();
     },
   );
 });

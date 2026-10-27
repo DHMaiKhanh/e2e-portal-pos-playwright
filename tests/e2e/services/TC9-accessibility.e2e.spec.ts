@@ -35,41 +35,51 @@ test.describe('Khả năng tiếp cận (Accessibility) — Services', () => {
         await productsPage.hoverCategory(target);
         await productsPage.categoryReorderHandle(target).focus();
 
-        // Display order within a row: reorder handle, name, to-first, up, down,
-        // to-last, edit.
-        const expectedOrder = [
-          productsPage.categoryButton(target),
+        // Display order within a row since the 2026-10-13 refactor (verified
+        // 2026-10-20): reorder handle -> name -> "Actions for <name>" menu
+        // button (the move/edit actions moved into that menu).
+        await page.keyboard.press('Tab');
+        await expect(productsPage.categoryButton(target)).toBeFocused();
+        await page.keyboard.press('Tab');
+        await expect(productsPage.categoryActionsButton(target)).toBeFocused();
+      });
+
+      await test.step('The actions menu is keyboard-operable', async () => {
+        // Opening a menu writes nothing; Escape dismisses it without acting.
+        await page.keyboard.press('Enter');
+        await expect(productsPage.categoryActionsMenu(target)).toBeVisible();
+        for (const item of [
           productsPage.categoryMoveToFirstButton(target),
           productsPage.categoryMoveUpButton(target),
           productsPage.categoryMoveDownButton(target),
           productsPage.categoryMoveToLastButton(target),
-        ];
-        for (const control of expectedOrder) {
-          await page.keyboard.press('Tab');
-          await expect(control.first()).toBeFocused();
+          // (No "Edit" here: some built-in categories such as "Product" have
+          // no Edit item, so the move items are the stable set.)
+        ]) {
+          await expect(item).toBeVisible();
         }
+        await page.keyboard.press('Escape');
+        await expect(productsPage.categoryActionsMenu(target)).toBeHidden();
+        await expect(productsPage.categoryActionsButton(target)).toBeFocused();
       });
 
       await test.step('Disabled controls expose their state rather than hiding it', async () => {
-        await productsPage.hoverCategory('Other');
-        for (const control of [
-          productsPage.categoryMoveUpButton('Other'),
-          productsPage.categoryMoveDownButton('Other'),
-          productsPage.categoryMoveToFirstButton('Other'),
-          productsPage.categoryMoveToLastButton('Other'),
-        ]) {
-          if ((await control.count()) === 0) continue;
-          await expect(control).toBeDisabled();
-        }
-        // "Other" is rendered without a drag handle at all — the row carries an
-        // "Other is always last" label instead. Where a handle does exist it
-        // must announce its disabled state rather than just look inert.
-        const handle = productsPage.categoryReorderHandle('Other');
-        if ((await handle.count()) > 0) {
-          await expect(handle).toHaveAttribute('aria-disabled', 'true');
-        } else {
-          await expect(page.getByLabel(/other is always last/i).first()).toBeAttached();
-        }
+        // On the first category the upward items are announced as disabled.
+        await productsPage.openCategoryActions(names[0]);
+        await expect(productsPage.categoryMoveToFirstButton(names[0])).toHaveAttribute(
+          'aria-disabled',
+          'true',
+        );
+        await expect(productsPage.categoryMoveUpButton(names[0])).toHaveAttribute(
+          'aria-disabled',
+          'true',
+        );
+        await productsPage.closeCategoryActions(names[0]);
+
+        // "Other" is pinned: its handle is labelled "Other is always last" and
+        // announces aria-disabled, and it has no actions menu.
+        await expect(productsPage.otherPinnedHandle).toHaveAttribute('aria-disabled', 'true');
+        await expect(productsPage.categoryActionsButton('Other')).toHaveCount(0);
       });
 
       await test.step('Enter activates a category button from the keyboard', async () => {
@@ -77,6 +87,7 @@ test.describe('Khả năng tiếp cận (Accessibility) — Services', () => {
         await productsPage.categoryButton(target).first().focus();
         await page.keyboard.press('Enter');
         // Selecting a category filters the table rather than navigating away.
+        await expect(page).toHaveURL(/[?&]categoryId=/);
         await productsPage.waitForReady();
         // `.first()` wraps the whole union: both sides can match at once, which
         // trips strict mode on an unqualified `.or()`.

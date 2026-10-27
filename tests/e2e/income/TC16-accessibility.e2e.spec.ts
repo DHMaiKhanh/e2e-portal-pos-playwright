@@ -147,7 +147,7 @@ test.describe('Khả năng tiếp cận — Income Reports', () => {
       required.push('filter:date');
 
       for (const card of INCOME_KPI_CARDS) {
-        await markStop(incomePage.kpiCard(card.label), `kpi:${card.label}`);
+        await markStop(incomePage.kpiCardButton(card.label), `kpi:${card.label}`);
         required.push(`kpi:${card.label}`);
         await markStop(incomePage.kpiInfoButton(card.label), `about:${card.label}`);
         required.push(`about:${card.label}`);
@@ -208,20 +208,20 @@ test.describe('Khả năng tiếp cận — Income Reports', () => {
     async ({ incomePage, page }) => {
       await incomePage.waitForDataSettled();
 
-      await incomePage.activateKpiCardWithKeyboard('Total Tip', 'Enter');
+      await incomePage.activateKpiCardWithKeyboard('Total tip', 'Enter');
 
       await expect(page).toHaveURL(/[?&]stat=totalTip\b/);
-      await expect(incomePage.chartTitle).toHaveText(incomeKpiCard('Total Tip').chartTitle);
+      await expect(incomePage.chartTitle).toHaveText(incomeKpiCard('Total tip').chartTitle);
       await expect(incomePage.selectedKpiCard).toHaveCount(1);
-      expect(await incomePage.isKpiCardSelected('Total Tip')).toBe(true);
+      expect(await incomePage.isKpiCardSelected('Total tip')).toBe(true);
 
       // Space is the second key the case names — proven by switching back.
-      await incomePage.activateKpiCardWithKeyboard('Sale Income', 'Space');
+      await incomePage.activateKpiCardWithKeyboard('Sale income', 'Space');
 
       await expect(page).toHaveURL(/[?&]stat=saleIncome\b/);
-      await expect(incomePage.chartTitle).toHaveText(incomeKpiCard('Sale Income').chartTitle);
-      expect(await incomePage.isKpiCardSelected('Sale Income')).toBe(true);
-      expect(await incomePage.isKpiCardSelected('Total Tip')).toBe(false);
+      await expect(incomePage.chartTitle).toHaveText(incomeKpiCard('Sale income').chartTitle);
+      expect(await incomePage.isKpiCardSelected('Sale income')).toBe(true);
+      expect(await incomePage.isKpiCardSelected('Total tip')).toBe(false);
     },
   );
 
@@ -241,13 +241,13 @@ test.describe('Khả năng tiếp cận — Income Reports', () => {
     async ({ incomePage }) => {
       await incomePage.waitForDataSettled();
 
-      const tooltip = await incomePage.focusKpiTooltip('Sale Income');
-      await expect(tooltip).toContainText(incomeKpiCard('Sale Income').tooltip);
-      await expect(incomePage.kpiInfoButton('Sale Income')).toBeFocused();
+      const tooltip = await incomePage.focusKpiTooltip('Sale income');
+      await expect(tooltip).toContainText(incomeKpiCard('Sale income').tooltip);
+      await expect(incomePage.kpiInfoButton('Sale income')).toBeFocused();
 
-      const described = await incomePage.describedByText(incomePage.kpiInfoButton('Sale Income'));
+      const described = await incomePage.describedByText(incomePage.kpiInfoButton('Sale income'));
       expect(described, 'aria-describedby must point at the tooltip text').toContain(
-        incomeKpiCard('Sale Income').tooltip,
+        incomeKpiCard('Sale income').tooltip,
       );
     },
   );
@@ -269,7 +269,7 @@ test.describe('Khả năng tiếp cận — Income Reports', () => {
   // the "one step down from Day" this case assumes. Consistently reproducible on
   // the current DEV env (4/4 incl. retries). Re-enable once keyboard commit of the
   // period select is reliable. See docs/product-gaps-2026-10-11.md.
-  test.fixme(
+  test(
     'TC-INC-167 — Income period opens, moves and selects by keyboard with correct ARIA',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage, page }) => {
@@ -279,7 +279,7 @@ test.describe('Khả năng tiếp cận — Income Reports', () => {
       // While the listbox is open Radix marks the rest of the page
       // `aria-hidden`, so the trigger cannot be resolved by role in that window
       // — read its state through the `aria-label` attribute instead.
-      const trigger = page.locator('[aria-label="Income period"]').first();
+      const trigger = page.locator('[aria-label^="Income period"]').first();
 
       await incomePage.incomePeriodCombobox.focus();
       await expect(incomePage.incomePeriodCombobox).toBeFocused();
@@ -296,7 +296,7 @@ test.describe('Khả năng tiếp cận — Income Reports', () => {
 
       await page.waitForURL(/period=week/);
       await incomePage.waitForDataSettled();
-      await expect(incomePage.incomePeriodCombobox).toHaveText(/^Week$/);
+      await expect(incomePage.incomePeriodValueLabel).toHaveText(/^Week$/);
       expect(await incomePage.ariaExpanded(trigger), 'closed again after committing').toBe('false');
 
       // Reopen: exactly one option is marked selected and it is the new value.
@@ -368,7 +368,7 @@ test.describe('Khả năng tiếp cận — Income Reports', () => {
   // PRODUCT GAP (2026-10-11): the Order Details rows carry no tabindex and the order
   // code is not a link, so the detail dialog is mouse-only — a keyboard user cannot
   // reach it. Re-enable once the row is keyboard-focusable.
-  test.fixme(
+  test(
     'TC-INC-169 — an Order Details row is focusable and opens its dialog on Enter',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage, page }) => {
@@ -417,21 +417,21 @@ test.describe('Khả năng tiếp cận — Income Reports', () => {
 
       const tables = [
         {
-          name: 'Order Details',
+          name: 'Order details',
           anchor: INCOME_TABLE_ANCHORS.daily,
           columns: INCOME_DAILY_COLUMNS.length,
           data: incomePage.orderDetailsTable,
           query: { tab: IncomeTab.DAILY, date: DATA_BEARING_DATE } as Record<string, string>,
         },
         {
-          name: 'Total Income Table',
+          name: 'Total income table',
           anchor: INCOME_TABLE_ANCHORS.summary,
           columns: INCOME_SUMMARY_COLUMNS.length,
           data: incomePage.summaryTable,
           query: { tab: IncomeTab.SUMMARY, ...SUMMARY_RANGE } as Record<string, string>,
         },
         {
-          name: 'Staff Income',
+          name: 'Staff income',
           anchor: INCOME_TABLE_ANCHORS.staff,
           columns: INCOME_STAFF_COLUMNS.length,
           data: incomePage.staffTable,
@@ -477,7 +477,7 @@ test.describe('Khả năng tiếp cận — Income Reports', () => {
   // PRODUCT GAP (2026-10-11): the screen renders no h1-h6 at all, so there is no
   // "Income Reports" h1 and no section-title heading hierarchy. Re-enable once the
   // screen exposes a heading outline.
-  test.fixme(
+  test(
     'TC-INC-171 — Income Reports is an h1 and section titles are lower-level headings',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
@@ -491,7 +491,7 @@ test.describe('Khả năng tiếp cận — Income Reports', () => {
         .map((heading) => heading.text);
       expect(topLevel, `"${INCOME_SCREEN_LABEL}" must be the h1`).toContain(INCOME_SCREEN_LABEL);
 
-      const sectionTitle = outline.find((heading) => /^Order Details$/.test(heading.text));
+      const sectionTitle = outline.find((heading) => /^Order details$/i.test(heading.text));
       expect(sectionTitle, '`Order Details` must be a heading').toBeDefined();
       expect(sectionTitle?.level ?? 0, 'section titles sit below the h1').toBeGreaterThan(1);
     },
@@ -521,9 +521,9 @@ test.describe('Khả năng tiếp cận — Income Reports', () => {
         'icon buttons with no accessible name at all',
       ).toEqual([]);
 
-      // The icon rail: aria-label only, no text.
+      // The old icon rail became one `Switch app` menu button (logo + app name
+      // as text since 2026-10-13); it still carries its own aria-label.
       for (const rail of INCOME_PRODUCT_RAIL_BUTTONS) {
-        expect(names, `rail button "${rail}"`).toContain(rail);
         await expect(incomePage.productRailButton(rail)).toHaveAttribute('aria-label', rail);
       }
 
@@ -539,7 +539,7 @@ test.describe('Khả năng tiếp cận — Income Reports', () => {
       if ((await incomePage.toggleSidebarButton.count()) > 0) {
         await expect(incomePage.toggleSidebarButton.first()).toHaveAttribute(
           'aria-label',
-          'Toggle Sidebar',
+          /^(?:Collapse|Expand) sidebar$|^Open navigation$/,
         );
       }
     },
@@ -587,30 +587,6 @@ test.describe('Khả năng tiếp cận — Income Reports', () => {
   );
 
   /**
-   * TC-INC-174 — Tương phản màu và không dùng màu làm kênh duy nhất
-   * Steps:
-   *  1. Kiểm tra dòng refund, badge % và cột biểu đồ âm.
-   *  2. Bật `forcedColors`.
-   * Expected: Thông tin refund/âm vẫn nhận biết được qua chữ `(Refund)` và dấu
-   * trừ khi bỏ màu; tương phản chữ/nền đạt WCAG AA.
-   */
-  // TODO(manual/setup): both halves are outside what a locator can assert.
-  // `forcedColors: 'active'` is a context option and this suite shares one
-  // BrowserContext per worker (src/fixtures/reuseContext.fixture.ts), so it needs
-  // a dedicated project in playwright.config that does not exist yet; and a WCAG
-  // AA ratio has to be *measured* (axe / Lighthouse) against a background
-  // composited from utility classes, not read off an element. The "not colour
-  // alone" half is already covered live and colour-blind by the `(Refund)` text
-  // and the leading minus sign asserted in the TC6 / TC13 suites.
-  test.fixme(
-    'TC-INC-174 — refund/negative state survives forced colors and text meets WCAG AA',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ incomePage }) => {
-      await incomePage.gotoWithQuery({ tab: 'daily', date: DATA_BEARING_DATE });
-    },
-  );
-
-  /**
    * TC-INC-175 — Trạng thái selected của dòng bảng đọc được bằng trợ năng
    * Steps:
    *  1. Ở tab Summary, chọn một dòng.
@@ -626,7 +602,7 @@ test.describe('Khả năng tiếp cận — Income Reports', () => {
   // data-state="selected" to any row (the highlight regressed), so even the
   // data-state half the case relied on is gone, and no ARIA selection is exposed.
   // Re-enable once the selected row is marked (and carries aria-selected/current).
-  test.fixme(
+  test(
     'TC-INC-175 — a selected Summary row carries ARIA, not just data-state',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {

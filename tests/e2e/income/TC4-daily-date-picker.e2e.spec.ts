@@ -349,15 +349,15 @@ test.describe('Tab Daily — bộ chọn ngày — Income Reports', () => {
    *   cáo rỗng có empty state rõ ràng; không được lỗi JS hay treo loading.
    *   *(Cần xác nhận hành vi mong muốn với team.)*
    */
-  // TODO(manual/setup): the Expected itself defers to the team — clamp to today
-  // vs. render an empty report are mutually exclusive outcomes, and asserting
-  // either one would lock in behaviour nobody has agreed to yet. docs/test-
-  // cases/income.md repeats this under its open questions. Unfixme once the
-  // product decision lands, then assert that one branch.
-  test.fixme(
+  // Either branch the Expected allows is accepted (clamp to today OR an empty
+  // report with its empty state); what is asserted is the part that is not up
+  // for debate — the screen settles, no uncaught JS error, no endless loading.
+  test(
     'TC-INC-032 — a future `date=` is handled deterministically',
     { tag: [Tag.REGRESSION] },
-    async ({ incomePage }) => {
+    async ({ incomePage, page }) => {
+      const pageErrors: string[] = [];
+      page.on('pageerror', (error) => pageErrors.push(error.message));
       const now = today();
       const future = new Date(Date.UTC(now.year, now.month - 1, now.day + 30));
       await incomePage.gotoWithQuery({
@@ -368,6 +368,19 @@ test.describe('Tab Daily — bộ chọn ngày — Income Reports', () => {
           day: future.getUTCDate(),
         }),
       });
+
+      // Settles instead of spinning.
+      await incomePage.waitForDataSettled();
+      const clamped =
+        incomePage.param('date') === '' || (await incomePage.dateTriggerLabel()) === 'Today';
+      const emptyReport = await incomePage.tableEmptyState.isVisible().catch(() => false);
+      expect(clamped || emptyReport, 'future date is neither clamped nor an empty report').toBe(
+        true,
+      );
+      expect(
+        pageErrors.filter((m) => !/dynamically imported module|ChunkLoadError/i.test(m)),
+        'no uncaught page errors',
+      ).toEqual([]);
     },
   );
 

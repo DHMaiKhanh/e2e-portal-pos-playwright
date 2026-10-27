@@ -15,7 +15,7 @@ test.describe('Phân trang — Orders', () => {
    * Steps:
    * 1. Quan sát trạng thái nút Previous và Next, cùng chỉ số trang (vd. "1 / 1").
    * Expected:
-   * Cả hai nút đều ở trạng thái disabled; text "Showing 1 to N of N results" khớp tổng số dòng hiển thị.
+   * Cả hai nút đều ở trạng thái disabled; text "1–N of N" khớp tổng số dòng hiển thị.
    */
   test(
     'TC-ORD-025 — Previous/Next disabled khi chỉ có 1 trang',
@@ -30,7 +30,7 @@ test.describe('Phân trang — Orders', () => {
 
       await expect(ordersPage.previousPageButton).toBeDisabled();
       await expect(ordersPage.nextPageButton).toBeDisabled();
-      await expect(ordersPage.paginationSummary).toHaveText(/showing 1 to 3 of 3 results/i);
+      await expect(ordersPage.paginationSummary).toHaveText(/^1–3 of 3$/); // VP-4569 format
     },
   );
 

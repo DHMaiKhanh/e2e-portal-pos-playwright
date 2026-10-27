@@ -140,7 +140,7 @@ test.describe('Bảo mật — Income Reports', () => {
       const seen: string[] = [page.url()];
 
       // Daily: a KPI card writes `stat=`, the calendar writes `date=`.
-      await incomePage.selectKpiCard('Total Tip');
+      await incomePage.selectKpiCard('Total tip');
       seen.push(page.url());
       // Day 15 exists in every month and is always in the past when the suite
       // runs after mid-month, so it is never a disabled future day.
@@ -261,32 +261,6 @@ test.describe('Bảo mật — Income Reports', () => {
       );
       expect(cspErrors, 'CSP violation in the console').toEqual([]);
     },
-  );
-
-  /**
-   * TC-INC-184 — Phân quyền theo role
-   * Preconditions:
-   *  Cần một storageState của tài khoản role hạn chế (**hiện project chỉ có
-   *  admin — case này bị chặn**).
-   * Steps:
-   *  1. Đăng nhập bằng role không có quyền xem báo cáo doanh thu.
-   *  2. Load `/pos/<storeId>/income`.
-   * Expected:
-   *  Mục `Income Reports` bị ẩn khỏi sidebar và truy cập trực tiếp bị chặn.
-   */
-  // TODO(manual/setup): needs a second session for a role without
-  // revenue-report permission. The suite holds exactly one captured
-  // storageState, an admin one (scripts/capture-auth.mjs — Google OAuth + 2FA,
-  // so it cannot be scripted per role), and configs/env/.env.local carries no
-  // second credential. Unblocked by capturing a limited-role storageState, then
-  // wrapping this test in `test.use({ storageState: <that file> })` and
-  // asserting `incomePage.navLinkByHref(Urls.INCOME)` has count 0 and that the
-  // deep link is refused. Highest-value unwritten case in this area — the
-  // screen exposes every order total and every staff member's earnings.
-  test.fixme(
-    'TC-INC-184 — a role without report permission cannot see or reach Income Reports',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
   );
 
   /**

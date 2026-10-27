@@ -333,7 +333,7 @@ test.describe('Hiệu năng (Performance) — Onboarding', () => {
    * tracked. Re-enable once the onboarding wizard loads no 4xx resources. See
    * docs/product-gaps-2026-10-11.md.
    */
-  test.fixme(
+  test(
     'TC-ONB-162 — walking all seven steps logs no console error and no pageerror',
     { tag: [Tag.REGRESSION, Tag.SLOW] },
     async ({ onboardingPage, page }) => {

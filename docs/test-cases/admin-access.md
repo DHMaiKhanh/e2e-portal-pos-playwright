@@ -1,0 +1,21 @@
+# Admin, phân quyền & hạ tầng UI — Task & Bug từ Linear
+
+> Màn hình này chưa có tài liệu test case. File hiện chỉ liệt kê các ticket Linear liên quan, làm căn cứ để quét màn hình (`screen-test-generator`) và viết test case sau.
+
+## Linear — Task & Bug liên quan
+
+> Nguồn: Linear team VP, label `Portal` — lấy ngày 2026-10-20. Bỏ Canceled, TechDebt/CI và Restaurant Portal.
+> Thứ tự: Bug → đang QC/Review → đã Prod/Done → Todo/Backlog. **10 issue.**
+
+| ID                                                  | Loại    | Tiêu đề                                                                                                                  | Trạng thái          | Ưu tiên     | Test hiện có | E2E được?              | Ghi chú                                         |
+| --------------------------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------- | ----------- | ------------ | ---------------------- | ----------------------------------------------- |
+| [VP-4313](https://linear.app/fastboy/issue/VP-4313) | Bug     | POS: reload the page when a chunk from an older deploy is gone                                                           | Done                | No priority | Chưa         | Không                  | Reload khi thiếu chunk của bản deploy cũ        |
+| [VP-2558](https://linear.app/fastboy/issue/VP-2558) | Feature | Add payroll rerun tool page                                                                                              | Verified Production | Medium      | Chưa         | Có                     | Trang tool rerun payroll                        |
+| [VP-3319](https://linear.app/fastboy/issue/VP-3319) | Task    | feat: System user role & permission — OIDC employees with merchant scope (all/selected), sys_user_role, JIT provisioning | Done                | High        | Chưa         | Một phần               | RBAC system user (phần lớn API)                 |
+| [VP-3360](https://linear.app/fastboy/issue/VP-3360) | Task    | [Portal] Dữ liệu không cập nhật real-time — user B phải refresh trang mới thấy thay đổi của user A                       | Verified Production | No priority | Chưa         | Có (2 browser context) | Real-time: user B thấy thay đổi của user A      |
+| [VP-3898](https://linear.app/fastboy/issue/VP-3898) | Task    | [Portal] Gate POS menu and routes by the /me permission map                                                              | Done                | No priority | Chưa         | Có                     | Ẩn menu + chặn route theo permission `/me`      |
+| [VP-4569](https://linear.app/fastboy/issue/VP-4569) | Task    | [Portal] Refactor POS scope to the Volt Portal design system                                                             | Done                | Medium      | Chưa         | Một phần               | Refactor design system — kiểm bằng smoke/visual |
+| [VP-4570](https://linear.app/fastboy/issue/VP-4570) | Task    | [Portal] POS design system follow-ups after the DS refactor                                                              | Done                | Medium      | Chưa         | Một phần               | Follow-up DS refactor                           |
+| [VP-4572](https://linear.app/fastboy/issue/VP-4572) | Task    | [Portal] Admin setting page scroll + Portal Menu editor redesign                                                         | Done                | Medium      | Chưa         | Có                     | Admin setting detail scroll + Menu editor       |
+| [VP-4573](https://linear.app/fastboy/issue/VP-4573) | Task    | [Portal] POS fill pages always scroll                                                                                    | Done                | Medium      | Chưa         | Có                     | Trang POS fill luôn scroll được                 |
+| [VP-4579](https://linear.app/fastboy/issue/VP-4579) | Task    | [POS] Simplify the POS scope — reuse, dead code, one component per file                                                  | Done                | No priority | Chưa         | Không                  | Refactor code, không đổi UI                     |

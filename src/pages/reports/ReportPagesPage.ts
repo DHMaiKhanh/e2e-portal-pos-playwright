@@ -5,7 +5,17 @@ import { ReportPageSlug, type ReportPageSlugValue, Urls, reportPageUrl } from '@
 import { Timeouts } from '@configs/constants/timeouts';
 
 /* ------------------------------------------------------------------------- *
- * Screen facts (scanned + probed 2026-10-13 — docs/test-cases/reports.md)
+ * Screen facts (scanned + probed 2026-10-13, re-probed after the design-system
+ * refactor 2026-10-20 — docs/test-cases/reports.md)
+ *
+ *  2026-10-20 deltas: the report name is the `#pos-main` banner `h1`; the Demo
+ *  DS Report page is gone; the pagination footer is a `navigation "Pagination"`
+ *  (`1–30 of 99`, `Previous page` / `Next page`, `1 / 4`) shown only when there
+ *  is more than one page, and every block header carries a `[data-slot=pos-count]`
+ *  (`21 rows`, `15 orders`, `99 staff members`); KPI tiles are
+ *  `[data-slot=pos-stat]`; range/period/payroll-period pickers are filter chips;
+ *  breakdowns (Income Summary row, Staff Payroll row) open in a dialog/sheet;
+ *  panel amounts use a Unicode minus (`−$315.00`).
  *
  *  - Five report pages under `/pos/<seg>/<id>/report-pages/<slug>`, reached
  *    from the sidebar accordion `Reports` (Management group). The accordion is
@@ -34,17 +44,16 @@ export interface RptPageSpec {
   title: string;
 }
 
-/** The five report links, in sidebar order. */
+/** The report links, in sidebar order (Demo DS Report was removed on DEV by 2026-10-20). */
 export const RPT_PAGES: readonly RptPageSpec[] = [
   { slug: ReportPageSlug.DAILY_SALE, label: 'Daily Sale Report', title: 'Daily Sale Report | Portal' },
-  { slug: ReportPageSlug.DEMO_DS, label: 'Demo DS Report', title: 'Demo DS Report | Portal' },
   { slug: ReportPageSlug.INCOME_SUMMARY, label: 'Income Summary', title: 'Income Summary | Portal' },
   { slug: ReportPageSlug.STAFF_INCOME, label: 'Staff Income', title: 'Staff Income | Portal' },
   { slug: ReportPageSlug.STAFF_PAYROLL, label: 'Staff Payroll', title: 'Staff Payroll | Portal' },
 ] as const;
 
-/** The four "real" (non-demo) report pages — each has a paginated table + Export. */
-export const RPT_DATA_PAGES = RPT_PAGES.filter((p) => p.slug !== ReportPageSlug.DEMO_DS);
+/** The four data report pages — each has a table + Export. */
+export const RPT_DATA_PAGES = RPT_PAGES;
 
 export function rptPage(slug: ReportPageSlugValue): RptPageSpec {
   const found = RPT_PAGES.find((p) => p.slug === slug);
@@ -63,7 +72,6 @@ export const RPT_COLUMNS = {
   incomeSummary: ['Date', 'Sale', 'Tip', 'Tax', 'Total Payment'],
   staffIncome: ['Staff', 'Orders', 'Subtotal', 'Supply Fee', 'Tip', 'Total Income'],
   staffPayroll: ['Name', 'Orders', 'Subtotal', 'Supply Fee', 'Tip', 'Total Income'],
-  demoDailySale: ['Order #', 'Sale', 'Refund', 'Tax', 'Tip', 'Total'],
 } as const;
 
 /** CSV header lines per export. */
@@ -82,31 +90,33 @@ export const RPT_DAILY_KPIS = [
   { label: 'Total Payment', metric: 'dailySalePayment' },
 ] as const;
 
-export const RPT_INCOME_DETAIL_ROWS = ['Sale', 'Tip', 'Tax Collected', 'Total Payment'] as const;
+/** Income Detail rows; the collapsible header carries the total (no `Total Payment` row since 2026-10-20). */
+export const RPT_INCOME_DETAIL_ROWS = ['Sale', 'Tip', 'Tax Collected'] as const;
 export const RPT_PAYMENT_DETAIL_ROWS = [
   'Card',
   'Cash',
   'Others',
   'Amount Collected',
   'Gift Card Redemption',
-  'Total Payment',
 ] as const;
 
-/** Income Summary breakdown groups (right panel after a row click), in order. */
+/** Income Summary breakdown groups (sheet dialog after a row click), in order. */
 export const RPT_SUMMARY_BREAKDOWN_GROUPS = [
-  'PAYMENT DETAILS',
-  'SALE DETAILS',
-  'SUPPLY FEE',
-  'STAFF PAYOUT',
-  'SALON EARNINGS',
+  'Payment details',
+  'Sale details',
+  'Supply fee',
+  'Staff payout',
+  'Salon earnings',
 ] as const;
 
 export const RPT_SUMMARY_CHART_SERIES = ['Gross Income', 'Net Income', 'Total Tip'] as const;
 export const RPT_PERIOD_OPTIONS = ['Day', 'Week', 'Month'] as const;
-export const RPT_DEMO_TABS = ['Daily Sale', 'Income Summary', 'Staff Income', 'Staff Payroll'] as const;
 export const RPT_EXPORT_ITEMS = ['Download CSV', 'Download Excel'] as const;
 
-/** Staff Income `Report Date Range preset` options (added on DEV 2026-10-13). */
+/**
+ * Staff Income range presets — the `listbox "Presets"` inside the range popover
+ * since 2026-10-20 (Income Summary's popover has a shorter default list).
+ */
 export const RPT_RANGE_PRESETS = [
   'Today',
   'Yesterday',
@@ -141,7 +151,7 @@ export const RPT_TEXT = {
   NO_ROWS: 'No rows for this date range.',
   NO_ROW_SELECTED: 'No Row Selected',
   NO_ROW_SELECTED_HINT: 'Pick a row on the left to see its breakdown.',
-  NO_METRIC: 'No Metric Selected',
+  NO_METRIC: 'No metric selected',
   CURRENT_PERIOD: 'Current Period (Unclosed)',
   ESTIMATED: 'Estimated figures. They keep changing until the period is closed.',
   NO_INCOME_SWITCH: 'Show staff with no income',
@@ -152,19 +162,19 @@ export const RPT_TEXT = {
 
 /* ------------------------------- formats -------------------------------- */
 
-export const RPT_CURRENCY = /^-?\$\d{1,3}(?:,\d{3})*\.\d{2}$/;
+export const RPT_CURRENCY = /^[-−]?\$\d{1,3}(?:,\d{3})*\.\d{2}$/;
 export const RPT_COUNT = /^\d{1,3}(?:,\d{3})*$/;
 export const RPT_PERCENT = /^[+-]?\d+%$/;
 export const RPT_ORDER_CODE = /^#OD\d{6}-\d{8}(?: \(Refund\))?$/;
 export const RPT_DATE_LABEL = /^[A-Z][a-z]{2} \d{1,2}, \d{4}$/;
-export const RPT_DATE_RANGE_LABEL = /^[A-Z][a-z]{2} \d{1,2}, \d{4} - [A-Z][a-z]{2} \d{1,2}, \d{4}$/;
+/** Range trigger label: `Aug 1 – 21, 2026`, `Jul 25 – Aug 2, 2026`, `Dec 25, 2025 – Jan 2, 2026`. */
+export const RPT_DATE_RANGE_LABEL = /^[A-Z][a-z]{2} \d{1,2}(?:, \d{4})? – (?:[A-Z][a-z]{2} )?\d{1,2}, \d{4}$/;
 export const RPT_WEEK_LABEL = /^Week \d+ \([A-Z][a-z]{2} \d{1,2} – [A-Z][a-z]{2} \d{1,2}, \d{4}\)$/;
 export const RPT_MONTH_LABEL = /^[A-Z][a-z]{2} \d{4}$/;
-/**
- * Pagination footer. Desktop: `Showing 1 to 30 of 316 results`; below the
- * tablet breakpoint the same footer is compacted to `1-29 of 29`.
- */
-export const RPT_RESULTS_FOOTER = /^(?:Showing (\d+) to (\d+) of (\d+) results|(\d+)-(\d+) of (\d+))$/;
+/** Pagination range text (`1–30 of 99`); only rendered when there is more than one page. */
+export const RPT_RESULTS_FOOTER = /^(\d+)[–-](\d+) of ([\d,]+)$/;
+/** Block header count (`21 rows`, `15 orders`, `99 staff members`). */
+export const RPT_RESULT_COUNT = /^([\d,]+)\s+\S.*$/;
 export const RPT_PAGE_INDICATOR = /^\d+ \/ \d+$/;
 export const RPT_HOUR_LABEL = /^\d{1,2} (?:AM|PM)$/;
 export const RPT_PAGE_SIZE = 30;
@@ -174,8 +184,8 @@ const SHELL_TIMEOUT_MS = 45_000;
 
 /* ------------------------------ date utils ------------------------------ */
 
-/** Store timezone is UTC+7. */
-const STORE_OFFSET_MS = 7 * 60 * 60 * 1000;
+/** The report pages compute "today" in UTC-5 (verified 2026-10-20 17:00 UTC: Today = Oct 20 while UTC+7 was Oct 21). */
+const STORE_OFFSET_MS = -5 * 60 * 60 * 1000;
 
 /** `YYYY-MM-DD` of "today" in the store timezone, shifted by `days`. */
 export function rptIsoDay(days = 0): string {
@@ -188,6 +198,26 @@ export function rptDateLabel(iso: string): string {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }
 
+/**
+ * Range trigger label as the 2026-10-20 picker renders it: `Today`, `Yesterday`,
+ * `Aug 18, 2026` (single day), `Aug 1 – 21, 2026`, `Jul 25 – Aug 2, 2026`,
+ * `Dec 25, 2025 – Jan 2, 2026`.
+ */
+export function rptRangeLabel(after: string, before: string): string {
+  if (after === before) {
+    if (after === rptIsoDay(0)) return 'Today';
+    if (after === rptIsoDay(-1)) return 'Yesterday';
+    return rptDateLabel(after);
+  }
+  const mon = (iso: string) => rptDateLabel(iso).slice(0, 3);
+  const day = (iso: string) => Number(iso.slice(8, 10));
+  if (after.slice(0, 4) !== before.slice(0, 4)) return `${rptDateLabel(after)} – ${rptDateLabel(before)}`;
+  if (after.slice(0, 7) !== before.slice(0, 7)) {
+    return `${mon(after)} ${day(after)} – ${mon(before)} ${day(before)}, ${before.slice(0, 4)}`;
+  }
+  return `${mon(after)} ${day(after)} – ${day(before)}, ${before.slice(0, 4)}`;
+}
+
 /** `2026-10-12` → `/October 12th, 2026/` — the day button's aria-label tail. */
 export function rptDayButtonName(iso: string): RegExp {
   const d = new Date(`${iso}T00:00:00Z`);
@@ -197,10 +227,20 @@ export function rptDayButtonName(iso: string): RegExp {
   return new RegExp(`${month} ${day}${suffix}, ${d.getUTCFullYear()}`);
 }
 
-/** `-$1,234.56` → -1234.56; `1,955` → 1955; anything else → NaN. */
+/** `-$1,234.56` / `−$1,234.56` → -1234.56; `1,955` → 1955; anything else → NaN. */
 export function rptAmount(text: string): number {
-  const cleaned = (text ?? '').replace(/[\s$,]/g, '');
+  const cleaned = (text ?? '').replace(/[\s$,]/g, '').replace(/^−/, '-');
   return /^-?\d+(?:\.\d+)?$/.test(cleaned) ? Number(cleaned) : Number.NaN;
+}
+
+/**
+ * Staff Income summary-strip label matcher. The labels come from Report
+ * Configuration and were seen both as `Staff` … `Income` and as `Total Staff`
+ * … `Total Income` on 2026-10-20, so the `Total ` prefix is optional.
+ */
+export function rptStripLabel(label: string): RegExp {
+  const base = escapeRe(label.replace(/^Total /, ''));
+  return new RegExp(`^(?:Total )?${base}$`);
 }
 
 /** One `label → value` pair of a flat right-hand panel. */
@@ -215,7 +255,7 @@ export interface RptValueRow {
  * value is its label, so `Total Discount` and `Discount` cannot be confused.
  */
 export function rptParseRows(section: string, opts?: { counts?: boolean }): RptValueRow[] {
-  const value = opts?.counts ? /(-?\$[\d,]+\.\d{2}|-?\d[\d,]*)/g : /(-?\$[\d,]+\.\d{2})/g;
+  const value = opts?.counts ? /([-−]?\$[\d,]+\.\d{2}|[-−]?\d[\d,]*)/g : /([-−]?\$[\d,]+\.\d{2})/g;
   const rows: RptValueRow[] = [];
   let cursor = 0;
   let match: RegExpExecArray | null;
@@ -258,91 +298,129 @@ export class ReportPagesPage extends BasePage {
 
   readonly sidebar: Sidebar;
 
-  /** The report name in the page header — a `div`, not a heading. */
+  /** The report name — the `#pos-main` banner `h1`. */
   readonly pageTitle: Locator;
   /** Sidebar accordion trigger `Reports` (Management group). */
   readonly reportsGroupButton: Locator;
-  /** The five report links inside the expanded accordion. */
+  /** The report links inside the `Reports` accordion (folded or not). */
   readonly reportLinks: Locator;
+  /** The report links while the accordion is open (`pos-nav-fold[data-open=true]`). */
+  readonly openReportLinks: Locator;
   readonly overviewLink: Locator;
 
   readonly printButton: Locator;
   readonly exportButton: Locator;
-  /** Daily Sale single-date trigger (`aria-label="Report Date"`). */
+  /** Daily Sale single-date trigger (`aria-label="Report date"`). */
   readonly reportDateButton: Locator;
+  /** Daily Sale `Today` shortcut (aria-pressed while today is shown). */
+  readonly todayButton: Locator;
   /** Income Summary / Staff Income range trigger. */
   readonly dateRangeButton: Locator;
-  /** Staff Income range preset combobox (Today, Yesterday, This Week, …). */
+  /** Range popover `listbox "Presets"` (Today, Yesterday, Last 7 days, …). */
+  readonly rangePresets: Locator;
+  /** Kept for older specs: the range preset list lives inside the range popover now. */
   readonly rangePresetCombobox: Locator;
-  /** Income Summary `Day | Week | Month` combobox. */
+  /** Income Summary `Group by` filter chip (`Period and date window: Day`). */
   readonly periodCombobox: Locator;
-  /** Staff Payroll period combobox. */
+  /** The chip's value text (`Day` / `Week` / `Month`). */
+  readonly periodValue: Locator;
+  /** Staff Payroll `Payroll period` filter chip. */
   readonly payrollPeriodCombobox: Locator;
+  /** The chip's value text (`Oct 16, 2026 - Oct 20, 2026`). */
+  readonly payrollPeriodValue: Locator;
   /** Open calendar popover. */
   readonly calendar: Locator;
 
   readonly table: Locator;
   readonly bodyRows: Locator;
   readonly columnHeaders: Locator;
+  /** Count in the table block header (`21 rows`, `15 orders`, `99 staff members`). */
   readonly resultsFooter: Locator;
+  /** `navigation "Pagination"` — rendered only when there is more than one page. */
+  readonly pagination: Locator;
+  /** Pagination range text `1–30 of 99`. */
+  readonly paginationRange: Locator;
   readonly pageIndicator: Locator;
   readonly previousButton: Locator;
   readonly nextButton: Locator;
   readonly emptyRow: Locator;
-  readonly noRowSelected: Locator;
 
   readonly kpiTiles: Locator;
   readonly incomeDetailTrigger: Locator;
   readonly paymentDetailTrigger: Locator;
   readonly orderDialog: Locator;
+  /** Row breakdown dialog/sheet (Income Summary, Staff Payroll). */
+  readonly breakdownDialog: Locator;
 
   readonly staffSearch: Locator;
   readonly noIncomeSwitch: Locator;
-  readonly staffSummaryTrigger: Locator;
+  /** Staff Income summary strip (Staff / Orders / Subtotal / Supply Fee / Tip / Income). */
+  readonly staffSummary: Locator;
+  /** Staff Payroll period heading (`h3`, `Oct 16, 2026 - Oct 20, 2026`). */
   readonly payrollPeriodHeading: Locator;
+  /** Staff Payroll `Live` badge (current, unclosed period). */
+  readonly liveBadge: Locator;
 
-  readonly tabs: Locator;
   readonly merchantUnavailable: Locator;
+  /** Error card for an unknown slug / failed layout (`Unable to load reports`). */
+  readonly loadError: Locator;
 
   constructor(page: Page) {
     super(page);
     this.sidebar = new Sidebar(page);
-    this.pageTitle = page.locator('[data-slot="page-title"]').first();
-    this.reportsGroupButton = page.getByRole('button', { name: 'Reports', exact: true });
-    this.reportLinks = page.locator('[data-slot="sidebar-menu-sub"] a[href*="/report-pages/"]');
+    this.pageTitle = page.locator('#pos-main').getByRole('banner').getByRole('heading', { level: 1 });
+    this.reportsGroupButton = page.getByRole('navigation', { name: 'Main' }).getByRole('button', { name: 'Reports', exact: true });
+    const reportsLi = page
+      .getByRole('navigation', { name: 'Main' })
+      .locator('li[data-slot="pos-nav-li"]')
+      .filter({ has: page.locator(':scope > button[data-slot="pos-nav-item"]', { hasText: /^Reports$/ }) });
+    this.reportLinks = reportsLi.locator('[data-slot="pos-nav-fold"] a[href*="/report-pages/"]');
+    this.openReportLinks = reportsLi.locator('[data-slot="pos-nav-fold"][data-open="true"] a[href*="/report-pages/"]');
     this.overviewLink = page.locator('a[href$="/overview"]').first();
 
-    this.printButton = page.getByRole('button', { name: 'Print', exact: true }).first();
+    this.printButton = page.locator('#pos-main').getByRole('button', { name: 'Print', exact: true }).first();
     this.exportButton = page.getByRole('button', { name: 'Export', exact: true }).filter({ visible: true }).first();
-    this.reportDateButton = page.getByRole('button', { name: 'Report Date', exact: true });
+    this.reportDateButton = page.getByRole('button', { name: 'Report date', exact: true });
+    this.todayButton = page.locator('#pos-main').getByRole('button', { name: 'Today', exact: true });
     this.dateRangeButton = page.getByRole('button', { name: 'Report date range', exact: true });
-    this.rangePresetCombobox = page.getByRole('combobox', { name: 'Report Date Range preset' });
-    this.periodCombobox = page.getByRole('combobox', { name: 'Period and Date Window' });
-    this.payrollPeriodCombobox = page.getByRole('combobox', { name: 'Payroll Period' });
-    this.calendar = page.locator('[data-radix-popper-content-wrapper]').filter({ has: page.getByRole('grid') });
+    this.rangePresets = page.getByRole('listbox', { name: 'Presets' });
+    this.rangePresetCombobox = this.rangePresets;
+    this.periodCombobox = page.getByRole('button', { name: /^Period and date window/ });
+    this.periodValue = this.periodCombobox.locator('[data-slot="pos-filter-value"]');
+    this.payrollPeriodCombobox = page.getByRole('button', { name: /^Payroll period/ });
+    this.payrollPeriodValue = this.payrollPeriodCombobox.locator('[data-slot="pos-filter-value"]');
+    this.calendar = page.getByRole('dialog').filter({ has: page.getByRole('grid') });
 
-    this.table = page.locator('table').filter({ visible: true }).first();
+    this.table = page.locator('#pos-main table').filter({ visible: true }).first();
     this.bodyRows = this.table.locator('tbody tr');
     this.columnHeaders = this.table.locator('thead th');
-    this.resultsFooter = page.getByText(RPT_RESULTS_FOOTER).filter({ visible: true }).first();
-    this.pageIndicator = page.getByText(RPT_PAGE_INDICATOR).filter({ visible: true }).first();
-    this.previousButton = page.getByRole('button', { name: 'Previous', exact: true }).filter({ visible: true }).first();
-    this.nextButton = page.getByRole('button', { name: 'Next', exact: true }).filter({ visible: true }).first();
-    this.emptyRow = page.getByText(RPT_TEXT.NO_ROWS).filter({ visible: true }).first();
-    this.noRowSelected = page.getByText(RPT_TEXT.NO_ROW_SELECTED, { exact: true }).filter({ visible: true }).first();
+    this.resultsFooter = page
+      .locator('[data-slot="pos-card"]')
+      .filter({ has: page.locator('table') })
+      .locator('[data-slot="pos-count"]')
+      .filter({ visible: true })
+      .first();
+    this.pagination = page.getByRole('navigation', { name: 'Pagination' }).filter({ visible: true }).first();
+    this.paginationRange = this.pagination.getByText(RPT_RESULTS_FOOTER);
+    this.pageIndicator = this.pagination.getByText(RPT_PAGE_INDICATOR);
+    this.previousButton = this.pagination.getByRole('button', { name: 'Previous page' });
+    this.nextButton = this.pagination.getByRole('button', { name: 'Next page' });
+    this.emptyRow = page.locator('[data-slot="pos-empty-state-title"]').filter({ hasText: RPT_TEXT.NO_ROWS }).filter({ visible: true }).first();
 
-    this.kpiTiles = page.locator('[data-slot="report-summary-tile"]');
+    this.kpiTiles = page.locator('[data-slot="report-block-summary"] [data-slot="pos-stat"]');
     this.incomeDetailTrigger = page.getByRole('button', { name: /^Income Detail/ });
     this.paymentDetailTrigger = page.getByRole('button', { name: /^Payment Detail/ });
-    this.orderDialog = page.getByRole('dialog').filter({ hasText: /^\s*Order detail/ });
+    this.orderDialog = page.getByRole('dialog', { name: 'Order detail' });
+    this.breakdownDialog = page.getByRole('dialog').filter({ hasText: /· Breakdown/ });
 
     this.staffSearch = page.getByPlaceholder(/^Search by staff name/);
     this.noIncomeSwitch = page.getByRole('switch', { name: RPT_TEXT.NO_INCOME_SWITCH });
-    this.staffSummaryTrigger = page.getByRole('button', { name: 'Staff Summary', exact: true });
-    this.payrollPeriodHeading = page.getByRole('heading', { level: 3 }).first();
+    this.staffSummary = page.locator('[data-slot="pos-stat-strip"]').first();
+    this.payrollPeriodHeading = page.locator('#pos-main').getByRole('heading', { level: 3 }).first();
+    this.liveBadge = page.locator('[data-slot="pos-badge"]').filter({ hasText: /^Live$/ });
 
-    this.tabs = page.getByRole('tab');
     this.merchantUnavailable = page.getByText(RPT_TEXT.MERCHANT_UNAVAILABLE);
+    this.loadError = page.getByText('Unable to load reports');
   }
 
   // ---- navigation --------------------------------------------------------
@@ -397,15 +475,15 @@ export class ReportPagesPage extends BasePage {
   }
 
   /**
-   * Data arrived: footer rendered, table header + first body row (data or the
-   * empty-state row) visible, and no visible skeleton left. Each block loads
-   * through its own request, so the footer alone can precede the rows.
+   * Data arrived: block count rendered, table header + first body row (data or
+   * the empty-state row) visible, and no visible skeleton left. Each block
+   * loads through its own request, so the count alone can precede the rows.
    */
   async waitForData(): Promise<void> {
     await expect(this.resultsFooter).toBeVisible({ timeout: Timeouts.LONG });
     await expect(this.columnHeaders.first()).toBeVisible({ timeout: Timeouts.LONG });
     await expect(this.bodyRows.first()).toBeVisible({ timeout: Timeouts.LONG });
-    await expect(this.page.locator('[data-slot="skeleton"]:visible')).toHaveCount(0, {
+    await expect(this.page.locator('[data-slot*="skeleton"]:visible')).toHaveCount(0, {
       timeout: Timeouts.LONG,
     });
   }
@@ -431,17 +509,31 @@ export class ReportPagesPage extends BasePage {
 
   // ---- footer / pagination -----------------------------------------------
 
+  /** Block count text plus the pagination range when present (`99 staff members | 1–30 of 99`). */
   async footerText(): Promise<string> {
-    return ((await this.resultsFooter.textContent().catch(() => '')) ?? '').trim();
+    const count = ((await this.resultsFooter.textContent().catch(() => '')) ?? '').replace(/\s+/g, ' ').trim();
+    const range = (await this.pagination.isVisible().catch(() => false))
+      ? ((await this.paginationRange.textContent().catch(() => '')) ?? '').trim()
+      : '';
+    return range ? `${count} | ${range}` : count;
   }
 
-  /** `{ from, to, total }` out of `Showing 1 to 30 of 316 results`. */
+  /** Total from the block count; `from`/`to` from the pagination range (or the single page). */
   async footerCounts(): Promise<{ from: number; to: number; total: number }> {
-    const m = RPT_RESULTS_FOOTER.exec(await this.footerText());
-    if (!m) throw new Error(`Unexpected footer: ${await this.footerText()}`);
-    return m[1] !== undefined
-      ? { from: Number(m[1]), to: Number(m[2]), total: Number(m[3]) }
-      : { from: Number(m[4]), to: Number(m[5]), total: Number(m[6]) };
+    const countText = ((await this.resultsFooter.textContent()) ?? '').replace(/\s+/g, ' ').trim();
+    const c = RPT_RESULT_COUNT.exec(countText);
+    if (!c) throw new Error(`Unexpected result count: ${countText}`);
+    const total = Number(c[1].replace(/,/g, ''));
+    if (await this.pagination.isVisible().catch(() => false)) {
+      const m = RPT_RESULTS_FOOTER.exec(((await this.paginationRange.textContent()) ?? '').trim());
+      if (m) return { from: Number(m[1]), to: Number(m[2]), total };
+    }
+    return total === 0 ? { from: 0, to: 0, total } : { from: 1, to: total, total };
+  }
+
+  /** Assert the block count reads `<n> <noun>` (e.g. `0 orders`). */
+  async expectTotal(n: number): Promise<void> {
+    await expect(this.resultsFooter).toHaveText(new RegExp(`^${n}\\s+\\S`), { timeout: Timeouts.MEDIUM });
   }
 
   /** Data rows only (the empty-state row is excluded). */
@@ -562,11 +654,24 @@ export class ReportPagesPage extends BasePage {
     return this.kpiTiles.filter({ hasText: label }).first();
   }
 
-  /** Text of the right-hand area: everything after the pagination `Next`. */
+  /**
+   * Text of the "right-hand" area: an open breakdown dialog/sheet when there is
+   * one, else every page card that holds no table (Daily Sale summary + detail
+   * panels).
+   */
   async rightPanelText(): Promise<string> {
-    const body = await this.page.locator('body').innerText();
-    const idx = body.search(/\d+ \/ \d+\s*\n\s*Next\s*\n/);
-    return idx >= 0 ? body.slice(idx).replace(/^\d+ \/ \d+\s*\n\s*Next\s*\n/, '') : body;
+    const dialog = this.page.getByRole('dialog').filter({ visible: true }).last();
+    if (await dialog.isVisible().catch(() => false)) return dialog.innerText();
+    const cards = this.page.locator('#pos-main [data-slot="pos-card"]').filter({ hasNot: this.page.locator('table') });
+    return (await cards.allInnerTexts()).join('\n');
+  }
+
+  /** Value of one Staff Income summary strip item (`Staff`, `Orders`, …, `Income`), '' when absent. */
+  async stripValue(label: string): Promise<string> {
+    const item = this.staffSummary
+      .locator('[data-slot="pos-stat-strip-item"]')
+      .filter({ has: this.page.locator('[data-slot="pos-stat-strip-label"]', { hasText: rptStripLabel(label) }) });
+    return ((await item.locator('[data-slot="pos-stat-strip-value"]').textContent().catch(() => '')) ?? '').trim();
   }
 
   /** Slice `text` from heading `from` up to the next heading in `all` (case-sensitive). */
@@ -581,7 +686,7 @@ export class ReportPagesPage extends BasePage {
     return ends.length ? rest.slice(0, Math.min(...ends)) : rest;
   }
 
-  /** The date-range trigger's visible label (`Oct 13, 2026` / `Oct 1, 2026 - Oct 13, 2026`). */
+  /** The date-range trigger's visible label (`Today` / `Aug 18, 2026` / `Aug 1 – 21, 2026`). */
   async rangeLabel(): Promise<string> {
     return ((await this.dateRangeButton.innerText()) ?? '').trim();
   }

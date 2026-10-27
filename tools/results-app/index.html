@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' file: data:; media-src 'self' file:"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Portal POS Test Results</title>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="20" height="20">
+            <path
+              d="M4 12.5l5 5L20 6.5"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.4"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+        </div>
+        <div>
+          <h1>Kết quả test Portal POS</h1>
+          <p id="runMeta" class="muted">Chưa có lượt chạy nào</p>
+        </div>
+      </div>
+      <div class="actions">
+        <button id="btnReport" class="btn ghost" title="Mở report HTML đầy đủ của Playwright">
+          Report chi tiết
+        </button>
+        <button id="btnRunPanel" class="btn primary">Chạy test</button>
+      </div>
+    </header>
+
+    <section id="runPanel" class="card run-panel" hidden>
+      <div class="run-row">
+        <div class="field grow">
+          <label>Chọn màn hình cần chạy <span class="muted">(bỏ trống = chạy tất cả)</span></label>
+          <div id="folderChips" class="chips wrap"></div>
+        </div>
+        <div class="field">
+          <label for="envSelect">Môi trường</label>
+          <select id="envSelect"></select>
+        </div>
+      </div>
+      <div class="run-row end">
+        <button id="btnStart" class="btn primary">Bắt đầu chạy</button>
+        <button id="btnStop" class="btn danger" hidden>Dừng</button>
+      </div>
+    </section>
+
+    <section id="progress" class="card progress" hidden>
+      <div class="progress-head">
+        <strong id="progressText">Đang chuẩn bị…</strong>
+        <button id="btnLog" class="btn link">Xem log</button>
+      </div>
+      <div class="bar"><div id="progressFill"></div></div>
+      <pre id="log" hidden></pre>
+    </section>
+
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-view="results" role="tab">Kết quả</button>
+      <button class="tab" data-view="history" role="tab">Lịch sử</button>
+    </nav>
+
+    <main>
+      <section id="view-results" class="view">
+        <div id="oldRunBanner" class="banner info" hidden>
+          <span id="oldRunText"></span>
+          <button id="btnBackLatest" class="btn link">Quay về lần chạy mới nhất</button>
+        </div>
+        <div id="setupBanner" class="banner danger" hidden></div>
+
+        <div id="empty" class="empty card" hidden>
+          <h2>Chưa có kết quả</h2>
+          <p>
+            Bấm <b>Chạy test</b> ở góc trên, hoặc chạy Playwright như bình thường trong terminal.
+            Chạy xong, kết quả sẽ tự hiện ở đây.
+          </p>
+        </div>
+
+        <div id="content" hidden>
+          <section class="card health">
+            <div class="ring" id="ring"></div>
+            <div class="health-body">
+              <h2 id="verdict"></h2>
+              <p id="verdictSub" class="muted"></p>
+              <div id="statChips" class="chips"></div>
+            </div>
+          </section>
+
+          <h3 class="section-title">Theo màn hình <span class="muted">· bấm một ô để lọc</span></h3>
+          <div id="screens" class="screens"></div>
+
+          <div class="inbox-head">
+            <h3 class="section-title" id="inboxTitle">Cần xem</h3>
+            <div class="inbox-tools">
+              <div id="filterChips" class="chips"></div>
+              <input id="search" type="search" placeholder="Tìm theo tên test…" />
+            </div>
+          </div>
+          <div class="split">
+            <ul id="list" class="list card"></ul>
+            <aside id="detail" class="detail card"></aside>
+          </div>
+        </div>
+      </section>
+
+      <section id="view-history" class="view" hidden>
+        <section class="card">
+          <h3 class="section-title flush">
+            Các lần chạy gần đây <span class="muted">· bấm một cột để xem lại</span>
+          </h3>
+          <div id="chart" class="chart"></div>
+          <div class="legend">
+            <span><i class="sw ok"></i>Đạt</span><span><i class="sw bad"></i>Lỗi</span>
+            <span><i class="sw warn"></i>Chập chờn</span
+            ><span><i class="sw skip"></i>Bỏ qua / không chạy</span>
+          </div>
+        </section>
+        <section class="card">
+          <table class="runs">
+            <thead>
+              <tr>
+                <th>Thời gian</th>
+                <th>Môi trường</th>
+                <th>Đạt</th>
+                <th>Lỗi</th>
+                <th>Chập chờn</th>
+                <th>Bỏ qua</th>
+                <th>Thời lượng</th>
+              </tr>
+            </thead>
+            <tbody id="runsBody"></tbody>
+          </table>
+        </section>
+      </section>
+    </main>
+
+    <div id="lightbox" class="lightbox" hidden><img id="lightboxImg" alt="" /></div>
+    <div id="toast" class="toast" hidden></div>
+    <script src="app.js"></script>
+  </body>
+</html>

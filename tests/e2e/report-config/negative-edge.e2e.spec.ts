@@ -10,10 +10,12 @@ const ZERO_UUID = '00000000-0000-0000-0000-000000000000';
 
 test.describe('Tiêu cực & biên (Negative / Edge) — Report Configuration', () => {
   /**
-   * TC-RCF-120 — API danh sách lỗi 500 → hiện "không có dữ liệu" thay vì báo lỗi (defect D6)
+   * TC-RCF-120 — API danh sách lỗi 500 → báo lỗi + "Try again" (defect D6 đã sửa)
+   * D6 (2026-10-13: a 500 rendered "No report columns found.") is fixed as of
+   * 2026-10-26 — the empty-state slot now carries an error title and a retry.
    */
   test(
-    'TC-RCF-120 — a 500 from the list API renders the empty state with no error message (defect D6)',
+    'TC-RCF-120 — a 500 from the list API shows a load error with Try again, not the empty state (D6 fixed)',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportConfigPage, page }) => {
       const rc = reportConfigPage.on('columns');
@@ -21,49 +23,42 @@ test.describe('Tiêu cực & biên (Negative / Edge) — Report Configuration', 
       page.on('pageerror', (e) => pageErrors.push(e.message));
       await failDataResponses(page, 500, rc.spec.listEndpoint);
       await page.goto(rc.pathname, { waitUntil: 'domcontentloaded' });
-      await expect(rc.emptyState).toHaveText(rc.spec.emptyText, { timeout: 30_000 });
+      // The client retries before giving up, hence the long timeout.
+      await expect(rc.emptyState).toHaveText("Couldn't load report columns", { timeout: 30_000 });
+      await expect(page.getByText(rc.spec.emptyText)).toHaveCount(0);
+      await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
       await expect(rc.table.rows).toHaveCount(0);
-      const errorShown = await page.getByText(/error|failed|try again|retry/i).count();
-      if (errorShown === 0) {
-        test.info().annotations.push({
-          type: 'defect',
-          description:
-            'D6: list API 500 is shown as "No report columns found." — indistinguishable from a genuinely empty list, no Retry',
-        });
-      }
       expect(pageErrors).toEqual([]);
     },
   );
 
   /**
-   * TC-RCF-121 — ID không tồn tại trên route chi tiết (defect D7)
+   * TC-RCF-121 — ID không tồn tại trên route chi tiết (defect D7 đã sửa)
+   * D7 (2026-10-13: Pages/Blocks rendered a blank body, Sources the raw axios
+   * text "Request failed with status code 404") is fixed as of 2026-10-26.
    */
   test(
-    'TC-RCF-121 — unknown record ids: Sources shows a raw 404 error with Retry; Pages builder renders blank (defect D7)',
+    'TC-RCF-121 — unknown record ids show a not-found message on every detail route (D7 fixed)',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ reportConfigPage, page }) => {
-      const sources = reportConfigPage.on('sources');
-      await page.goto(`${sources.pathname}/${ZERO_UUID}`, { waitUntil: 'domcontentloaded' });
-      await expect(page.getByText('Request failed with status code 404')).toBeVisible({
-        timeout: 30_000,
-      });
-      await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+      for (const screen of ['sources', 'blocks', 'columns'] as const) {
+        const rc = reportConfigPage.on(screen);
+        await page.goto(`${rc.pathname}/${ZERO_UUID}`, { waitUntil: 'domcontentloaded' });
+        await expect(page.getByText('This item no longer exists'), screen).toBeVisible({
+          timeout: 30_000,
+        });
+        await expect(page.getByText('Request failed with status code 404')).toHaveCount(0);
+      }
 
       await page.goto(`${reportConfigPage.pathname}/${ZERO_UUID}`, {
         waitUntil: 'domcontentloaded',
       });
-      await expect(page).toHaveTitle('Page Builder | Portal');
-      await page.waitForTimeout(6_000);
-      const builderControls = page.getByRole('button', { name: 'Page filters' });
-      const notFound = await page.getByText(/not found|404|error/i).count();
-      await expect(builderControls).toHaveCount(0);
-      if (notFound === 0) {
-        test.info().annotations.push({
-          type: 'defect',
-          description:
-            'D7: /report-config/pages/<unknown-id> (and /blocks/<unknown-id>) render an empty body — no not-found message; Sources shows the raw axios text "Request failed with status code 404"',
-        });
-      }
+      await expect(page).toHaveTitle('Page builder | Portal');
+      await expect(page.getByText('This page could not be loaded')).toBeVisible({
+        timeout: 30_000,
+      });
+      await expect(page.getByRole('button', { name: 'Try again' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Page filters' })).toHaveCount(0);
     },
   );
 

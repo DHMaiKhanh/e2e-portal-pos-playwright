@@ -99,18 +99,20 @@ test.describe('Định dạng dữ liệu — Batch History', () => {
     async ({ batchHistoryPage }) => {
       await expect(batchHistoryPage.statusHeader).toBeVisible();
 
-      const openCount = await batchHistoryPage.openStatusBadges.count();
-      const closedCount = await batchHistoryPage.closedStatusBadges.count();
+      // Every row carries a status pill, and the all-time range holds both kinds.
+      const rows = await batchHistoryPage.table.rowCount();
+      await expect(batchHistoryPage.statusBadges).toHaveCount(rows);
+      await expect(batchHistoryPage.openStatusBadges.first()).toBeVisible();
+      await expect(batchHistoryPage.closedStatusBadges.first()).toBeVisible();
 
-      if (openCount > 0) {
-        await expect(batchHistoryPage.openStatusBadges.first()).toBeVisible();
-        await expect(batchHistoryPage.openStatusBadges.first()).toHaveText(/Open/i);
-      }
-      if (closedCount > 0) {
-        await expect(batchHistoryPage.closedStatusBadges.first()).toBeVisible();
-        await expect(batchHistoryPage.closedStatusBadges.first()).toHaveText(/Closed/i);
-      }
-      expect(openCount + closedCount).toBeGreaterThanOrEqual(0);
+      // Each value maps to one consistent style (pill tone), distinct per value.
+      const tonesFor = async (badges: typeof batchHistoryPage.statusBadges) =>
+        new Set(await badges.evaluateAll((els) => els.map((el) => el.getAttribute('data-tone'))));
+      const openTones = await tonesFor(batchHistoryPage.openStatusBadges);
+      const closedTones = await tonesFor(batchHistoryPage.closedStatusBadges);
+      expect(openTones.size, 'Open pills use more than one style').toBe(1);
+      expect(closedTones.size, 'Closed pills use more than one style').toBe(1);
+      expect([...openTones][0]).not.toBe([...closedTones][0]);
     },
   );
 

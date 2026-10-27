@@ -177,7 +177,7 @@ test.describe('Điều hướng & định tuyến (Navigation / Routing guard) �
    * printed the raw zod payload listing all seven valid `step` values (TC-ONB-165).
    */
   // PRODUCT GAP (2026-10-11): an invalid step slug takes down the whole app shell (the Internal sidebar nav disappears) instead of the error boundary staying scoped to the wizard with the nav intact. Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-ONB-016 — an invalid step slug lands on the error boundary, app still framed',
     { tag: [Tag.REGRESSION] },
     async ({ onboardingPage }) => {
@@ -201,17 +201,23 @@ test.describe('Điều hướng & định tuyến (Navigation / Routing guard) �
    *  `[CẦN XÁC MINH]` — kỳ vọng app thử render lại; nếu query vẫn sai thì phải
    *  đưa người dùng về `?step=validate` chứ không lặp vô hạn màn lỗi.
    */
-  // TODO(manual/setup): the Expected is an unverified assumption ([CẦN XÁC MINH]) —
-  // nobody has confirmed what "Try again" does while the query is still invalid.
-  // Writing either branch (recovers to ?step=validate, or re-renders the same
-  // boundary) would encode a guess as a requirement. Needs live verification and
-  // a PO ruling on which behaviour is correct before this can be asserted.
-  test.fixme(
+  // Verified on DEV 2026-10-21: "Try again" re-renders the very same boundary
+  // (URL unchanged, `?step=bogus` kept) — it loops. The case asserts the
+  // documented expectation (recover to `?step=validate`), so it FAILS until the
+  // app handles it — product gap, see docs/test-cases/onboarding.md.
+  test(
     'TC-ONB-017 — Try again on the error boundary recovers instead of looping',
     { tag: [Tag.REGRESSION] },
-    async ({ onboardingPage }) => {
-      // Best-effort arrange only: reach the boundary, assert nothing.
+    async ({ onboardingPage, page }) => {
       await onboardingPage.gotoWithQuery({ step: 'bogus', whmcsId: WHMCS_ID });
+      await expect(onboardingPage.errorBoundaryTitle).toBeVisible({ timeout: Timeouts.LONG });
+
+      await onboardingPage.tryAgainButton.click();
+
+      await expect(page, 'Try again must leave the invalid step').toHaveURL(/[?&]step=validate/, {
+        timeout: Timeouts.MEDIUM,
+      });
+      await expect(onboardingPage.errorBoundaryTitle).toHaveCount(0);
     },
   );
 
@@ -283,13 +289,13 @@ test.describe('Điều hướng & định tuyến (Navigation / Routing guard) �
       await expect(onboardingPage.businessInformationHeading).toBeVisible({
         timeout: Timeouts.LONG,
       });
-      expect(await onboardingPage.stepperState('Business Information')).toBe('current');
+      expect(await onboardingPage.stepperState('Business information')).toBe('current');
 
       await page.goForward({ waitUntil: 'domcontentloaded' });
       await onboardingPage.waitForReady();
       await expect(page).toHaveURL(stepUrlPattern(OnboardingStep.WORK_HOURS, WHMCS_ID));
       await expect(onboardingPage.businessHoursHeading).toBeVisible({ timeout: Timeouts.LONG });
-      expect(await onboardingPage.stepperState('Work Hours')).toBe('current');
+      expect(await onboardingPage.stepperState('Work hours')).toBe('current');
     },
   );
 

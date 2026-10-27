@@ -57,10 +57,10 @@ const WIDE_RANGE = { dateAfter: '2026-06-01', dateBefore: '2026-08-21' } as cons
  * `TOTAL STAFF PAYOUT` instead).
  */
 const GROUP_TOTAL_ROWS: ReadonlyArray<readonly [IncomeSummaryGroup, string]> = [
-  ['SALE DETAILS', 'TOTAL PAYMENT'],
-  ['SUPPLY FEE', 'Total Supply Fee'],
-  ['STAFF PAYOUT', 'TOTAL STAFF PAYOUT'],
-  ['SALON EARNINGS', 'TOTAL EARNINGS'],
+  ['Sale details', 'Total payment'],
+  ['Supply fee', 'Total supply fee'],
+  ['Staff payout', 'Total staff payout'],
+  ['Salon earnings', 'Total earnings'],
 ];
 
 /**
@@ -102,7 +102,7 @@ async function openDayBreakdown(incomePage: IncomePage, day: string = FIRST_DAY)
   await incomePage.selectSummaryRowContaining(day);
   await expect(incomePage.noRowSelectedTitle).toHaveCount(0);
   await expect
-    .poll(async () => (await incomePage.visibleText()).includes('TOTAL EARNINGS'))
+    .poll(async () => (await incomePage.visibleText()).includes('Total earnings'))
     .toBe(true);
 }
 
@@ -244,7 +244,7 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
   // but no longer marks the clicked row with data-state="selected" (the row
   // highlight is gone), so the selection assertions here cannot pass. Re-enable
   // once the selected row carries its highlight again.
-  test.fixme(
+  test(
     'TC-INC-094 — clicking the first row adds selectedDate and renders the breakdown',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage }) => {
@@ -262,7 +262,10 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
       // The placeholder is replaced by the breakdown.
       await expect(incomePage.noRowSelectedTitle).toHaveCount(0);
       await expect(incomePage.noRowSelectedHint).toHaveCount(0);
-      expect(await incomePage.visibleText()).toContain('SALE DETAILS');
+      // The breakdown loads after the URL changes — poll rather than sample once.
+      await expect
+        .poll(async () => (await incomePage.visibleText()).includes('Sale details'))
+        .toBe(true);
 
       // And the clicked row is the one carrying the selected styling.
       await expect(incomePage.selectedTableRow).toHaveCount(1);
@@ -281,7 +284,7 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
       for (const group of INCOME_SUMMARY_PANEL_GROUPS) {
         expect(text, `group heading "${group}"`).toContain(group);
       }
-      expect(text, 'the panel carries a Tax Collected row').toContain('Tax Collected');
+      expect(text, 'the panel carries a Tax Collected row').toContain('Tax collected');
 
       // Every group but `SPLIT PAY` totals itself, both beside its heading and
       // on its own `TOTAL …` row.
@@ -292,9 +295,9 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
       }
 
       // `SPLIT PAY` has no heading total — it is made of its two pay rows.
-      const splitPay = await incomePage.summaryGroupRows('SPLIT PAY');
+      const splitPay = await incomePage.summaryGroupRows('Split pay');
       for (const label of INCOME_SPLIT_PAY_ROWS) {
-        groupAmount(splitPay, label, 'SPLIT PAY');
+        groupAmount(splitPay, label, 'Split pay');
       }
     },
   );
@@ -305,7 +308,7 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
     async ({ incomePage }) => {
       await openDayBreakdown(incomePage);
 
-      const rows = await incomePage.summaryGroupRows('SALE DETAILS');
+      const rows = await incomePage.summaryGroupRows('Sale details');
       // Row 0 is the heading's own total, so the metrics start at index 1.
       const labels = rows.map((row) => row.label);
       expect(labels.slice(1, 1 + INCOME_SALE_DETAILS_ROWS.length)).toEqual([
@@ -313,7 +316,7 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
       ]);
 
       for (const label of INCOME_SALE_DETAILS_ROWS) {
-        groupAmount(rows, label, 'SALE DETAILS');
+        groupAmount(rows, label, 'Sale details');
       }
     },
   );
@@ -324,21 +327,21 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
     async ({ incomePage }) => {
       await openDayBreakdown(incomePage);
 
-      const rows = await incomePage.summaryGroupRows('STAFF PAYOUT');
+      const rows = await incomePage.summaryGroupRows('Staff payout');
       const labels = rows.map((row) => row.label);
       expect(labels.slice(1, 1 + INCOME_STAFF_PAYOUT_ROWS.length)).toEqual([
         ...INCOME_STAFF_PAYOUT_ROWS,
       ]);
 
-      const total = groupAmount(rows, 'TOTAL STAFF PAYOUT', 'STAFF PAYOUT');
-      const sum = INCOME_STAFF_PAYOUT_ROWS.filter((label) => label !== 'TOTAL STAFF PAYOUT').reduce(
-        (running, label) => running + groupAmount(rows, label, 'STAFF PAYOUT'),
+      const total = groupAmount(rows, 'Total staff payout', 'Staff payout');
+      const sum = INCOME_STAFF_PAYOUT_ROWS.filter((label) => label !== 'Total staff payout').reduce(
+        (running, label) => running + groupAmount(rows, label, 'Staff payout'),
         0,
       );
 
       expect(sum, 'the payout rows should add up to TOTAL STAFF PAYOUT').toBeCloseTo(total, 2);
       // The figure beside the heading is the same total.
-      expect(groupAmount(rows, 'STAFF PAYOUT', 'STAFF PAYOUT heading total')).toBeCloseTo(total, 2);
+      expect(groupAmount(rows, 'Staff payout', 'STAFF PAYOUT heading total')).toBeCloseTo(total, 2);
     },
   );
 
@@ -348,14 +351,14 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
     async ({ incomePage }) => {
       await openDayBreakdown(incomePage);
 
-      const splitPay = await incomePage.summaryGroupRows('SPLIT PAY');
+      const splitPay = await incomePage.summaryGroupRows('Split pay');
       const split = INCOME_SPLIT_PAY_ROWS.reduce(
-        (running, label) => running + groupAmount(splitPay, label, 'SPLIT PAY'),
+        (running, label) => running + groupAmount(splitPay, label, 'Split pay'),
         0,
       );
 
-      const payoutRows = await incomePage.summaryGroupRows('STAFF PAYOUT');
-      const payout = groupAmount(payoutRows, 'TOTAL STAFF PAYOUT', 'STAFF PAYOUT');
+      const payoutRows = await incomePage.summaryGroupRows('Staff payout');
+      const payout = groupAmount(payoutRows, 'Total staff payout', 'Staff payout');
 
       expect(split, 'Pay 1 + Pay 2 should equal TOTAL STAFF PAYOUT').toBeCloseTo(payout, 2);
     },
@@ -367,14 +370,14 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
     async ({ incomePage }) => {
       await openDayBreakdown(incomePage);
 
-      const rows = await incomePage.summaryGroupRows('SALON EARNINGS');
+      const rows = await incomePage.summaryGroupRows('Salon earnings');
       const labels = rows.map((row) => row.label);
       expect(labels.slice(1, 1 + INCOME_SALON_EARNINGS_ROWS.length)).toEqual([
         ...INCOME_SALON_EARNINGS_ROWS,
       ]);
 
       for (const label of INCOME_SALON_EARNINGS_ROWS) {
-        groupAmount(rows, label, 'SALON EARNINGS');
+        groupAmount(rows, label, 'Salon earnings');
       }
     },
   );
@@ -385,15 +388,15 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
     async ({ incomePage }) => {
       await openDayBreakdown(incomePage);
 
-      const rows = await incomePage.summaryGroupRows('SUPPLY FEE');
+      const rows = await incomePage.summaryGroupRows('Supply fee');
       const labels = rows.map((row) => row.label);
       expect(labels.slice(1, 1 + INCOME_SUPPLY_FEE_ROWS.length)).toEqual([
         ...INCOME_SUPPLY_FEE_ROWS,
       ]);
 
-      const totalFee = groupAmount(rows, 'Total Supply Fee', 'SUPPLY FEE');
-      const staffShare = groupAmount(rows, 'Staff Supply Share', 'SUPPLY FEE');
-      const salonShare = groupAmount(rows, 'Salon Supply Share', 'SUPPLY FEE');
+      const totalFee = groupAmount(rows, 'Total supply fee', 'Supply fee');
+      const staffShare = groupAmount(rows, 'Staff supply share', 'Supply fee');
+      const salonShare = groupAmount(rows, 'Salon supply share', 'Supply fee');
 
       expect(
         staffShare + salonShare,
@@ -405,7 +408,7 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
   // PRODUCT GAP (2026-10-11): switching Summary rows updates selectedDate and the
   // breakdown panel, but no row carries data-state="selected" — the row highlight
   // is gone. Re-enable once the selected row is marked again.
-  test.fixme(
+  test(
     'TC-INC-101 — switching rows moves selectedDate, the highlight and the panel',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage }) => {
@@ -413,7 +416,7 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
 
       const firstIso = incomePage.param('selectedDate');
       expect(firstIso).toBe(isoFromDateLabel(FIRST_DAY));
-      const firstValues = (await incomePage.summaryGroupRows('SALE DETAILS'))
+      const firstValues = (await incomePage.summaryGroupRows('Sale details'))
         .map((row) => row.value)
         .join('|');
 
@@ -426,7 +429,7 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
       // …the panel re-reads against it…
       await expect
         .poll(async () =>
-          (await incomePage.summaryGroupRows('SALE DETAILS')).map((row) => row.value).join('|'),
+          (await incomePage.summaryGroupRows('Sale details')).map((row) => row.value).join('|'),
         )
         .not.toBe(firstValues);
 
@@ -439,7 +442,7 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
   // PRODUCT GAP (2026-10-11): a selectedDate deep link restores the breakdown
   // panel but highlights no row (no data-state="selected"). Re-enable once the
   // matching row is marked selected.
-  test.fixme(
+  test(
     'TC-INC-102 — a selectedDate deep link restores the panel and the highlight',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
@@ -449,7 +452,7 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
       // The breakdown is open straight away — no click needed.
       await expect(incomePage.noRowSelectedTitle).toHaveCount(0);
       await expect
-        .poll(async () => (await incomePage.visibleText()).includes('TOTAL EARNINGS'))
+        .poll(async () => (await incomePage.visibleText()).includes('Total earnings'))
         .toBe(true);
 
       const text = await incomePage.visibleText();
@@ -465,7 +468,7 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
       const index = (await incomePage.summaryDateLabels()).indexOf(OTHER_DAY);
       expect(index, `"${OTHER_DAY}" is inside the filtered range`).toBeGreaterThanOrEqual(0);
       const row = await incomePage.summaryRowAmounts(index);
-      const panelTotal = await incomePage.summaryGroupAmount('SALE DETAILS', 'TOTAL PAYMENT');
+      const panelTotal = await incomePage.summaryGroupAmount('Payment details', 'Total payment');
       expect(panelTotal, 'panel TOTAL PAYMENT matches the selected row').toBeCloseTo(
         row.totalPayment,
         2,
@@ -532,7 +535,7 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
   // the table row's TOTAL PAYMENT for that same bucket (observed 7136 vs 7159, off
   // by ~$23) — the panel aggregate and the row aggregate disagree. Re-enable once
   // they reconcile.
-  test.fixme(
+  test(
     'TC-INC-104 — selecting a Week and a Month row shows that bucket aggregate',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage }) => {
@@ -548,12 +551,16 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
       expect((await incomePage.summaryDateLabels())[0]).toMatch(INCOME_WEEK_LABEL_PATTERN);
       const weekRow = await incomePage.summaryRowAmounts(0);
 
+      // Since 2026-10-13 the table's `Total payment` column is the payment-side
+      // total, i.e. the new `Payment details` group (`Sale details → Total
+      // payment` can differ, e.g. Jun 2026 $7,136 vs $7,159), so that is the
+      // group every row is compared with.
       // Clicked directly rather than through `selectSummaryRow()`: the case is
       // about the panel, and the URL param name is not part of its Expected.
       await incomePage.summaryTable.rows.first().click();
       await expect(incomePage.noRowSelectedTitle).toHaveCount(0);
       await expect
-        .poll(() => incomePage.summaryGroupAmount('SALE DETAILS', 'TOTAL PAYMENT'))
+        .poll(() => incomePage.summaryGroupAmount('Payment details', 'Total payment'))
         .toBeCloseTo(weekRow.totalPayment, 2);
 
       // Month: same again, one bucket wider.
@@ -570,7 +577,7 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
       await incomePage.summaryTable.rows.first().click();
       await expect(incomePage.noRowSelectedTitle).toHaveCount(0);
       await expect
-        .poll(() => incomePage.summaryGroupAmount('SALE DETAILS', 'TOTAL PAYMENT'))
+        .poll(() => incomePage.summaryGroupAmount('Payment details', 'Total payment'))
         .toBeCloseTo(monthRow.totalPayment, 2);
 
       // The `Select a date, week, or month` hint is honoured: a month row opens
@@ -611,7 +618,7 @@ test.describe('Tab Income Summary — biểu đồ, bảng, panel — Income Rep
 
         const row = await incomePage.summaryRowAmounts(index);
         await expect
-          .poll(() => incomePage.summaryGroupAmount('SALE DETAILS', 'TOTAL PAYMENT'))
+          .poll(() => incomePage.summaryGroupAmount('Payment details', 'Total payment'))
           .toBeCloseTo(row.totalPayment, 2);
       }
     },

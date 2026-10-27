@@ -27,7 +27,7 @@ test.describe('Reports — Export & Print', () => {
       for (const spec of RPT_DATA_PAGES) {
         // Export is disabled while a block has no rows — use a day with orders.
         if (spec.slug === ReportPageSlug.DAILY_SALE) {
-          test.skip((await rp.openDailyWithRows()) === null, 'No Daily Sale orders today or yesterday');
+          expect((await rp.openDailyWithRows()) === null, 'No Daily Sale orders today or yesterday').toBeFalsy();
         } else {
           await rp.openWithData(spec.slug);
         }
@@ -58,7 +58,7 @@ test.describe('Reports — Export & Print', () => {
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp }) => {
       const day = await rp.openDailyWithRows();
-      test.skip(day === null, 'No Daily Sale orders today or yesterday');
+      expect(day === null, 'No Daily Sale orders today or yesterday').toBeFalsy();
       const { name, bytes } = await rp.downloadText('Excel');
       expect(name).toBe(`income-daily-sale-${day}-${day}.xlsx`);
       expect(bytes.subarray(0, 2).toString('latin1')).toBe('PK');
@@ -109,12 +109,18 @@ test.describe('Reports — Export & Print', () => {
     'TC-RPT-082 — the Staff Payroll file name reflects the selected payroll period',
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp }) => {
-      test.fail(true, 'Product bug: payroll export is named for month-start..today, not the selected period');
+      // Product bug seen 2026-10-13: the file was named for month-start..today, not the selected period.
+      // A closed period (2nd option) has fixed bounds; the live one shows "start - today".
       await rp.openWithData(ReportPageSlug.STAFF_PAYROLL);
-      const label = (await rp.payrollPeriodCombobox.innerText()).split('\n')[0].replace(/\s*·.*$/, '').trim();
+      const currentId = rp.param('period_id');
+      await rp.payrollPeriodCombobox.click();
+      await rp.page.getByRole('option').nth(1).click();
+      await expect.poll(() => rp.param('period_id')).not.toBe(currentId);
+      await rp.waitForData();
+      const label = (await rp.payrollPeriodValue.innerText()).trim();
       const [from, to] = label.split(' - ').map((d) => new Date(`${d} UTC`).toISOString().slice(0, 10));
       const { name } = await rp.downloadText('CSV');
-      expect(name).toBe(`payroll-live-by-staff-${from}-${to}.csv`);
+      expect(name).toMatch(new RegExp(`^payroll-[a-z-]+-${from}-${to}\\.csv$`));
     },
   );
 
@@ -124,8 +130,8 @@ test.describe('Reports — Export & Print', () => {
     async ({ reportPagesPage: rp }) => {
       await rp.openWithData(ReportPageSlug.STAFF_PAYROLL);
       const { total } = await rp.footerCounts();
-      test.skip(total <= RPT_PAGE_SIZE, 'Single page — cannot tell page vs full export apart');
-      test.fail(true, 'Product bug: Export writes only the 30 rows of the current page');
+      expect(total <= RPT_PAGE_SIZE, 'Single page — cannot tell page vs full export apart').toBeFalsy();
+      // Product bug seen 2026-10-13: Export wrote only the 30 rows of the current page.
       const { text } = await rp.downloadText('CSV');
       expect(dataLines(text)).toHaveLength(total);
     },
@@ -149,8 +155,8 @@ test.describe('Reports — Export & Print', () => {
         .toBe(true);
       const name = (await rp.columnTexts(0))[0];
       await rp.dataRows().first().click();
-      await expect(page.getByText(`Thank you, ${name}!`)).toBeVisible({ timeout: Timeouts.LONG });
-      await page.getByRole('button', { name: 'Print', exact: true }).last().click();
+      await expect(rp.breakdownDialog.getByRole('heading', { name }).first()).toBeVisible({ timeout: Timeouts.LONG });
+      await rp.breakdownDialog.getByRole('button', { name: 'Print', exact: true }).click();
       await expect.poll(async () => (await rp.printCalls()).length, { timeout: Timeouts.MEDIUM }).toBe(1);
       const printed = (await rp.printCalls())[0];
       expect(printed).toContain(name);

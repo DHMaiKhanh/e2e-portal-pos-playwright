@@ -19,8 +19,14 @@ test.describe('Trường hợp tiêu cực & biên (Negative/Edge cases) — Cus
     async ({ customersPage }) => {
       await customersPage.search('zzzzznotexist999');
       await expect(customersPage.emptyState).toBeVisible();
-      await expect(customersPage.pagination.prevButton).toBeDisabled();
-      await expect(customersPage.pagination.nextButton).toBeDisabled();
+      // Since the 2026-10-13 refactor an empty result hides the pager entirely;
+      // what matters is that no enabled paging control is offered.
+      await expect(
+        customersPage.activePanel.getByRole('button', {
+          name: /^(previous|next) page$/i,
+          disabled: false,
+        }),
+      ).toHaveCount(0);
     },
   );
 
@@ -118,7 +124,7 @@ test.describe('Trường hợp tiêu cực & biên (Negative/Edge cases) — Cus
       });
 
       await test.step('The failure is surfaced, not swallowed', async () => {
-        await expect(page.getByText(/failed to load customers/i)).toBeVisible({
+        await expect(page.getByText(/couldn't load customers/i)).toBeVisible({
           timeout: 30_000,
         });
         // No stale or partial customer data is presented as if it were current.

@@ -1,9 +1,15 @@
 import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
 
+/**
+ * The status filter is a chip (aria-label "Status" unset / "Status: Open" set)
+ * since the 2026-10-13 redesign. The default 7-day window often holds no open
+ * batch on DEV, so the filter cases run over all-time (both kinds present) or
+ * over the pinned data-bearing range 2026-08-01..2026-08-21.
+ */
 test.describe('Filter — trạng thái (status) — Batch History', () => {
   test.beforeEach(async ({ batchHistoryPage }) => {
-    await batchHistoryPage.goto();
+    await batchHistoryPage.gotoAllTime();
   });
 
   test(
@@ -11,21 +17,15 @@ test.describe('Filter — trạng thái (status) — Batch History', () => {
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ batchHistoryPage }) => {
       await batchHistoryPage.selectStatus('Open');
-      await expect(batchHistoryPage.statusCombobox).toHaveText(/Open/);
+      await batchHistoryPage.waitForReady();
+      await expect(batchHistoryPage.statusFilter).toHaveAccessibleName(/status: open/i);
+      expect(batchHistoryPage.currentQueryParams().get('status')).toBe('open');
 
-      const closedCount = batchHistoryPage.closedStatusBadges;
-      await expect(closedCount).toHaveCount(0);
-
-      const openCount = await batchHistoryPage.openStatusBadges.count();
-      if (openCount > 0) {
-        await expect(batchHistoryPage.openStatusBadges.first()).toBeVisible();
-      }
-
-      const params = batchHistoryPage.currentQueryParams();
-      const statusParam = params.get('status');
-      if (statusParam) {
-        expect(statusParam.toLowerCase()).toBe('open');
-      }
+      await expect(batchHistoryPage.closedStatusBadges).toHaveCount(0);
+      await expect(batchHistoryPage.openStatusBadges.first()).toBeVisible();
+      await expect(batchHistoryPage.openStatusBadges).toHaveCount(
+        await batchHistoryPage.table.rowCount(),
+      );
     },
   );
 
@@ -34,15 +34,15 @@ test.describe('Filter — trạng thái (status) — Batch History', () => {
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ batchHistoryPage }) => {
       await batchHistoryPage.selectStatus('Closed');
-      await expect(batchHistoryPage.statusCombobox).toHaveText(/Closed/);
+      await batchHistoryPage.waitForReady();
+      await expect(batchHistoryPage.statusFilter).toHaveAccessibleName(/status: closed/i);
+      expect(batchHistoryPage.currentQueryParams().get('status')).toBe('closed');
 
-      const openCount = batchHistoryPage.openStatusBadges;
-      await expect(openCount).toHaveCount(0);
-
-      const closedCount = await batchHistoryPage.closedStatusBadges.count();
-      if (closedCount > 0) {
-        await expect(batchHistoryPage.closedStatusBadges.first()).toBeVisible();
-      }
+      await expect(batchHistoryPage.openStatusBadges).toHaveCount(0);
+      await expect(batchHistoryPage.closedStatusBadges.first()).toBeVisible();
+      await expect(batchHistoryPage.closedStatusBadges).toHaveCount(
+        await batchHistoryPage.table.rowCount(),
+      );
     },
   );
 
@@ -50,13 +50,21 @@ test.describe('Filter — trạng thái (status) — Batch History', () => {
     'TC-BH-018 — All status shows both Open and Closed batches',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ batchHistoryPage }) => {
+      const allTotal = await batchHistoryPage.totalResults();
+
       await batchHistoryPage.selectStatus('Open');
-      await expect(batchHistoryPage.statusCombobox).toHaveText(/Open/);
+      await batchHistoryPage.waitForReady();
+      await expect(batchHistoryPage.statusFilter).toHaveAccessibleName(/status: open/i);
 
+      // Back to "all" = clearing the chip.
       await batchHistoryPage.selectStatus('All statuses');
-      await expect(batchHistoryPage.statusCombobox).toHaveText(/All status/);
+      await batchHistoryPage.waitForReady();
+      await expect(batchHistoryPage.statusFilter).toHaveAccessibleName(/^status$/i);
+      expect(batchHistoryPage.currentQueryParams().get('status') ?? 'all').toBe('all');
 
-      await expect(batchHistoryPage.tableRoot).toBeVisible();
+      await expect(batchHistoryPage.openStatusBadges.first()).toBeVisible();
+      await expect(batchHistoryPage.closedStatusBadges.first()).toBeVisible();
+      await expect.poll(() => batchHistoryPage.totalResults()).toBe(allTotal);
     },
   );
 
@@ -64,16 +72,28 @@ test.describe('Filter — trạng thái (status) — Batch History', () => {
     'TC-BH-019 — status filter combined with date range applies both (AND)',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ batchHistoryPage }) => {
-      await batchHistoryPage.selectStatus('Open');
-      await expect(batchHistoryPage.statusCombobox).toHaveText(/Open/);
+      await batchHistoryPage.selectStatus('Closed');
+      await batchHistoryPage.waitForReady();
+      const closedAllTime = await batchHistoryPage.totalResults();
 
-      const closedCount = batchHistoryPage.closedStatusBadges;
-      await expect(closedCount).toHaveCount(0);
+      // Pinned data-bearing window: 2026-08-01..2026-08-21.
+      await batchHistoryPage.gotoWithParams({
+        page: '1',
+        status: 'closed',
+        dateAfter: '2026-08-01',
+        dateBefore: '2026-08-21',
+      });
+      await expect(batchHistoryPage.statusFilter).toHaveAccessibleName(/status: closed/i);
 
-      const params = batchHistoryPage.currentQueryParams();
-      const statusParam = params.get('status');
-      if (statusParam) {
-        expect(statusParam.toLowerCase()).toBe('open');
+      const rows = await batchHistoryPage.table.rowCount();
+      expect(rows, 'no closed batch in 2026-08-01..21 on DEV').toBeGreaterThan(0);
+      expect(await batchHistoryPage.totalResults()).toBeLessThan(closedAllTime);
+      await expect(batchHistoryPage.openStatusBadges).toHaveCount(0);
+
+      for (const date of await batchHistoryPage.columnCellTexts(/batch date/i)) {
+        const day = Number(date.match(/^Aug (\d{1,2}), 2026/)?.[1] ?? NaN);
+        expect(day, `batch date "${date}" outside Aug 1–21, 2026`).toBeGreaterThanOrEqual(1);
+        expect(day, `batch date "${date}" outside Aug 1–21, 2026`).toBeLessThanOrEqual(21);
       }
     },
   );
@@ -84,24 +104,18 @@ test.describe('Filter — trạng thái (status) — Batch History', () => {
     async ({ batchHistoryPage, page }) => {
       const consoleErrors: string[] = [];
       page.on('console', (msg) => {
-        if (msg.type() === 'error') {
-          consoleErrors.push(msg.text());
-        }
+        if (msg.type() === 'error') consoleErrors.push(msg.text());
       });
 
       await batchHistoryPage.gotoWithParams({
         status: 'closed',
-        from: '1999-01-01',
-        to: '1999-01-02',
+        dateAfter: '1999-01-01',
+        dateBefore: '1999-01-02',
       });
-      await batchHistoryPage.waitForReady();
 
-      const rowCount = await batchHistoryPage.table.rowCount();
-      if (rowCount === 0) {
-        await expect(batchHistoryPage.emptyState).toBeVisible();
-        await expect(batchHistoryPage.emptyState).toHaveText(/No batches found\./i);
-      }
-
+      await expect(batchHistoryPage.table.rows).toHaveCount(0);
+      await expect(batchHistoryPage.emptyState).toBeVisible();
+      await expect(batchHistoryPage.statusFilter).toHaveAccessibleName(/status: closed/i);
       expect(consoleErrors).toEqual([]);
     },
   );

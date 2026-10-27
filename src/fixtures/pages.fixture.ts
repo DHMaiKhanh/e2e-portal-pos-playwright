@@ -16,6 +16,17 @@ import { MerchantsPage } from '@pages/merchants/MerchantsPage';
 import { OnboardingPage } from '@pages/onboarding/OnboardingPage';
 import { ReportConfigPage } from '@pages/report-config/ReportConfigPage';
 import { ReportPagesPage } from '@pages/reports/ReportPagesPage';
+import { ReportsV4Page } from '@pages/reports-v4/ReportsV4Page';
+import { ReportConfigV4Page } from '@pages/reports-v4/ReportConfigV4Page';
+import { RcV4Page } from '@pages/report-config-v4/RcV4Page';
+import { MonitorPage } from '@pages/monitor/MonitorPage';
+import { RemoteActionsPage } from '@pages/monitor/RemoteActionsPage';
+import { ChangeLogsPage } from '@pages/monitor/ChangeLogsPage';
+import { PackagesPage } from '@pages/packages/PackagesPage';
+import { AllOrdersPage } from '@pages/orders/AllOrdersPage';
+import { DevicesPage } from '@pages/devices/DevicesPage';
+import { SystemPage } from '@pages/system/SystemPage';
+import { UsersRolesPage } from '@pages/users-roles/UsersRolesPage';
 import { Toast } from '@components/Toast';
 import { ConfirmModal } from '@components/modal/ConfirmModal';
 
@@ -41,6 +52,28 @@ export interface PagesFixture {
   reportConfigPage: ReportConfigPage;
   /** Reports — the configurable report pages; use `.open(slug)`. */
   reportPagesPage: ReportPagesPage;
+  /** Reports V4 — `/v4/reports/<slug>`; use `.open(slug)`. */
+  reportsV4Page: ReportsV4Page;
+  /** Report Configuration V4 › Pages — builder helpers for the V4 write tests. */
+  reportConfigV4Page: ReportConfigV4Page;
+  /** Report Configuration V4 (Internal) — call `.guardWrites()` first; every write is intercepted. */
+  rcV4Page: RcV4Page;
+  /** Internal › Monitor — use `.open(MonitorTab.SYNC)`. */
+  monitorPage: MonitorPage;
+  /** Monitoring › Remote Actions. Call `.blockWrites()` before opening send-action. */
+  remoteActionsPage: RemoteActionsPage;
+  /** Monitoring › Change Logs — read-only system-wide entity history. */
+  changeLogsPage: ChangeLogsPage;
+  /** Packages (Internal POS package catalogue). Call `.blockWrites()` before `goto()`. */
+  packagesPage: PackagesPage;
+  /** All Orders (Internal, cross-merchant). Call `.blockWrites()` before navigating. */
+  allOrdersPage: AllOrdersPage;
+  /** Devices (Internal › Device Management). Call `.blockWrites()`; use `.open(DevicesTab.*)`. */
+  devicesPage: DevicesPage;
+  /** System — App Versions / Settings / Feature Flags. Call `.blockWrites()`; use `.open(SystemSection.*)`. */
+  systemPage: SystemPage;
+  /** Users & Roles (Internal RBAC). Call `.blockWrites()`; use `.open(UsersRolesScope.*)`. */
+  usersRolesPage: UsersRolesPage;
   toast: Toast;
   confirmModal: ConfirmModal;
 }
@@ -96,6 +129,39 @@ export const pagesFixture = base.extend<PagesFixture>({
   },
   reportPagesPage: async ({ page }, use) => {
     await use(new ReportPagesPage(page));
+  },
+  reportsV4Page: async ({ page }, use) => {
+    await use(new ReportsV4Page(page));
+  },
+  reportConfigV4Page: async ({ page }, use) => {
+    await use(new ReportConfigV4Page(page));
+  },
+  rcV4Page: async ({ page }, use) => {
+    await use(new RcV4Page(page));
+  },
+  monitorPage: async ({ page }, use) => {
+    await use(new MonitorPage(page));
+  },
+  remoteActionsPage: async ({ page }, use) => {
+    await use(new RemoteActionsPage(page));
+  },
+  changeLogsPage: async ({ page }, use) => {
+    await use(new ChangeLogsPage(page));
+  },
+  packagesPage: async ({ page }, use) => {
+    await use(new PackagesPage(page));
+  },
+  allOrdersPage: async ({ page }, use) => {
+    await use(new AllOrdersPage(page));
+  },
+  devicesPage: async ({ page }, use) => {
+    await use(new DevicesPage(page));
+  },
+  systemPage: async ({ page }, use) => {
+    await use(new SystemPage(page));
+  },
+  usersRolesPage: async ({ page }, use) => {
+    await use(new UsersRolesPage(page));
   },
   toast: async ({ page }, use) => {
     await use(new Toast(page));

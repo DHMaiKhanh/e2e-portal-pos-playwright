@@ -16,19 +16,42 @@ const keyOf = (test) => {
   return `${rel}:${test.location.line}:${test.title}`;
 };
 
+// Steps worth retelling to a non-technical tester. `test.step(...)` entries are
+// the human-written ones; when a spec has none we fall back to the raw actions.
+const STEP_CATS = new Set(['test.step', 'pw:api', 'expect']);
+
 class LiveReporter {
+  constructor() {
+    this.steps = new Map(); // `${key}@${retry}` -> [{title, category, ok, dur, error}]
+  }
+
   onBegin(_config, suite) {
     emit({ type: 'begin', total: suite.allTests().filter((t) => !isSetup(t)).length });
   }
 
   onTestBegin(test, result) {
     if (isSetup(test)) return;
+    this.steps.set(`${keyOf(test)}@${result.retry}`, []);
     emit({ type: 'testBegin', key: keyOf(test), retry: result.retry });
+  }
+
+  onStepEnd(test, result, step) {
+    if (isSetup(test) || !STEP_CATS.has(step.category)) return;
+    const arr = this.steps.get(`${keyOf(test)}@${result.retry}`);
+    if (!arr) return;
+    arr.push({
+      title: step.title,
+      category: step.category,
+      ok: !step.error,
+      dur: Math.round(step.duration),
+      error: step.error ? stripAnsi(step.error.message || '').split('\n')[0].slice(0, 200) : null,
+    });
   }
 
   onTestEnd(test, result) {
     if (isSetup(test)) return;
     const outcome = test.outcome(); // expected | unexpected | flaky | skipped
+    const stepKey = `${keyOf(test)}@${result.retry}`;
     emit({
       type: 'testEnd',
       key: keyOf(test),
@@ -41,7 +64,11 @@ class LiveReporter {
       attachments: result.attachments
         .filter((a) => a.path)
         .map((a) => ({ name: a.name, contentType: a.contentType, path: a.path })),
+      // Step-by-step replay (feature 6) — only for tests that did not simply pass,
+      // so the payload stays small. Prefer the named test.step()s when present.
+      steps: result.status === 'passed' ? undefined : pickSteps(this.steps.get(stepKey)),
     });
+    this.steps.delete(stepKey);
   }
 
   onEnd(result) {
@@ -53,9 +80,17 @@ class LiveReporter {
   }
 }
 
+/** Keep the human-written steps if any; otherwise the raw actions. Cap the list. */
+function pickSteps(all) {
+  if (!all || !all.length) return undefined;
+  const named = all.filter((s) => s.category === 'test.step');
+  const use = named.length ? named : all;
+  return use.slice(-60);
+}
+
 function stripAnsi(s) {
   // eslint-disable-next-line no-control-regex
-  return s.replace(/\u001b\[[0-9;]*m/g, '');
+  return s.replace(new RegExp(String.fromCharCode(27) + "\[[0-9;]*m", "g"), "");
 }
 
 module.exports = LiveReporter;

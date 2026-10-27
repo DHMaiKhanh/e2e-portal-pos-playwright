@@ -195,7 +195,7 @@ test.describe('Responsive — Onboarding', () => {
       }
 
       // Every footer control can be scrolled to and used — none is clicked.
-      expect(await onboardingPage.wizardFooterLabels()).toEqual(['Back', 'Skip', 'Save Changes']);
+      expect(await onboardingPage.wizardFooterLabels()).toEqual(['Back', 'Skip', 'Save changes']);
       for (const button of [
         onboardingPage.backButton,
         onboardingPage.skipButton,

@@ -187,7 +187,7 @@ test.describe('Bảng dữ liệu & phân trang — Batch History', () => {
    * 1. Load tập filter có tổng số đã biết (vd 88 kết quả / 3 trang).
    * 2. Kiểm tra text footer ở trang 1, 2 và trang cuối.
    * Expected:
-   * Trang 1 hiển thị "Showing 1 to 30 of 88 results", trang 2 "31 to 60", trang cuối phản ánh đúng phần còn lại (vd "61 to 88"); tổng không bao giờ vượt quá Z.
+   * Trang 1 hiển thị "1–30 of 88", trang 2 "31–60", trang cuối phản ánh đúng phần còn lại (vd "61–88"); tổng không bao giờ vượt quá Z.
    */
   /**
    * A known total was treated as a precondition to seed. Mocking the collection
@@ -196,7 +196,7 @@ test.describe('Bảng dữ liệu & phân trang — Batch History', () => {
    * partial page, which is where an off-by-one would actually show up.
    */
   test(
-    'TC-BH-027 — footer "Showing X to Y of Z results" chính xác qua các trang',
+    'TC-BH-027 — footer "X–Y of Z" chính xác qua các trang',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ batchHistoryPage, page }) => {
       const total = 88;
@@ -225,7 +225,7 @@ test.describe('Bảng dữ liệu & phân trang — Batch History', () => {
           await batchHistoryPage.waitForReady();
         }
         await expect(batchHistoryPage.paginationSummary).toHaveText(
-          new RegExp(`Showing ${from} to ${to} of ${total} results`, 'i'),
+          new RegExp(`^${from}\\s*[–-]\\s*${to} of ${total}$`),
         );
         await expect(batchHistoryPage.table.rows).toHaveCount(
           Math.min(BATCHES_PAGE_SIZE, to - from + 1),
@@ -261,7 +261,7 @@ test.describe('Bảng dữ liệu & phân trang — Batch History', () => {
       await expect(batchHistoryPage.pageIndicator).toHaveText(/1\s*\/\s*1/);
       await expect(batchHistoryPage.previousPageButton).toBeDisabled();
       await expect(batchHistoryPage.nextPageButton).toBeDisabled();
-      await expect(batchHistoryPage.paginationSummary).toHaveText(/Showing 1 to 5 of 5 results/i);
+      await expect(batchHistoryPage.paginationSummary).toHaveText(/^1\s*[–-]\s*5 of 5$/);
     },
   );
 

@@ -2,10 +2,9 @@ import { test, expect } from '@fixtures/index';
 import { Tag } from '@/types/testTags';
 import { ReportPageSlug, Urls } from '@constants/urls';
 import { Timeouts } from '@configs/constants/timeouts';
-import { landOnShell, clientSideNavigate, failDataResponses, skeletons } from '@helpers/network';
+import { landOnShell, failDataResponses, skeletons } from '@helpers/network';
 import {
   RPT_COLUMNS,
-  RPT_DEMO_TABS,
   RPT_PAGES,
   RPT_TEXT,
   rptPage,
@@ -34,7 +33,7 @@ test.describe('Reports — page load & layout', () => {
   );
 
   test(
-    'TC-RPT-002 — Income Summary loads with range picker, period combobox, chart and table',
+    'TC-RPT-002 — Income Summary loads with range picker, Group-by chip, chart and table',
     { tag: [Tag.REGRESSION, Tag.SMOKE, Tag.UI] },
     async ({ reportPagesPage: rp, page }) => {
       const spec = rptPage(ReportPageSlug.INCOME_SUMMARY);
@@ -42,7 +41,7 @@ test.describe('Reports — page load & layout', () => {
       await expect(page).toHaveTitle(spec.title);
       await expect(rp.pageTitle).toHaveText(spec.label);
       await expect(rp.dateRangeButton).toBeVisible();
-      await expect(rp.periodCombobox).toHaveText('Day');
+      await expect(rp.periodValue).toHaveText('Day');
       await expect(page.getByText('Total Income Table', { exact: true })).toBeVisible();
       await rp.waitForData();
       expect((await rp.headerLabels()).map((h) => h.toLowerCase())).toEqual(
@@ -52,7 +51,7 @@ test.describe('Reports — page load & layout', () => {
   );
 
   test(
-    'TC-RPT-003 — Staff Income loads with search, switch, Print and Staff Summary',
+    'TC-RPT-003 — Staff Income loads with search, switch, Print and the summary strip',
     { tag: [Tag.REGRESSION, Tag.SMOKE, Tag.UI] },
     async ({ reportPagesPage: rp, page }) => {
       const spec = rptPage(ReportPageSlug.STAFF_INCOME);
@@ -62,7 +61,7 @@ test.describe('Reports — page load & layout', () => {
       await expect(rp.printButton).toBeVisible();
       await expect(rp.staffSearch).toHaveAttribute('placeholder', RPT_TEXT.STAFF_INCOME_SEARCH);
       await expect(rp.noIncomeSwitch).toBeVisible();
-      await expect(rp.staffSummaryTrigger).toBeVisible();
+      await expect(rp.staffSummary).toBeVisible();
       await rp.waitForData();
     },
   );
@@ -83,18 +82,6 @@ test.describe('Reports — page load & layout', () => {
   );
 
   test(
-    'TC-RPT-005 — Demo DS Report loads with its four tabs',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ reportPagesPage: rp, page }) => {
-      const spec = rptPage(ReportPageSlug.DEMO_DS);
-      await rp.open(spec.slug);
-      await expect(page).toHaveTitle(spec.title);
-      await expect(rp.pageTitle).toHaveText(spec.label);
-      await expect(rp.tabs).toHaveText([...RPT_DEMO_TABS]);
-    },
-  );
-
-  test(
     'TC-RPT-006 — no uncaught JS error while loading every report page',
     { tag: [Tag.REGRESSION] },
     async ({ reportPagesPage: rp, page }) => {
@@ -104,7 +91,7 @@ test.describe('Reports — page load & layout', () => {
       for (const spec of RPT_PAGES) {
         await rp.open(spec.slug);
         await expect(rp.pageTitle).toHaveText(spec.label, { timeout: Timeouts.LONG });
-        if (spec.slug !== ReportPageSlug.DEMO_DS) await rp.waitForData();
+        await rp.waitForData();
       }
       expect(errors).toEqual([]);
     },
@@ -122,16 +109,16 @@ test.describe('Reports — page load & layout', () => {
   test(
     'TC-RPT-008 — a failing report API shows an error state instead of endless skeletons',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ page }) => {
-      // Product bug observed 2026-10-13: with report_pages/report_blocks at 500
-      // the body stays on grey skeletons forever and no message is rendered.
-      test.fail(true, 'Product bug: report API 500 leaves endless skeletons, no error message');
+    async ({ page, reportPagesPage: rp }) => {
+      // Observed 2026-10-13: with report_pages/report_blocks at 500 the body stayed
+      // on grey skeletons forever. Re-checked after the 2026-10-20 redesign.
       await landOnShell(page, Urls.DASHBOARD);
-      await page.getByRole('button', { name: 'Reports', exact: true }).click();
+      await rp.expandReportsGroup();
       await failDataResponses(page, 500, /report_(pages|blocks)\//);
-      await clientSideNavigate(page, /^Income Summary$/);
+      // The v1 "Income Summary" link inside the Reports accordion (Reports V4 has a link of the same name).
+      await rp.reportLink('Income Summary').click({ noWaitAfter: true }).catch(() => {});
       await expect(page).toHaveURL(rptUrlPattern(ReportPageSlug.INCOME_SUMMARY));
-      await expect(page.getByText(/error|something went wrong|try again|failed/i).first()).toBeVisible({
+      await expect(page.getByText(/error|something went wrong|try again|failed|unable to load|could not be loaded/i).first()).toBeVisible({
         timeout: Timeouts.MEDIUM,
       });
       await expect(skeletons(page)).toHaveCount(0);

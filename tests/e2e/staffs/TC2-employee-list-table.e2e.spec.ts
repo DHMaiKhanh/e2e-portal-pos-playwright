@@ -78,7 +78,7 @@ test.describe('Bảng danh sách nhân viên (Table) — Staffs', () => {
 
         // Empty Phone/Email fields render as the "-" placeholder (see
         // TC-STF-012), so treat it as the empty value when diffing the source.
-        expect(email === '-' ? '' : email, `row ${index} EMAIL`).toBe(
+        expect(['-', '—'].includes(email) ? '' : email, `row ${index} EMAIL`).toBe(
           (record.email as string) || '',
         );
 
@@ -93,7 +93,7 @@ test.describe('Bảng danh sách nhân viên (Table) — Staffs', () => {
           String(record.status ?? '').toLowerCase(),
         );
 
-        if (phone && phone !== '-') {
+        if (phone && !['-', '—'].includes(phone)) {
           // Rendered as (XXX) XXX-XXXX regardless of how it is stored. Empty
           // phones show the "-" placeholder, which is not a formatted number.
           expect(phone, `row ${index} PHONE`).toMatch(/^\(\d{3}\) \d{3}-\d{4}$/);
@@ -179,8 +179,9 @@ test.describe('Bảng danh sách nhân viên (Table) — Staffs', () => {
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ staffsPage, page }) => {
       await staffsPage.waitForReady();
+      // Pager range reads "1–30 of 70" since the 2026-10-13 refactor.
       const footer = (await staffsPage.resultsFooter.first().innerText()).trim();
-      const total = Number(footer.match(/of (\d+) results/i)?.[1]);
+      const total = Number(footer.replace(/,/g, '').match(/of (\d+)$/)?.[1]);
       const lastPage = Number((await staffsPage.pageIndicator.first().innerText()).split('/')[1]);
       expect(total).toBeGreaterThan(0);
       expect(lastPage).toBeGreaterThan(1);
@@ -211,15 +212,18 @@ test.describe('Bảng danh sách nhân viên (Table) — Staffs', () => {
       const rows = page.getByRole('row');
       const firstDataRow = rows.nth(1);
       await expect(firstDataRow).toBeVisible();
-      const rowText = (await firstDataRow.innerText()).trim();
-      const firstCellText = rowText.split('\n')[0]?.trim();
+      const firstCellText = (
+        await staffsPage.table.rows.first().getByRole('cell').first().innerText()
+      )
+        .split('\n')[0]
+        .trim();
+      expect(firstCellText.length, 'first staff row has no name').toBeGreaterThan(0);
 
-      await firstDataRow.click();
+      // Since the 2026-10-13 refactor the row itself is inert; the name is the link.
+      await staffsPage.openStaff();
 
       await expect(page).toHaveURL(/\/pos\/nail\/\d+\/staffs\/[^/?]+\?tab=profile/);
-      if (firstCellText) {
-        await expect(page.getByText(firstCellText, { exact: false }).first()).toBeVisible();
-      }
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(firstCellText);
     },
   );
 });

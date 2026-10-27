@@ -14,7 +14,14 @@ import {
  * A past day that the Daily tab can be deep-linked to via `?date=`.
  * Used by TC-INC-077 to prove both rail panels re-read on a date change.
  */
-const OTHER_DAY = '2026-08-18';
+const OTHER_DAY = '2026-08-05';
+
+/**
+ * Verified data-bearing Daily day on store 100004 (2026-08-18: 15 rows, both
+ * rails populated). The dev store usually has no activity "today", so the
+ * panel cases are pinned here instead of the default date.
+ */
+const DATA_DAY = '2026-08-18';
 
 /**
  * Assert one rail value renders as currency, then hand back its number.
@@ -32,8 +39,8 @@ async function expectIncomeDetailBalances(incomePage: IncomePage): Promise<void>
   const rows = await incomePage.incomeDetailRows();
   const sale = amount(incomeRowValue(rows, 'Sale'), 'INCOME DETAIL Sale');
   const tip = amount(incomeRowValue(rows, 'Tip'), 'INCOME DETAIL Tip');
-  const tax = amount(incomeRowValue(rows, 'Tax Collected'), 'INCOME DETAIL Tax Collected');
-  const total = amount(incomeRowValue(rows, 'Total Payment'), 'INCOME DETAIL Total Payment');
+  const tax = amount(incomeRowValue(rows, 'Tax collected'), 'INCOME DETAIL Tax Collected');
+  const total = amount(incomeRowValue(rows, 'Total payment'), 'INCOME DETAIL Total Payment');
 
   expect(sale + tip + tax, 'Sale + Tip + Tax Collected should equal Total Payment').toBeCloseTo(
     total,
@@ -51,14 +58,14 @@ async function expectPaymentDetailBalances(incomePage: IncomePage): Promise<void
   const cash = amount(incomeRowValue(rows, 'Cash'), 'PAYMENT DETAIL Cash');
   const others = amount(incomeRowValue(rows, 'Others'), 'PAYMENT DETAIL Others');
   const collected = amount(
-    incomeRowValue(rows, 'Amount Collected'),
+    incomeRowValue(rows, 'Amount collected'),
     'PAYMENT DETAIL Amount Collected',
   );
   const giftCard = amount(
-    incomeRowValue(rows, 'Gift Card Redemption'),
+    incomeRowValue(rows, 'Gift card redemption'),
     'PAYMENT DETAIL Gift Card Redemption',
   );
-  const total = amount(incomeRowValue(rows, 'Total Payment'), 'PAYMENT DETAIL Total Payment');
+  const total = amount(incomeRowValue(rows, 'Total payment'), 'PAYMENT DETAIL Total Payment');
 
   expect(card + cash + others, 'Card + Cash + Others should equal Amount Collected').toBeCloseTo(
     collected,
@@ -72,7 +79,7 @@ async function expectPaymentDetailBalances(incomePage: IncomePage): Promise<void
 
 test.describe('Tab Daily — panel Income / Payment Detail — Income Reports', () => {
   test.beforeEach(async ({ incomePage }) => {
-    await incomePage.goto();
+    await incomePage.gotoWithQuery({ tab: IncomeTab.DAILY, date: DATA_DAY });
   });
 
   test(
@@ -88,17 +95,17 @@ test.describe('Tab Daily — panel Income / Payment Detail — Income Reports', 
       // breakdown for the "No income data for this day yet." empty state, so
       // there are no currency rows to assert — skip softly rather than fail.
       const emptyIncome = await incomePage.incomeDetailEmptyState.count();
-      test.skip(
+      expect(
         emptyIncome > 0,
         'store has no income on this day; INCOME DETAIL shows its empty state',
-      );
+      ).toBeFalsy();
 
       await expect(incomePage.incomeDetailHeading).toBeVisible();
 
       const rows = await incomePage.incomeDetailRows();
 
       // The panel heading carries the section total next to the label.
-      expect(incomeRowValue(rows, 'INCOME DETAIL'), 'INCOME DETAIL heading total').toMatch(
+      expect(incomeRowValue(rows, 'Income detail'), 'INCOME DETAIL heading total').toMatch(
         INCOME_CURRENCY_PATTERN,
       );
 
@@ -122,16 +129,16 @@ test.describe('Tab Daily — panel Income / Payment Detail — Income Reports', 
       // Data-gated: an untraded day renders "No payment data for this day yet."
       // in place of the PAYMENT DETAIL rows — skip softly rather than fail.
       const emptyPayment = await incomePage.paymentDetailEmptyState.count();
-      test.skip(
+      expect(
         emptyPayment > 0,
         'store has no income on this day; PAYMENT DETAIL shows its empty state',
-      );
+      ).toBeFalsy();
 
       await expect(incomePage.paymentDetailHeading).toBeVisible();
 
       const rows = await incomePage.paymentDetailRows();
 
-      expect(incomeRowValue(rows, 'PAYMENT DETAIL'), 'PAYMENT DETAIL heading total').toMatch(
+      expect(incomeRowValue(rows, 'Payment detail'), 'PAYMENT DETAIL heading total').toMatch(
         INCOME_CURRENCY_PATTERN,
       );
 
@@ -155,26 +162,26 @@ test.describe('Tab Daily — panel Income / Payment Detail — Income Reports', 
       // Data-gated: an untraded day shows the INCOME DETAIL empty state, so
       // there are no panel rows to reconcile against the KPI cards.
       const emptyIncome = await incomePage.incomeDetailEmptyState.count();
-      test.skip(
+      expect(
         emptyIncome > 0,
         'store has no income on this day; INCOME DETAIL shows its empty state',
-      );
+      ).toBeFalsy();
 
       const rows = await incomePage.incomeDetailRows();
       const panelSale = amount(incomeRowValue(rows, 'Sale'), 'INCOME DETAIL Sale');
       const panelTip = amount(incomeRowValue(rows, 'Tip'), 'INCOME DETAIL Tip');
       const panelTotal = amount(
-        incomeRowValue(rows, 'Total Payment'),
+        incomeRowValue(rows, 'Total payment'),
         'INCOME DETAIL Total Payment',
       );
       const headingTotal = amount(
-        incomeRowValue(rows, 'INCOME DETAIL'),
+        incomeRowValue(rows, 'Income detail'),
         'INCOME DETAIL heading total',
       );
 
-      const cardSale = amount(await incomePage.kpiValue('Sale Income'), 'Sale Income card');
-      const cardTip = amount(await incomePage.kpiValue('Total Tip'), 'Total Tip card');
-      const cardTotal = amount(await incomePage.kpiValue('Total Payment'), 'Total Payment card');
+      const cardSale = amount(await incomePage.kpiValue('Sale income'), 'Sale Income card');
+      const cardTip = amount(await incomePage.kpiValue('Total tip'), 'Total Tip card');
+      const cardTotal = amount(await incomePage.kpiValue('Total payment'), 'Total Payment card');
 
       expect(panelSale, 'panel Sale vs Sale Income card').toBeCloseTo(cardSale, 2);
       expect(panelTip, 'panel Tip vs Total Tip card').toBeCloseTo(cardTip, 2);
@@ -195,10 +202,10 @@ test.describe('Tab Daily — panel Income / Payment Detail — Income Reports', 
       // Data-gated: an untraded day shows the INCOME DETAIL empty state instead
       // of the currency rows the balance check reads.
       const emptyIncome = await incomePage.incomeDetailEmptyState.count();
-      test.skip(
+      expect(
         emptyIncome > 0,
         'store has no income on this day; INCOME DETAIL shows its empty state',
-      );
+      ).toBeFalsy();
 
       await expectIncomeDetailBalances(incomePage);
     },
@@ -216,10 +223,10 @@ test.describe('Tab Daily — panel Income / Payment Detail — Income Reports', 
       // Data-gated: an untraded day shows the PAYMENT DETAIL empty state instead
       // of the currency rows the balance check reads.
       const emptyPayment = await incomePage.paymentDetailEmptyState.count();
-      test.skip(
+      expect(
         emptyPayment > 0,
         'store has no income on this day; PAYMENT DETAIL shows its empty state',
-      );
+      ).toBeFalsy();
 
       await expectPaymentDetailBalances(incomePage);
     },
@@ -237,20 +244,20 @@ test.describe('Tab Daily — panel Income / Payment Detail — Income Reports', 
       // Data-gated: an untraded day shows both rails' empty states, so neither
       // panel reports a Total Payment to reconcile against the KPI card.
       const emptyIncome = await incomePage.incomeDetailEmptyState.count();
-      test.skip(
+      expect(
         emptyIncome > 0,
         'store has no income on this day; the detail rails show their empty states',
-      );
+      ).toBeFalsy();
 
       const income = amount(
-        await incomePage.incomeDetailValue('Total Payment'),
+        await incomePage.incomeDetailValue('Total payment'),
         'INCOME DETAIL Total Payment',
       );
       const payment = amount(
-        await incomePage.paymentDetailValue('Total Payment'),
+        await incomePage.paymentDetailValue('Total payment'),
         'PAYMENT DETAIL Total Payment',
       );
-      const card = amount(await incomePage.kpiValue('Total Payment'), 'Total Payment card');
+      const card = amount(await incomePage.kpiValue('Total payment'), 'Total Payment card');
 
       expect(income, 'INCOME DETAIL vs PAYMENT DETAIL Total Payment').toBeCloseTo(payment, 2);
       expect(income, 'INCOME DETAIL Total Payment vs KPI card').toBeCloseTo(card, 2);
@@ -268,17 +275,32 @@ test.describe('Tab Daily — panel Income / Payment Detail — Income Reports', 
    *   minh trực tiếp; nếu không tương tác được thì icon chevron là gây nhầm lẫn
    *   và nên báo lại team.)*
    */
-  // TODO(manual/setup): the scan found no role=button / aria-expanded on the
-  // INCOME DETAIL chevron, so there is no collapse contract to assert yet. Needs
-  // live verification: either the chevron is interactive (then assert
-  // aria-expanded toggling and the rows hiding) or it is decorative and the
-  // finding goes back to the product team.
-  test.fixme(
+  // Since 2026-10-13 each rail is a collapsible `pos-card` whose header carries
+  // `aria-expanded` (verified on the Summary cards 2026-10-20).
+  test(
     'TC-INC-076 — INCOME DETAIL chevron collapses/expands the panel',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage }) => {
       await incomePage.waitForDataSettled();
       await expect(incomePage.incomeDetailHeading).toBeVisible();
+
+      const header = incomePage.cardHeader('Income detail');
+      const firstRow = incomePage.cardBody('Income detail').locator('dt').first();
+      await expect(firstRow).toBeVisible();
+      await expect(header, 'the card header should expose aria-expanded').toHaveAttribute(
+        'aria-expanded',
+        'true',
+      );
+
+      // Step 1: collapse.
+      await header.click();
+      await expect(header).toHaveAttribute('aria-expanded', 'false');
+      await expect(firstRow).toBeHidden();
+
+      // Step 2: expand again.
+      await header.click();
+      await expect(header).toHaveAttribute('aria-expanded', 'true');
+      await expect(firstRow).toBeVisible();
     },
   );
 
@@ -288,17 +310,16 @@ test.describe('Tab Daily — panel Income / Payment Detail — Income Reports', 
     async ({ incomePage }) => {
       await incomePage.waitForDataSettled();
 
-      // Data-gated: the baseline half reads today's panels, which show their
-      // empty states on a day the store has not traded. Skip softly then — the
-      // date-change half relies on the same baseline being readable.
+      // Baseline is the pinned DATA_DAY (beforeEach); guard kept in case DEV
+      // data for that day is ever purged.
       const emptyIncome = await incomePage.incomeDetailEmptyState.count();
-      test.skip(
+      expect(
         emptyIncome > 0,
-        'store has no income today; the baseline detail rail shows its empty state',
-      );
+        `no income on ${DATA_DAY}; the baseline detail rail shows its empty state`,
+      ).toBeFalsy();
 
       // Baseline: today's panels are readable and internally consistent.
-      const todayTotal = await incomePage.incomeDetailValue('Total Payment');
+      const todayTotal = await incomePage.incomeDetailValue('Total payment');
       expect(todayTotal, "today's INCOME DETAIL Total Payment").toMatch(INCOME_CURRENCY_PATTERN);
 
       await incomePage.gotoWithQuery({ tab: 'daily', date: OTHER_DAY });

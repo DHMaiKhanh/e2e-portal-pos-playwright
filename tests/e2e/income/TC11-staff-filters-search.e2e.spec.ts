@@ -358,7 +358,7 @@ test.describe('Tab Staff Income — bộ lọc & tìm kiếm — Income Reports'
         INCOME_EMPTY_STATES.NO_STAFF_INCOME,
       );
       await expect(incomePage.staffTable.rows).toHaveCount(0);
-      await expect(incomePage.resultsFooter).toHaveText(/showing 0 to 0 of 0 results/i);
+      expect(await incomePage.resultsRange()).toEqual([0, 0, 0]);
 
       // Nothing to page through, so both pager buttons are really disabled.
       expect(await incomePage.paginationDisabled()).toEqual({ previous: true, next: true });
@@ -399,7 +399,7 @@ test.describe('Tab Staff Income — bộ lọc & tìm kiếm — Income Reports'
   // wildcards rather than literal text — searching `%` returns every staff
   // (e.g. "andy"), so the literal-match assertion fails. Re-enable once the
   // search escapes wildcard characters.
-  test.fixme(
+  test(
     'TC-INC-115 — special characters are treated as literal text',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage, page }) => {
@@ -492,7 +492,7 @@ test.describe('Tab Staff Income — bộ lọc & tìm kiếm — Income Reports'
 
       // No crash — just nothing to show.
       await expect(incomePage.staffEmptyState.first()).toBeVisible();
-      await expect(incomePage.resultsFooter).toHaveText(/showing 0 to 0 of 0 results/i);
+      expect(await incomePage.resultsRange()).toEqual([0, 0, 0]);
 
       // The box took the string (possibly capped) and kept it as one token.
       const value = await incomePage.staffSearchValue();

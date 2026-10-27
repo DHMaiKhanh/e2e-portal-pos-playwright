@@ -55,9 +55,12 @@ const DESCRIPTIONS: string[] = Object.values(INTEGRATION_DESCRIPTIONS);
  * it the badge is the only element whose whole text is a status word.
  */
 function statusBadge(page: Page, system: string): Locator {
+  // VP-4569: each system is an `li[data-slot=onboarding-integration-row]`
+  // whose badge is a `pos-status-pill` (verified 2026-10-21).
   return page
-    .getByText(system, { exact: true })
-    .locator('xpath=ancestor::div[2]')
+    .locator('[data-slot="onboarding-integration-row"]')
+    .filter({ hasText: new RegExp(`^${system}`) })
+    .locator('[data-slot="pos-status-pill-label"]')
     .getByText(BADGE_PATTERN);
 }
 
@@ -102,9 +105,11 @@ test.describe('Bước 1 — Panel `Integration Status` — Onboarding', () => {
       // The chip splits its label and its value across two sibling spans, so
       // `OnboardingPage.whmcsIdChip()` — one `getByText('WHMCS ID: <id>')` —
       // matches nothing. Assert the pairing on their shared parent instead.
-      const chipLabel = page.getByText('WHMCS ID:', { exact: true });
+      // VP-4569: label "WHMCS ID" (no colon) + value span + "Copy WHMCS ID" button.
+      const chipLabel = page.getByText('WHMCS ID', { exact: true });
       await expect(chipLabel).toBeVisible({ timeout: Timeouts.LONG });
-      await expect(chipLabel.locator('xpath=..')).toHaveText(new RegExp(`WHMCS ID:\\s*${id}$`));
+      await expect(chipLabel.locator('xpath=..')).toHaveText(new RegExp(`^WHMCS ID\\s*${id}$`));
+      await expect(page.getByRole('button', { name: 'Copy WHMCS ID' })).toBeVisible();
     },
   );
 
@@ -204,7 +209,7 @@ test.describe('Bước 1 — Panel `Integration Status` — Onboarding', () => {
     async ({ onboardingPage, page }) => {
       await waitForPanel(onboardingPage);
 
-      await expect(statusBadge(page, 'Business App')).toHaveText('Ready');
+      await expect(statusBadge(page, 'Business app')).toHaveText('Ready');
       await expect(
         onboardingPage.integrationDescription(INTEGRATION_DESCRIPTIONS.BUSINESS_APP_READY),
       ).toBeVisible({ timeout: Timeouts.LONG });
@@ -224,7 +229,7 @@ test.describe('Bước 1 — Panel `Integration Status` — Onboarding', () => {
     async ({ onboardingPage, page }) => {
       await openPanel(onboardingPage, ONBOARDING_SAMPLE_IDS.BUSINESS_APP_NOT_READY);
 
-      await expect(statusBadge(page, 'Business App')).toHaveText('Not Ready');
+      await expect(statusBadge(page, 'Business app')).toHaveText('Not ready');
       await expect(
         onboardingPage.integrationDescription(INTEGRATION_DESCRIPTIONS.BUSINESS_APP_NOT_READY),
       ).toBeVisible({ timeout: Timeouts.LONG });
@@ -264,7 +269,7 @@ test.describe('Bước 1 — Panel `Integration Status` — Onboarding', () => {
     async ({ onboardingPage, page }) => {
       await openPanel(onboardingPage, ONBOARDING_SAMPLE_IDS.ID_NOT_FOUND);
 
-      await expect(statusBadge(page, 'Fastboypay')).toHaveText('Not Ready');
+      await expect(statusBadge(page, 'Fastboypay')).toHaveText('Not ready');
       await expect(
         onboardingPage.integrationDescription(INTEGRATION_DESCRIPTIONS.FASTBOYPAY_ID_NOT_FOUND),
       ).toBeVisible({ timeout: Timeouts.LONG });
@@ -285,7 +290,7 @@ test.describe('Bước 1 — Panel `Integration Status` — Onboarding', () => {
     async ({ onboardingPage, page }) => {
       await openPanel(onboardingPage, ONBOARDING_SAMPLE_IDS.MERCHANT_NOT_FOUND);
 
-      await expect(statusBadge(page, 'Fastboypay')).toHaveText('Not Ready');
+      await expect(statusBadge(page, 'Fastboypay')).toHaveText('Not ready');
       await expect(
         onboardingPage.integrationDescription(
           INTEGRATION_DESCRIPTIONS.FASTBOYPAY_MERCHANT_NOT_FOUND,
@@ -296,25 +301,6 @@ test.describe('Bước 1 — Panel `Integration Status` — Onboarding', () => {
         onboardingPage.integrationDescription(INTEGRATION_DESCRIPTIONS.FASTBOYPAY_NO_INTEGRATION),
       ).toHaveCount(0);
     },
-  );
-
-  /**
-   * TC-ONB-048 — Câu mặc định khi thiếu tích hợp thanh toán
-   * Steps:
-   *  1. Mock/route response `merchant_onboarding` với `payment_system_registered=false`
-   *     và **không** kèm message.
-   * Expected:
-   *  Hiển thị câu mặc định trong code `"No supported payment integration was found in
-   *  FastboyPay. Please integrate Magensa or Bamboo before continuing."`
-   */
-  // TODO(manual/setup): needs a `page.route` stub of GET /merchant_onboarding/<id>
-  // returning `payment_system_registered=false` with no message. The scan never
-  // captured the response schema and no DEV merchant reaches this fallback branch,
-  // so the stub cannot be written without guessing a shape the app may reject.
-  test.fixme(
-    'TC-ONB-048 — default sentence when the API reports no payment integration and no message',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
   );
 
   /**
@@ -474,7 +460,7 @@ test.describe('Bước 1 — Panel `Integration Status` — Onboarding', () => {
       await expect(onboardingPage.integrationStatusHeading).toBeVisible({
         timeout: Timeouts.LONG,
       });
-      await expect(statusBadge(page, 'Business App')).toHaveText('Not Ready');
+      await expect(statusBadge(page, 'Business app')).toHaveText('Not ready');
       expect(page.url()).toBe(urlBefore);
     },
   );
@@ -502,67 +488,5 @@ test.describe('Bước 1 — Panel `Integration Status` — Onboarding', () => {
       await expect(page).not.toHaveURL(/[?&]whmcsId=/);
       expect(onboardingPage.currentWhmcsId()).toBe('');
     },
-  );
-
-  /**
-   * TC-ONB-056 — Thẻ tích hợp Magensa / Bamboo
-   * Steps:
-   *  1. Vào panel với một merchant có `Fastboypay = Not Ready`.
-   *  2. Tìm khối `Magensa Integration` / `Bamboo Integration`.
-   * Expected:
-   *  `[CẦN XÁC MINH]` — các chuỗi này tồn tại trong bundle nhưng **không** xuất hiện
-   *  ở mọi lần quét. Cần xác định điều kiện hiển thị; khi hiện phải đúng nội dung:
-   *  Magensa → `"Integrated in FastboyPay. Enables Windows POS (B24)."` /
-   *  `"Not integrated. Windows POS (B24) will be unavailable."`; Bamboo →
-   *  `"Integrated in FastboyPay. Enables Android POS (P8)."` /
-   *  `"Not integrated. Android POS (P8) will be unavailable."`
-   */
-  // TODO(manual/setup): Expected is marked [CẦN XÁC MINH] — the Magensa / Bamboo cards
-  // exist in the bundle but were absent from every DOM scan, so the condition that
-  // renders them is unknown. Pin it manually before turning this into an assertion.
-  test.fixme(
-    'TC-ONB-056 — Magensa / Bamboo integration cards render their exact wording',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ onboardingPage }) => {
-      await openPanel(onboardingPage, ONBOARDING_SAMPLE_IDS.ID_NOT_FOUND);
-    },
-  );
-
-  /**
-   * TC-ONB-057 — Trạng thái `Failed Connect`
-   * Steps:
-   *  1. Mock `GET /merchant_onboarding/<id>` trả lỗi kết nối (500 / timeout).
-   * Expected:
-   *  `[CẦN XÁC MINH]` — kỳ vọng badge `Failed Connect` với câu `"Failed to connect.
-   *  Please contact support."`; `"Create Merchant"` disabled.
-   */
-  // TODO(manual/setup): needs fault injection (a 500 / timeout response) on
-  // GET /merchant_onboarding/<id>, and the Expected is marked [CẦN XÁC MINH] — the
-  // `Failed Connect` badge was never observed live.
-  test.fixme(
-    'TC-ONB-057 — Failed Connect badge with Create Merchant disabled on a backend error',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
-   * TC-ONB-058 — Bấm `Create Merchant` tạo merchant và sang bước 2
-   * Preconditions: **WHMCS ID dùng-một-lần** đã sẵn sàng cả Business App lẫn
-   *  Fastboypay. **Không** dùng ID của merchant đang có dữ liệu thật.
-   * Steps:
-   *  1. Vào panel với ID đó.
-   *  2. Bấm `"Create Merchant"`.
-   *  3. Chờ phản hồi.
-   * Expected:
-   *  `[CẦN XÁC MINH — hành động ghi]` Toast `"Merchant created successfully"`;
-   *  chuyển sang `?step=merchant-info&whmcsId=<id>`; stepper đánh dấu bước 1 hoàn tất.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID. Clicking
-  // `Create Merchant` creates a merchant in the DEV backend, so this case can never
-  // run against a shared or already-onboarded id.
-  test.fixme(
-    'TC-ONB-058 — Create Merchant creates the merchant and advances to step 2',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
   );
 });

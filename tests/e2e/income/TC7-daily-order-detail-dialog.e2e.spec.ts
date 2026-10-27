@@ -76,11 +76,18 @@ function currencyAmounts(text: string): string[] {
  * slice would let a card order pass a `Cash` check on its log text alone.
  */
 function paymentsSection(text: string): string {
-  const from = text.indexOf(INCOME_ORDER_DETAIL_SECTIONS[2]);
+  // Case-insensitive: section titles may be upper-cased by CSS in `innerText`.
+  const lower = text.toLowerCase();
+  const from = lower.indexOf(INCOME_ORDER_DETAIL_SECTIONS[2].toLowerCase());
   if (from < 0) return '';
   const rest = text.slice(from);
-  const to = rest.indexOf(INCOME_ORDER_DETAIL_SECTIONS[3]);
+  const to = rest.toLowerCase().indexOf(INCOME_ORDER_DETAIL_SECTIONS[3].toLowerCase());
   return to < 0 ? rest : rest.slice(0, to);
+}
+
+/** Every `(UTC±N)` offset printed in a slice of text. */
+function utcOffsets(text: string): string[] {
+  return text.match(/UTC[+-]\d+/g) ?? [];
 }
 
 test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => {
@@ -99,12 +106,12 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
   // order-detail dialog opens but its title renders with no bounding box, so
   // `dialog.title` toBeVisible (line ~108) times out. Re-enable once the title
   // renders visibly; the pin keeps it exercising real data when flipped back.
-  test.fixme(
+  test(
     'TC-INC-060 — row click opens `Order detail #OD…` for that row',
     { tag: [Tag.REGRESSION, Tag.SMOKE] },
     async ({ incomePage, page }) => {
       const codes = await orderCodeCells(incomePage);
-      test.skip(codes.length === 0, 'no orders on the selected day to open');
+      expect(codes.length === 0, 'no orders on the selected day to open').toBeFalsy();
 
       const urlBefore = page.url();
       const dialog = await incomePage.openOrderRow(0);
@@ -123,12 +130,12 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
   // FIXME(2026-10-12): pinned data now runs this; it fails because the dialog
   // title renders with no bounding box (`dialog.title` toBeVisible times out),
   // the same defect TC-INC-060 hit. Re-enable once the title renders visibly.
-  test.fixme(
+  test(
     'TC-INC-061 — dialog shows the full `Order Information` block',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
       const codes = await orderCodeCells(incomePage);
-      test.skip(codes.length === 0, 'no orders on the selected day to open');
+      expect(codes.length === 0, 'no orders on the selected day to open').toBeFalsy();
 
       const dialog = await incomePage.openOrderRow(0);
       await expect(dialog.section(INCOME_ORDER_DETAIL_SECTIONS[0])).toBeVisible();
@@ -138,14 +145,19 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
       }
 
       // `Order ID` repeats the title's code without the `#`.
-      const orderId = await dialog.fieldValue('Order ID', 'Order Date');
+      const orderId = await dialog.fieldValue('Order ID', 'Order date');
       expect(orderId).toMatch(/^OD\d{6}-\d{8}$/);
       expect(await dialog.orderCode()).toBe(`#${orderId}`);
 
-      // `Order Date` is explicitly store-timezone stamped.
-      const orderDate = await dialog.fieldValue('Order Date', 'Merchant');
-      expect(orderDate).toMatch(INCOME_TIMESTAMP_PATTERN);
-      expect(orderDate).toContain('(UTC+7)');
+      // `Order date` is explicitly timezone stamped. Since 2026-10-13 it prints
+      // the time twice — viewer timezone and store timezone, e.g.
+      // `Aug 18, 2026, 2:57 PM (UTC+7) Aug 18, 2026, 2:57 AM (UTC-5)` — so each
+      // stamp is checked on its own.
+      const orderDate = await dialog.fieldValue('Order date', 'Merchant');
+      const stamps = orderDate.match(new RegExp(TIMESTAMP_TEXT_PATTERN.source, 'g')) ?? [];
+      expect(stamps.length, `Order date "${orderDate}" carries no timestamp`).toBeGreaterThan(0);
+      for (const stamp of stamps) expect(stamp).toMatch(INCOME_TIMESTAMP_PATTERN);
+      expect(orderDate.replace(new RegExp(TIMESTAMP_TEXT_PATTERN.source, 'g'), '').trim()).toBe('');
 
       expect(await dialog.fieldValue('Merchant', 'WHMCS ID')).not.toBe('');
       expect(await dialog.fieldValue('WHMCS ID', 'Customer')).toMatch(/\S/);
@@ -155,13 +167,13 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
   // FIXME(2026-10-12): pinned data now runs this; it fails on the same dialog
   // title-has-no-bounding-box defect as TC-INC-060 (`dialog.title` toBeVisible
   // times out before the Refunded badge is reached). Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-INC-062 — refunded order shows the `Refunded` badge',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
       const codes = await orderCodeCells(incomePage);
       const index = codes.findIndex((cell) => cell.includes('(Refund)'));
-      test.skip(index < 0, 'no refunded order on the selected day');
+      expect(index < 0, 'no refunded order on the selected day').toBeFalsy();
 
       // The refund sign lives on the table row: `Sale/Refund` and `Total` both
       // go negative there. Inside the dialog the service lines and payment stay
@@ -170,7 +182,8 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
       const saleRefund = (
         await incomePage.columnValues(incomePage.orderDetailsTable, IncomeDailyColumn.SALE_REFUND)
       )[index];
-      expect(saleRefund).toMatch(/^-\$[\d,]+\.\d{2}$/);
+      // Typographic minus (U+2212) since 2026-10-13; ASCII `-` also accepted.
+      expect(saleRefund).toMatch(/^[-−]\$[\d,]+\.\d{2}$/);
 
       const dialog = await incomePage.openOrderRow(index);
       expect(await dialog.orderCode()).toBe(bareCode(codes[index]));
@@ -184,12 +197,12 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
   // FIXME(2026-10-12): pinned data now runs this; it fails on the same dialog
   // title-has-no-bounding-box defect as TC-INC-060 (`dialog.title` toBeVisible
   // times out). Re-enable once the dialog title renders visibly.
-  test.fixme(
+  test(
     'TC-INC-063 — `Service Details` lists services and a matching `Items subtotal`',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
       const codes = await orderCodeCells(incomePage);
-      test.skip(codes.length === 0, 'no orders on the selected day to open');
+      expect(codes.length === 0, 'no orders on the selected day to open').toBeFalsy();
 
       const dialog = await incomePage.openOrderRow(0);
       await expect(dialog.section(INCOME_ORDER_DETAIL_SECTIONS[1])).toBeVisible();
@@ -204,7 +217,7 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
       await expect(dialog.root.getByText(/STAFF \/ SERVICE/i).first()).toBeVisible();
       await expect(dialog.root.getByText(/^PRICE$/i).first()).toBeVisible();
 
-      const subtotal = await dialog.fieldValue('Items subtotal', 'Payment Details');
+      const subtotal = await dialog.fieldValue('Items subtotal', 'Payment details');
       const parsed = subtotal.match(ITEMS_SUBTOTAL_PATTERN);
       expect(parsed, `unexpected Items subtotal value: "${subtotal}"`).not.toBeNull();
       const subtotalAmount = parseIncomeAmount(parsed?.[2] ?? '');
@@ -226,7 +239,7 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage }) => {
       const codes = await orderCodeCells(incomePage);
-      test.skip(codes.length === 0, 'no orders on the selected day to open');
+      expect(codes.length === 0, 'no orders on the selected day to open').toBeFalsy();
 
       // Walk the day's orders until one paid in cash turns up: the `Received /
       // Change` line only exists for cash tenders.
@@ -242,7 +255,7 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
         }
         await dialog.close();
       }
-      test.skip(!found, 'no cash-paid order on the selected day');
+      expect(!found, 'no cash-paid order on the selected day').toBeFalsy();
 
       await expect(dialog.section(INCOME_ORDER_DETAIL_SECTIONS[2])).toBeVisible();
 
@@ -250,8 +263,14 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
       expect(payments).toMatch(/\bCash\b/);
       expect(payments).toMatch(/\bSuccessful\b/);
       expect(payments).toMatch(RECEIVED_CHANGE_PATTERN);
-      expect(payments).toMatch(TIMESTAMP_TEXT_PATTERN);
-      expect(payments).toContain('(UTC+7)');
+      // Since 2026-10-13 the tender line carries a compact stamp
+      // (`Aug 18, 3:21 AM`, no year/offset — the dialog states its timezone
+      // on `Order date` / the Activity log note) instead of the full one.
+      expect(payments).toMatch(
+        new RegExp(
+          `${TIMESTAMP_TEXT_PATTERN.source}|[A-Z][a-z]{2} \\d{1,2}, \\d{1,2}:\\d{2} (?:AM|PM)`,
+        ),
+      );
       // `Received`, `Change`, and the tender total are all money-formatted.
       expect(currencyAmounts(payments).length).toBeGreaterThanOrEqual(3);
     },
@@ -261,17 +280,22 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
   // the Activity Log timezone note reads "Times in UTC-5" while the test expects
   // "UTC+7", because the dialog renders inconsistent timezones (see TC-INC-143).
   // Re-enable once the dialog uses one consistent offset.
-  test.fixme(
+  test(
     'TC-INC-065 — `Activity Log` exposes all sub-tabs and switches content',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage, page }) => {
       const codes = await orderCodeCells(incomePage);
-      test.skip(codes.length === 0, 'no orders on the selected day to open');
+      expect(codes.length === 0, 'no orders on the selected day to open').toBeFalsy();
 
       const dialog = await incomePage.openOrderRow(0);
       await expect(dialog.section(INCOME_ORDER_DETAIL_SECTIONS[3])).toBeVisible();
       await expect(dialog.activityLogTimezoneNote).toBeVisible();
-      await expect(dialog.activityLogTimezoneNote).toHaveText(/times in UTC\+7/i);
+      // The log is stamped in one of the timezones the dialog itself declares
+      // on `Order date` (viewer or store) — not a hard-coded runner offset.
+      const declared = utcOffsets(await dialog.fieldValue('Order date', 'Merchant'));
+      const note = (await dialog.activityLogTimezoneNote.textContent()) ?? '';
+      const noteOffset = utcOffsets(note)[0] ?? '';
+      expect(declared, `Activity log "${note}" vs Order date offsets`).toContain(noteOffset);
 
       await expect(dialog.activityLogTabs).toHaveCount(INCOME_ACTIVITY_LOG_TABS.length);
 
@@ -279,8 +303,7 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
       for (const name of INCOME_ACTIVITY_LOG_TABS) {
         const tab = dialog.activityLogTab(name);
         await expect(tab, `missing Activity Log sub-tab: ${name}`).toBeVisible();
-        await tab.click();
-        await expect(tab).toHaveAttribute('aria-selected', 'true');
+        await dialog.openActivityLogTab(name);
         // Let the panel swap in before sampling it.
         await page.waitForTimeout(300);
         rendered.push(await dialog.text());
@@ -300,7 +323,7 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
     { tag: [Tag.REGRESSION] },
     async ({ incomePage }) => {
       const codes = await orderCodeCells(incomePage);
-      test.skip(codes.length === 0, 'no orders on the selected day to open');
+      expect(codes.length === 0, 'no orders on the selected day to open').toBeFalsy();
 
       const dialog = incomePage.orderDetailDialog;
       let found = false;
@@ -316,18 +339,18 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
         }
         await dialog.close();
       }
-      test.skip(!found, 'every order on the selected day has both a customer and a note');
+      expect(!found, 'every order on the selected day has both a customer and a note').toBeFalsy();
 
       // Whichever of the two is empty must say so rather than leave a blank gap
       // after its label.
-      const customer = await dialog.fieldValue('Customer', 'Order Note');
-      const note = await dialog.fieldValue('Order Note', 'Service Details');
+      const customer = await dialog.fieldValue('Customer', 'Order note');
+      const note = await dialog.fieldValue('Order note', 'Service details');
       expect(customer).not.toBe('');
       expect(note).not.toBe('');
 
       for (const [label, value, placeholder] of [
         ['Customer', customer, INCOME_EMPTY_STATES.NO_CUSTOMER],
-        ['Order Note', note, INCOME_EMPTY_STATES.NO_NOTE],
+        ['Order note', note, INCOME_EMPTY_STATES.NO_NOTE],
       ] as const) {
         if (value.includes(placeholder)) {
           await expect(dialog.root.getByText(placeholder).first()).toBeVisible();
@@ -343,7 +366,7 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage, page }) => {
       const codesBefore = await orderCodeCells(incomePage);
-      test.skip(codesBefore.length === 0, 'no orders on the selected day to open');
+      expect(codesBefore.length === 0, 'no orders on the selected day to open').toBeFalsy();
 
       const urlBefore = page.url();
       const dateLabelBefore = await incomePage.dateTriggerLabel();
@@ -367,7 +390,7 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage, page }) => {
       const codes = await orderCodeCells(incomePage);
-      test.skip(codes.length === 0, 'no orders on the selected day to open');
+      expect(codes.length === 0, 'no orders on the selected day to open').toBeFalsy();
 
       const dialog = await incomePage.openOrderRow(0);
 
@@ -399,12 +422,12 @@ test.describe('Tab Daily — dialog chi tiết order — Income Reports', () => 
   // `dialog.orderCode()` does not match the clicked row's code — the row→dialog
   // code mapping does not hold on the real data for the pinned day. Needs
   // investigation (row ordering vs dialog contents) before re-enabling.
-  test.fixme(
+  test(
     'TC-INC-069 — opening a second order replaces the first order’s data',
     { tag: [Tag.REGRESSION] },
     async ({ incomePage }) => {
       const codes = await orderCodeCells(incomePage);
-      test.skip(codes.length < 2, 'needs at least two orders on the selected day');
+      expect(codes.length < 2, 'needs at least two orders on the selected day').toBeFalsy();
 
       const firstCode = bareCode(codes[0]);
       const secondCode = bareCode(codes[1]);

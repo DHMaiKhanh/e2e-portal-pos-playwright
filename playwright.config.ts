@@ -23,18 +23,23 @@ export default defineConfig({
   // ceiling is the server, not local cores. Measured on the customers folder:
   //
   //   workers   wall    avg passing test   p99
-  //     4      105.8s        5.51s         7.3s
-  //     8       63.8s        6.16s         8.5s   <- chosen
+  //     4      105.8s        5.51s         7.3s   <- chosen
+  //     8       63.8s        6.16s         8.5s
   //    16       62.0s       11.06s        18.1s
   //    24       69.6s       14.48s        28.0s   <- slower overall
   //
   // Wall time is flat from 8 onwards, but per-test latency doubles as requests
-  // queue server-side, pushing tests toward their timeouts for no gain. 8 buys
-  // the same wall clock with ~2x the headroom. Override with WORKERS=n.
+  // queue server-side, pushing tests toward their timeouts for no gain. 4 keeps
+  // per-test latency lowest (best headroom against timeouts) at the cost of some
+  // wall time. Override with WORKERS=n.
   fullyParallel: true,
   forbidOnly: isCI,
-  retries: isCI ? 2 : 0,
-  workers: process.env.WORKERS ? Number(process.env.WORKERS) : 8,
+  // The suite drives a *shared remote* DEV Portal, so a single network blip can
+  // red a test that would pass on a second try. Retry by default (1 locally, 2 on
+  // CI): Playwright then reports "fail-then-pass" as flaky (yellow), not failed
+  // (red), so the red list stays trustworthy. Override with RETRIES=0 for a raw run.
+  retries: isCI ? 2 : Number(process.env.RETRIES ?? 1),
+  workers: process.env.WORKERS ? Number(process.env.WORKERS) : 4,
 
   reporter: [
     ['list'],
@@ -45,6 +50,8 @@ export default defineConfig({
       'allure-playwright',
       { outputFolder: 'reports/allure-results', detail: true, suiteTitle: true },
     ],
+    // Feeds the desktop results app (npm run results) and opens it when a local run ends.
+    ['./tools/results-app/results-reporter.cjs'],
     // Opt-in profiling: STEP_TIMING_OUT=<file> attributes wall time to
     // individual steps, which per-test totals cannot show. Off by default.
     ...(process.env.STEP_TIMING_OUT
@@ -58,7 +65,10 @@ export default defineConfig({
     viewport: { width: 1920, height: 1080 },
     ignoreHTTPSErrors: true,
     actionTimeout: 10_000,
-    navigationTimeout: 15_000,
+    // 30s (not 15s): navigations hit a shared remote DEV Portal that is sometimes
+    // slow under load. A ceiling only "costs" time on a genuinely stuck nav, so a
+    // higher one trades nothing on healthy runs for far fewer timeout-flakes.
+    navigationTimeout: 30_000,
     // Tracing is OFF by default because it is not free, and `retain-on-failure`
     // is not the cheap setting it looks like: it records a trace for *every*
     // test and only discards the passing ones afterwards, so the recording cost

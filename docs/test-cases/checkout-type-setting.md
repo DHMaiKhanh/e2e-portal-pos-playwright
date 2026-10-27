@@ -76,14 +76,14 @@
 
 ## 6. Khác / Integration
 
-| TC ID       | Title                                                               | Priority | Precondition                | Test Data          | Steps                                                                     | Expected Result                                                   | Status                       |
-| ----------- | ------------------------------------------------------------------- | -------- | --------------------------- | ------------------ | ------------------------------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------- |
-| CHK-PTL-036 | Verify đổi merchant load đúng setting                               | P2       | 2 tiệm có setting khác nhau | Merchant #14 ↔ #30 | 1. Mở setting tiệm #14<br>2. Chuyển sang #30<br>3. Quay lại #14           | Mỗi tiệm hiện đúng setting của mình                               | Pass                         |
-| CHK-PTL-037 | Verify user không có quyền chỉnh setting                            | P2       | Account bị giới hạn quyền   | —                  | 1. Đăng nhập account giới hạn quyền<br>2. Mở Checkout setting             | Không chỉnh / không Save được                                     | Not tested (chưa có account) |
-| CHK-PTL-038 | Verify POS nhận đúng type + bonus từ Portal                         | P1       | POS bản VP-4591             | Auto / 10          | 1. Lưu Auto / 10 trên Portal<br>2. Complete order trên POS                | POS cộng đúng 10 điểm (xem VP-4591)                               | Not tested (cần POS)         |
-| CHK-PTL-039 | Verify check-in đã checkout trước khi đổi setting không bị tính lại | P2       | Có check-in đã checkout     | —                  | 1. Đổi Checkout Type, Save<br>2. Kiểm tra điểm các check-in cũ            | Check-in cũ không bị tính lại                                     | Not tested (phía API/POS)    |
-| CHK-PTL-040 | Verify responsive / mobile width                                    | P3       | —                           | Width 375px        | 1. Mở trang ở mobile width                                                | Layout không vỡ, dùng được                                        | Not tested                   |
-| CHK-PTL-041 | Verify form sync lại sau khi Save thành công                        | P1       | Bonus đã lưu = 8            | `abc`              | 1. Chọn Auto, nhập abc<br>2. Chọn Manual, Save<br>3. Chọn lại Auto/Hybrid | Ô Point Bonus = 8 (giá trị DB); không lỗi, không "unsaved change" | **Fail – VP-4974**           |
+| TC ID       | Title                                                               | Priority | Precondition                | Test Data          | Steps                                                                     | Expected Result                                               | Status                                                            |
+| ----------- | ------------------------------------------------------------------- | -------- | --------------------------- | ------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------- |
+| CHK-PTL-036 | Verify đổi merchant load đúng setting                               | P2       | 2 tiệm có setting khác nhau | Merchant #14 ↔ #30 | 1. Mở setting tiệm #14<br>2. Chuyển sang #30<br>3. Quay lại #14           | Mỗi tiệm hiện đúng setting của mình                           | Pass                                                              |
+| CHK-PTL-037 | Verify user không có quyền chỉnh setting                            | P2       | Account bị giới hạn quyền   | —                  | 1. Đăng nhập account giới hạn quyền<br>2. Mở Checkout setting             | Không chỉnh / không Save được                                 | Not tested (chưa có account)                                      |
+| CHK-PTL-038 | Verify POS nhận đúng type + bonus từ Portal                         | P1       | POS bản VP-4591             | Auto / 10          | 1. Lưu Auto / 10 trên Portal<br>2. Complete order trên POS                | POS cộng đúng 10 điểm (xem VP-4591)                           | Not tested (cần POS)                                              |
+| CHK-PTL-039 | Verify check-in đã checkout trước khi đổi setting không bị tính lại | P2       | Có check-in đã checkout     | —                  | 1. Đổi Checkout Type, Save<br>2. Kiểm tra điểm các check-in cũ            | Check-in cũ không bị tính lại                                 | Not tested (phía API/POS)                                         |
+| CHK-PTL-040 | Verify responsive / mobile width                                    | P3       | —                           | Width 375px        | 1. Mở trang ở mobile width                                                | Layout không vỡ, dùng được                                    | Not tested                                                        |
+| CHK-PTL-041 | Verify form sync lại sau khi Save thành công                        | P1       | Bonus đã lưu = 10           | `abc`              | 1. Chọn Auto, nhập abc<br>2. Chọn Manual, Save<br>3. Chọn lại Auto/Hybrid | Ô Point Bonus = giá trị DB; không lỗi, không "unsaved change" | **Pass** – VP-4974 đã fix (verified DEV 2026-10-23, #14 bonus=10) |
 
 ---
 
@@ -108,7 +108,7 @@ Spec: `tests/e2e/settings/checkout-setting/`.
 Các case cần reload để thấy data đã lưu nằm trong `persistence.e2e.spec.ts`, chỉ chạy khi bật
 `ALLOW_SETTING_WRITES=1`; spec này chạy tuần tự và trả tiệm về trạng thái ban đầu (đọc lúc bắt đầu) khi kết thúc.
 
-- `CHK-PTL-041` là bug đã biết **VP-4974** → đánh dấu `test.fail()`; khi bug được fix test sẽ báo "unexpected pass" để gỡ annotation.
+- `CHK-PTL-041` ~~là bug đã biết **VP-4974** → đánh dấu `test.fail()`~~ → **VP-4974 đã fix (verified DEV 2026-10-23)**; cần gỡ annotation `test.fail()` trong `save.e2e.spec.ts` (nếu chạy sẽ báo "unexpected pass").
 - `CHK-PTL-037/038/039` là `test.fixme` (cần account giới hạn quyền / POS / API).
 
 ```bash
@@ -121,7 +121,8 @@ ALLOW_SETTING_WRITES=1 npx playwright test tests/e2e/settings/checkout-setting/p
 
 ### Kết quả chạy
 
-| Ngày       | Môi trường                 | Phạm vi                | Kết quả                                                                                                                   |
-| ---------- | -------------------------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| 2026-10-22 | stage (DEV), #14, 4 worker | mock writes (mặc định) | **42 pass** · CHK-PTL-041 expected-fail (VP-4974 vẫn tái hiện) · 3 fixme · 7 persistence skip · 1.3 phút                  |
-| 2026-10-22 | stage (DEV), #14, 1 worker | persistence (ghi thật) | **7 pass** · 2.1 phút · data #14 trước = sau: Hybrid · bonus 10 · Cash/Card/Other $1.00 · Gift card $0.00 · Product tax 5 |
+| Ngày       | Môi trường                     | Phạm vi                                   | Kết quả                                                                                                                                                                                                                                                           |
+| ---------- | ------------------------------ | ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-10-22 | stage (DEV), #14, 4 worker     | mock writes (mặc định)                    | **42 pass** · CHK-PTL-041 expected-fail (VP-4974 vẫn tái hiện) · 3 fixme · 7 persistence skip · 1.3 phút                                                                                                                                                          |
+| 2026-10-22 | stage (DEV), #14, 1 worker     | persistence (ghi thật)                    | **7 pass** · 2.1 phút · data #14 trước = sau: Hybrid · bonus 10 · Cash/Card/Other $1.00 · Gift card $0.00 · Product tax 5                                                                                                                                         |
+| 2026-10-23 | DEV #14, Playwright MCP (live) | verify VP-4974 (CHK-PTL-041) + spot-check | **CHK-PTL-041 PASS** – VP-4974 đã fix: Auto→nhập `abc`→Manual→Save→chọn lại Auto thì Point Bonus sync về DB (10), hết lỗi, không stale draft. Save thật + revert (data #14 trước=sau: Hybrid/10). Spot-check 001/005/006/007/008/015/018/019 khớp. Không bug mới. |

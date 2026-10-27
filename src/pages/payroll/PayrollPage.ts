@@ -76,38 +76,25 @@ export class PayrollPage extends BasePage {
   constructor(page: Page) {
     super(page);
 
+    // 2026-10 design system: the page title is the `#pos-main` banner's h1. A
+    // page-wide `getByText('Payroll')` also hits the sidebar link and breadcrumb.
     this.pageHeading = page
-      .getByRole('heading', { name: /^payroll$/i })
-      .or(page.getByText(/^payroll$/i).first());
+      .locator('#pos-main')
+      .getByRole('heading', { level: 1, name: /^payroll$/i });
 
-    this.checksTab = page
-      .getByRole('tab', { name: /^checks$/i })
-      .or(page.getByRole('link', { name: /^checks$/i }));
-    this.quickBookTab = page
-      .getByRole('tab', { name: /^quick book$/i })
-      .or(page.getByRole('link', { name: /^quick book$/i }));
-    this.staffPayrollTab = page
-      .getByRole('tab', { name: /^staff payroll$/i })
-      .or(page.getByRole('link', { name: /^staff payroll$/i }));
-    this.bankAccountsTab = page
-      .getByRole('tab', { name: /^bank accounts$/i })
-      .or(page.getByRole('link', { name: /^bank accounts$/i }));
-    this.checkHistoryTab = page
-      .getByRole('tab', { name: /^check history$/i })
-      .or(page.getByRole('link', { name: /^check history$/i }));
+    this.checksTab = page.getByRole('tab', { name: /^checks$/i });
+    this.quickBookTab = page.getByRole('tab', { name: /^quick book$/i });
+    this.staffPayrollTab = page.getByRole('tab', { name: /^staff payroll$/i });
+    this.bankAccountsTab = page.getByRole('tab', { name: /^bank accounts$/i });
+    this.checkHistoryTab = page.getByRole('tab', { name: /^check history$/i });
 
     /**
      * Each tab's table, identified by a column header unique to it.
      *
-     * Two earlier approaches both misfired. `getByRole('table').first()` always
-     * resolved to the *Checks* table because every tab panel stays mounted, so
-     * the Check History / Staff Payroll / Bank Accounts tables were never
-     * actually being read — their tests were passing against the wrong table.
-     * Switching to `table:visible` first was closer but still wrong: the
-     * right-hand detail panel contributes its own visible table, and `.first()`
-     * sometimes picked that one, reporting zero rows.
-     *
-     * Keying on a header the tab owns is unambiguous.
+     * Inactive tab panels stay mounted (hidden, full of skeleton rows), so a
+     * bare `getByRole('table').first()` can resolve to another tab's table.
+     * Keying on a header the tab owns and filtering to the visible one is
+     * unambiguous.
      */
     const tableWithHeader = (header: RegExp): Locator =>
       page
@@ -117,66 +104,70 @@ export class PayrollPage extends BasePage {
         .first();
 
     this.checksTable = new DataTable(page, tableWithHeader(/check amount/i));
-    // All tab panels stay mounted (hidden) at once, so multiple matches exist; only one is visible.
     this.staffNameSearchInput = page.locator(
       'input[placeholder="Search by staff name..."]:visible',
     );
-    /**
-     * Custom select triggers, addressed by position in the filter bar.
-     *
-     * They expose no accessible name, and their *text* is whatever value is
-     * currently selected — so matching on text only works while the filter is
-     * untouched. It is not: the sort persists across tests, and a run that had
-     * already switched it to "Printed" left `hasText: /created/i` matching
-     * nothing. Position within the visible filter bar is stable regardless of
-     * the current value.
-     *
-     * Checks toolbar, in order: sort ("Created"), date preset ("All dates").
-     */
-    const visibleCombobox = (index: number): Locator =>
-      page.getByRole('combobox').filter({ visible: true }).nth(index);
+    // Status filter chip ("Check status: Created"), opening a listbox of
+    // Created / Printed / Voided / Deleted / Archived. Its value is in the URL
+    // (`status=`), so it never leaks between tests.
+    this.checksSortSelect = page
+      .getByRole('button', { name: /^check status/i })
+      .filter({ visible: true })
+      .first();
+    // Date filter trigger: shows "All dates" or the chosen preset; opens a
+    // dialog with a "Presets" listbox and a range calendar.
+    this.checksDatePresetSelect = page
+      .locator('button[data-slot="popover-trigger"][data-pos-filter]')
+      .filter({ visible: true })
+      .first();
+    this.pickDateRangeButton = this.checksDatePresetSelect;
+    // The old "Add Staff" button became the header "Create check" button,
+    // which opens the "Create checks" (bulk, per payroll period) dialog.
+    this.addStaffButton = page
+      .locator('#pos-main')
+      .getByRole('banner')
+      .getByRole('button', { name: /^create check$/i });
+    this.editSignatureButton = page.getByRole('button', { name: /^edit signature$/i });
+    this.selectAllCheckbox = page
+      .getByRole('checkbox', { name: /select all/i })
+      .filter({ visible: true })
+      .first();
+    this.checksEmptyState = page
+      .locator('[data-slot="pos-empty-state-title"]:visible')
+      .filter({ hasNotText: /^No check selected$/ })
+      .first();
 
-    this.checksSortSelect = visibleCombobox(0);
-    this.checksDatePresetSelect = visibleCombobox(1);
-    this.pickDateRangeButton = page.getByRole('button', { name: /pick a date range/i });
-    this.addStaffButton = page.getByRole('button', { name: /add staff/i });
-    this.editSignatureButton = page.getByRole('button', { name: /edit signature/i });
-    this.selectAllCheckbox = page.getByRole('checkbox', { name: /select all/i });
-    this.checksEmptyState = page.getByText(/no checks found\.?/i);
+    const pagination = page
+      .getByRole('navigation', { name: 'Pagination' })
+      .filter({ visible: true })
+      .first();
+    this.previousPageButton = pagination.getByRole('button', { name: /^previous page$/i });
+    this.nextPageButton = pagination.getByRole('button', { name: /^next page$/i });
+    // Range text like "1–30 of 64" (en dash). The pager is not rendered at all
+    // when the result set is empty.
+    this.paginationSummary = pagination.getByText(/^\d+\s*[–-]\s*\d+ of \d+$/);
+    // Text like "1 / 3" between the Previous/Next buttons.
+    this.pageIndicator = pagination.getByText(/^\s*\d+\s*\/\s*\d+\s*$/);
 
-    this.previousPageButton = page.getByRole('button', { name: /previous/i });
-    this.nextPageButton = page.getByRole('button', { name: /^next$/i });
-    // All tab panels stay mounted (hidden) at once, so multiple matches exist; only one is visible.
-    this.paginationSummary = page
-      .getByText(/showing \d+ to \d+ of \d+ results/i)
-      .filter({ visible: true });
-    this.pageIndicator = page.getByText(/^\s*\d+\s*\/\s*\d+\s*$/).filter({ visible: true });
-
-    // Combobox has no accessible name; "Select bank account" is its displayed value, so filter on text.
-    this.selectBankAccountCombobox = page
-      .getByRole('combobox')
-      .filter({ hasText: /select bank account/i });
-    this.endingBalanceText = page.getByText(/ending balance:?\s*\$[\d,]+\.\d{2}/i);
-    // Accessible name is "PAY TO THE ORDER OF"; "Select staff" is its displayed value.
-    this.selectStaffCombobox = page.getByRole('combobox', { name: /pay to the order of/i });
-    this.amountInput = page.getByPlaceholder('$0.00');
-    this.memoTextarea = page.getByPlaceholder(/enter memo/i);
-    this.createCheckButton = page.getByRole('button', { name: /^create$/i });
+    this.selectBankAccountCombobox = page.getByRole('combobox', { name: /^bank account$/i });
+    // "Ending balance" label + `[data-slot="pos-money"]` value in one row.
+    this.endingBalanceText = page.getByText(/^ending balance$/i).locator('xpath=..');
+    this.selectStaffCombobox = page.getByRole('combobox', { name: /^pay to$/i });
+    this.amountInput = page.getByRole('textbox', { name: /^amount$/i });
+    this.memoTextarea = page.getByRole('textbox', { name: /^memo$/i });
+    // The Quick book tab's submit — distinct from the Checks header button of
+    // the same name, which only exists on the Checks tab. The 2026-10 redesign
+    // dropped the <form> wrapper, so scope to the active tabpanel directly.
+    this.createCheckButton = page
+      .getByRole('tabpanel')
+      .getByRole('button', { name: /^create check$/i });
 
     this.staffPayrollTable = new DataTable(page, tableWithHeader(/total income/i));
-    // Dynamic label showing the selected period's date range, e.g. "Oct 8, 2026
-    // - Oct 10, 2026 - Current Period (Unclosed)" — the visible text, not an
-    // accessible name.
-    //
-    // This trigger is NOT a Radix Select (role=combobox); it is a plain button,
-    // so the previous `getByRole('combobox')` resolved to nothing and every read
-    // of it timed out even though the dated label was on screen. Match a button
-    // or a combobox, then narrow by the date pattern ("Mon D, YYYY") so it can't
-    // collide with pagination or a staff-name cell that happens to hold digits.
+    // Pay-period combobox, e.g. "Oct 16, 2026 - Oct 20, 2026 - Current Period
+    // (Unclosed)". Shows "No payroll periods available" (disabled) while the
+    // period list is still loading.
     this.payPeriodCombobox = page
-      .getByRole('combobox')
-      .or(page.getByRole('button'))
-      .filter({ hasText: /\w{3,}\s+\d{1,2},\s*\d{4}/ })
+      .getByRole('combobox', { name: /payroll period/i })
       .filter({ visible: true })
       .first();
     this.createPayPeriodButton = page.getByRole('button', { name: /^create( new)?$/i });
@@ -184,28 +175,26 @@ export class PayrollPage extends BasePage {
     this.noStaffSelectedMessage = page.getByText(/no staff selected/i);
 
     this.bankAccountsTable = new DataTable(page, tableWithHeader(/routing number/i));
-    this.bankSearchInput = page.getByPlaceholder(/search by bank or account name/i);
-    this.createNewBankAccountButton = page.getByRole('button', { name: /create new/i });
-    // Also matches a "No bank accounts" combobox placeholder elsewhere on the page; be specific.
+    this.bankSearchInput = page.getByRole('textbox', { name: /search bank or account/i });
+    this.createNewBankAccountButton = page.getByRole('button', { name: /^add bank account$/i });
     this.noBankAccountsMessage = page.getByText(/no bank accounts found\.?/i);
 
-    this.checkHistoryTable = new DataTable(page, tableWithHeader(/^memo$/i));
-    // These comboboxes have no accessible name; "All statuses"/"All dates" is their displayed value.
-    // All tab panels stay mounted (hidden) at once, so multiple matches can exist; only one is visible.
+    // Check History columns: "#", Staff name, Created at, Check (+ Memo, hidden
+    // at desktop width while the detail panel is shown).
+    this.checkHistoryTable = new DataTable(page, tableWithHeader(/^#$/));
     this.historyStatusSelect = page
-      .getByRole('combobox')
-      .filter({ hasText: /all statuses/i })
-      .filter({ visible: true });
-    this.historyDatePresetSelect = page
-      .getByRole('combobox')
-      .filter({ hasText: /all dates/i })
-      .filter({ visible: true });
+      .getByRole('button', { name: /^check status/i })
+      .filter({ visible: true })
+      .first();
+    this.historyDatePresetSelect = this.checksDatePresetSelect;
     this.noCheckSelectedMessage = page.getByText(/no check selected/i);
   }
 
   async waitForReady(): Promise<void> {
-    await expect(this.pageHeading).toBeVisible();
-    await expect(this.page.locator('[data-slot="skeleton"]:visible')).toHaveCount(0);
+    await expect(this.pageHeading).toBeVisible({ timeout: Timeouts.NAVIGATION });
+    await expect(this.page.locator('[data-slot="skeleton"]:visible')).toHaveCount(0, {
+      timeout: Timeouts.NAVIGATION,
+    });
   }
 
   // --- Tab navigation ---
@@ -294,7 +283,7 @@ export class PayrollPage extends BasePage {
       typeof rowIndexOrText === 'number'
         ? this.checksTable.rows.nth(rowIndexOrText)
         : this.checksTable.rowContaining(rowIndexOrText);
-    await row.getByRole('button', { name: /print/i }).click();
+    await row.getByRole('button', { name: /^print\b/i }).click();
   }
 
   rowSelectCheckbox(rowIndexOrText: number | string): Locator {
@@ -367,14 +356,16 @@ export class PayrollPage extends BasePage {
 
   async editBankAccount(bankName: string): Promise<void> {
     await this.bankAccountRow(bankName)
-      .getByRole('button', { name: /^edit$/i })
+      .getByRole('button', { name: /^actions for/i })
       .click();
+    await this.page.getByRole('menuitem', { name: /^edit$/i }).click();
   }
 
   async deleteBankAccount(bankName: string): Promise<void> {
     await this.bankAccountRow(bankName)
-      .getByRole('button', { name: /^delete$/i })
+      .getByRole('button', { name: /^actions for/i })
       .click();
+    await this.page.getByRole('menuitem', { name: /^delete/i }).click();
   }
 
   /** BANK LINK cell for a row, rendered as a clickable URL. */

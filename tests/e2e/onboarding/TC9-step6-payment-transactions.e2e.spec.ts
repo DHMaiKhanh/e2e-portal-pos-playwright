@@ -110,24 +110,6 @@ test.describe('Bước 6 — `Payment & Transactions` — Onboarding', () => {
   );
 
   /**
-   * TC-ONB-108 — Tắt toàn bộ phương thức thanh toán
-   * Steps:
-   *  1. Tắt cả 4 switch.
-   *  2. Bấm `"Save Changes"`.
-   * Expected:
-   *  `[CẦN XÁC MINH]` — kỳ vọng bị chặn (merchant phải nhận được ít nhất 1 loại
-   *  tender); nếu lưu được thì là lỗ hổng nghiệp vụ cần báo.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID. The
-  // Expected only resolves on submit, and the outcome itself is [CẦN XÁC MINH]:
-  // either a validation block or a business-rule gap to report.
-  test.fixme(
-    'TC-ONB-108 — saving with every tender off is rejected',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
    * TC-ONB-109 — Khối `Tax & Pricing` đủ 3 ô nhập
    * Steps:
    *  1. Đọc các input trong khối.
@@ -153,55 +135,6 @@ test.describe('Bước 6 — `Payment & Transactions` — Onboarding', () => {
         expect(values[field.id]).toMatch(PERCENT_VALUE_PATTERN);
       }
     },
-  );
-
-  /**
-   * TC-ONB-110 — Nhập phần trăm âm hoặc > 100
-   * Steps:
-   *  1. Lần lượt nhập `-5`, `150`, `1000` vào `#taxPercentage` rồi lưu.
-   * Expected:
-   *  `[CẦN XÁC MINH]` — kỳ vọng chặn với lỗi rõ ràng (khoảng hợp lệ 0–100); ô
-   *  đang là `type=text` nên nhiều khả năng chưa chặn → cần kiểm và báo.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID. Typing
-  // is safe, but the Expected is decided only by what "rồi lưu" does, and the
-  // outcome is [CẦN XÁC MINH].
-  test.fixme(
-    'TC-ONB-110 — out-of-range tax percentages (-5 / 150 / 1000) are rejected on save',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
-   * TC-ONB-111 — Nhập chữ vào ô phần trăm
-   * Steps:
-   *  1. Nhập `abc` vào `#serviceFeePercentage` rồi lưu.
-   * Expected:
-   *  `[CẦN XÁC MINH]` — kỳ vọng lỗi validate; không được gửi giá trị phi số lên API.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID; the
-  // "không gửi giá trị phi số lên API" half can only be judged on the request
-  // an actual save fires.
-  test.fixme(
-    'TC-ONB-111 — a non-numeric service fee fails validation and is never sent',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
-   * TC-ONB-112 — Phần trăm dạng thập phân
-   * Steps:
-   *  1. Nhập `8.25` vào `#taxPercentage` rồi lưu.
-   * Expected:
-   *  Chấp nhận (thuế US thường có phần thập phân) và hiển thị lại đúng `8.25`
-   *  sau khi reload.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID: the
-  // Expected requires a successful save plus a reload to read the value back.
-  test.fixme(
-    'TC-ONB-112 — a decimal tax rate (8.25) saves and survives a reload',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
   );
 
   /**
@@ -346,15 +279,15 @@ test.describe('Bước 6 — `Payment & Transactions` — Onboarding', () => {
       await expect(onboardingPage.tipTimingGroup).toBeVisible({ timeout: Timeouts.LONG });
 
       // Arrange the precondition the case describes: After Payment selected.
-      await onboardingPage.selectTipTiming('After Payment');
+      await onboardingPage.selectTipTiming('After payment');
       await expect.poll(() => onboardingPage.selectedTipTiming()).toBe('after_payment');
 
-      await onboardingPage.selectTipTiming('Before Payment');
+      await onboardingPage.selectTipTiming('Before payment');
       await expect.poll(() => onboardingPage.selectedTipTiming()).toBe('before_payment');
 
       // Still exactly one selection.
-      const beforeRadio = onboardingPage.tipTimingOption(/Before Payment/).first();
-      const afterRadio = onboardingPage.tipTimingOption(/After Payment/).first();
+      const beforeRadio = onboardingPage.tipTimingOption(/Before payment/i).first();
+      const afterRadio = onboardingPage.tipTimingOption(/After payment/i).first();
       expect(await onboardingPage.isToggleOn(beforeRadio)).toBe(true);
       expect(await onboardingPage.isToggleOn(afterRadio)).toBe(false);
     },
@@ -384,14 +317,14 @@ test.describe('Bước 6 — `Payment & Transactions` — Onboarding', () => {
       // Client-side wizard state only — no save is performed.
       await expect(onboardingPage.tipTypeGroup).toBeVisible({ timeout: Timeouts.LONG });
       expect(await onboardingPage.tipTypePressed('Percentage')).toBe(true);
-      expect(await onboardingPage.tipTypePressed('Fixed Amount')).toBe(false);
+      expect(await onboardingPage.tipTypePressed('Fixed amount')).toBe(false);
 
       const presetCount = await onboardingPage.tipPresetCount();
       const removeControls = await onboardingPage.removePresetButtons.count();
       expect(presetCount).toBeGreaterThan(0);
 
-      await onboardingPage.selectTipType('Fixed Amount');
-      await expect.poll(() => onboardingPage.tipTypePressed('Fixed Amount')).toBe(true);
+      await onboardingPage.selectTipType('Fixed amount');
+      await expect.poll(() => onboardingPage.tipTypePressed('Fixed amount')).toBe(true);
       expect(await onboardingPage.tipTypePressed('Percentage')).toBe(false);
 
       // Same presets, no longer rendered as `n%`.
@@ -415,15 +348,28 @@ test.describe('Bước 6 — `Payment & Transactions` — Onboarding', () => {
    *  Xuất hiện chip `30%` kèm nút `"Remove 30% tip preset"`. `[CẦN XÁC MINH]`
    *  cơ chế nhập (inline input hay dialog).
    */
-  // TODO(manual/setup): the Add mechanism is unverified — no scan ever clicked
-  // it, so whether it reveals an inline input or opens a dialog is unknown and
-  // no selector for the entry field can be written without inventing one.
-  test.fixme(
+  // Verified on DEV 2026-10-21: `Add` swaps itself for an inline
+  // `textbox "Tip percent"`; typing a value + Enter appends the chip. Local form
+  // state only — no request is sent until Save changes (never clicked; the page
+  // object's write guard would abort it anyway).
+  test(
     'TC-ONB-118 — Add creates a new 30% preset chip with its Remove control',
     { tag: [Tag.REGRESSION] },
-    async ({ onboardingPage }) => {
-      // Best-effort arrange: the control the flow starts from does exist.
+    async ({ onboardingPage, page }) => {
       await expect(onboardingPage.addPresetButton).toBeVisible({ timeout: Timeouts.LONG });
+      const before = await onboardingPage.tipPresetCount();
+      const thirtyBefore = await onboardingPage.tipPresetChip('30').count();
+
+      await onboardingPage.addPresetButton.click();
+      const entry = page.getByRole('textbox', { name: 'Tip percent' });
+      await expect(entry).toBeVisible();
+      await entry.fill('30');
+      await entry.press('Enter');
+
+      await expect(onboardingPage.tipPresetChips).toHaveCount(before + 1);
+      await expect(onboardingPage.tipPresetChip('30')).toHaveCount(thirtyBefore + 1);
+      await expect(onboardingPage.removePresetButton('30').first()).toBeVisible();
+      expect(onboardingPage.blockedWrites, 'Add must not persist anything').toEqual([]);
     },
   );
 
@@ -478,7 +424,7 @@ test.describe('Bước 6 — `Payment & Transactions` — Onboarding', () => {
    * so the duplicate state is read straight off the rendered list.
    */
   // PRODUCT GAP (2026-10-11): merchant 3660 renders ~40 tip-preset chips with 15%/18%/20%/25% duplicated — no de-duplication; expected each preset value to appear at most once. Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-ONB-120 — preset values are unique (3660 renders ~40 duplicates)',
     { tag: [Tag.REGRESSION] },
     async ({ onboardingPage }) => {
@@ -495,40 +441,6 @@ test.describe('Bước 6 — `Payment & Transactions` — Onboarding', () => {
   );
 
   /**
-   * TC-ONB-121 — Preset giá trị biên
-   * Steps:
-   *  1. Thử thêm `0`, `-5`, `101`, `999`, `abc`.
-   * Expected:
-   *  `[CẦN XÁC MINH]` — kỳ vọng chỉ chấp nhận số nguyên/thập phân trong khoảng
-   *  hợp lệ; giá trị âm và phi số phải bị từ chối.
-   */
-  // TODO(manual/setup): depends on the unverified Add mechanism (TC-ONB-118) —
-  // there is no known entry field to type these boundary values into, and the
-  // accepted range is itself [CẦN XÁC MINH].
-  test.fixme(
-    'TC-ONB-121 — boundary preset values (0 / -5 / 101 / 999 / abc) are rejected',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
-   * TC-ONB-122 — Xoá hết preset
-   * Steps:
-   *  1. Xoá lần lượt toàn bộ chip preset rồi lưu.
-   * Expected:
-   *  `[CẦN XÁC MINH]` — kỳ vọng vẫn lưu được (khách nhập tip thủ công) hoặc có
-   *  thông báo rõ nếu bắt buộc tối thiểu 1 preset.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID. Only
-  // the save decides between the two [CẦN XÁC MINH] outcomes (empty preset list
-  // accepted vs. a minimum-one-preset error).
-  test.fixme(
-    'TC-ONB-122 — saving with every preset removed is accepted or clearly blocked',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
-  );
-
-  /**
    * TC-ONB-123 — Ba nút điều hướng cuối bước 6
    * Steps:
    *  1. Đọc các nút ở cuối trang.
@@ -542,29 +454,11 @@ test.describe('Bước 6 — `Payment & Transactions` — Onboarding', () => {
       await expect(onboardingPage.saveChangesButton).toBeVisible({ timeout: Timeouts.LONG });
 
       // Presence and order only — Save Changes is never clicked here.
-      expect(await onboardingPage.wizardFooterLabels()).toEqual(['Back', 'Skip', 'Save Changes']);
+      expect(await onboardingPage.wizardFooterLabels()).toEqual(['Back', 'Skip', 'Save changes']);
 
       await expect(onboardingPage.backButton).toBeEnabled();
       await expect(onboardingPage.skipButton).toBeEnabled();
       await expect(onboardingPage.saveChangesButton).toBeEnabled();
     },
-  );
-
-  /**
-   * TC-ONB-124 — Lưu cấu hình thanh toán thành công
-   * Steps:
-   *  1. Đổi một vài thiết lập.
-   *  2. Bấm `"Save Changes"`.
-   * Expected:
-   *  `[CẦN XÁC MINH — hành động ghi]` Toast `"Payment settings saved
-   *  successfully"`; chuyển sang `?step=complete&whmcsId=<id>`.
-   *
-   * Preconditions: WHMCS ID dùng-một-lần.
-   */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID
-  test.fixme(
-    'TC-ONB-124 — saving payment settings toasts and advances to complete',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
   );
 });

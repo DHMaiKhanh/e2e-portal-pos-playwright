@@ -57,6 +57,9 @@ export const expectCrossStoreBlocked = async (
 ): Promise<void> => {
   await page.goto(pathForStore(UNAUTHORISED_STORE_ID), { waitUntil: 'domcontentloaded' });
 
-  await expect(page.getByText(/this merchant is not available/i)).toBeVisible();
+  // Wording since the 2026-10-13 redesign: "We couldn't load this merchant".
+  await expect(
+    page.getByText(/couldn't load this merchant|this merchant is not available/i),
+  ).toBeVisible();
   await expect(page.locator('tbody tr')).toHaveCount(0);
 };

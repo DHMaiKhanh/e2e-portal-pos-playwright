@@ -4,7 +4,6 @@ import { Timeouts } from '@configs/constants/timeouts';
 import { Urls } from '@constants/urls';
 import {
   INCOME_DATE_RANGE_LABEL_PATTERN,
-  INCOME_RESULTS_FOOTER_PATTERN,
   INCOME_STAFF_PAGE_SIZE,
   IncomePeriod,
   IncomeTab,
@@ -170,7 +169,14 @@ test.describe('Hiệu năng — Income Reports', () => {
             setTimeout(resolve, STALL_MS);
           });
         }
-        await route.continue();
+        // The stalled request may already have been cancelled by the next
+        // navigation, which auto-handles its route; continuing it then throws
+        // "Route is already handled!". That race is not this case's subject.
+        try {
+          await route.continue();
+        } catch {
+          /* route already handled (request cancelled by navigation) */
+        }
       });
 
       try {
@@ -268,7 +274,8 @@ test.describe('Hiệu năng — Income Reports', () => {
       // panel that simply had nothing left to request.
       await expect(incomePage.kpiCards).toHaveCount(4);
       await expect(incomePage.orderDetailsHeaders.first()).toBeVisible();
-      await expect(incomePage.resultsFooter).toHaveText(INCOME_RESULTS_FOOTER_PATTERN);
+      // An empty result renders no pagination (since 2026-10-13) — either signal means it settled.
+      await expect(incomePage.resultsFooter.or(incomePage.tableEmptyState).first()).toBeVisible();
     },
   );
 
@@ -417,7 +424,7 @@ test.describe('Hiệu năng — Income Reports', () => {
       expect(await incomePage.staffSearchValue()).toBe(SEARCH_TERM);
       await expect(page).toHaveURL(incomeTabUrlPattern(IncomeTab.STAFF));
       expect(incomePage.param('search')).toBe(SEARCH_TERM);
-      await expect(incomePage.resultsFooter).toHaveText(INCOME_RESULTS_FOOTER_PATTERN);
+      await expect(incomePage.resultsFooter.or(incomePage.tableEmptyState).first()).toBeVisible();
     },
   );
 
@@ -473,7 +480,7 @@ test.describe('Hiệu năng — Income Reports', () => {
 
       if (answered) {
         await incomePage.waitForDataSettled();
-        await expect(incomePage.incomePeriodCombobox).toHaveText(/^Day$/);
+        await expect(incomePage.incomePeriodValueLabel).toHaveText(/^Day$/);
         await expect(incomePage.summaryHeaders.first()).toBeVisible();
 
         // The range survived the round trip — otherwise nothing wide was tested.

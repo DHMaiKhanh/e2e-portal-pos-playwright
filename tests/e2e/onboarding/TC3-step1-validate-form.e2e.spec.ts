@@ -91,7 +91,12 @@ test.describe('Bước 1 — Form `Validate` — Onboarding', () => {
     { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
     async ({ onboardingPage, page }) => {
       await expect(onboardingPage.enterWhmcsIdHeading).toBeVisible({ timeout: Timeouts.LONG });
-      expect(await onboardingPage.enterWhmcsIdHeading.evaluate((el) => el.tagName)).toBe('H3');
+      // VP-4569: the form title is now a card title `div[data-slot=pos-card-title]`
+      // (it was an <h3> before the 2026-10-13 refactor).
+      await expect(onboardingPage.enterWhmcsIdHeading).toHaveAttribute(
+        'data-slot',
+        'pos-card-title',
+      );
 
       await expect(onboardingPage.validateDescription).toBeVisible();
       await expect(onboardingPage.whmcsIdInput).toBeVisible();
@@ -273,16 +278,21 @@ test.describe('Bước 1 — Form `Validate` — Onboarding', () => {
    *  [CẦN XÁC MINH] — theo regex `^\d+$` thì space làm fail → kỳ vọng lỗi
    *  "WHMCS ID must be numeric". Nếu hệ thống muốn trim thì đây là gap cần bổ sung.
    */
-  // TODO(manual/setup): Expected is marked [CẦN XÁC MINH] and the two candidate
-  // outcomes contradict each other — the raw `^\d+$` guard rejects the padded
-  // value, while a trimming form would instead look 3660 up and answer "already
-  // onboarded". Pin the real behaviour on DEV first, then write the assertion.
-  test.fixme(
+  // Pinned on DEV 2026-10-21: the form does NOT trim — the raw `^\d+$` guard
+  // rejects the padded value client-side and no lookup is sent.
+  test(
     'TC-ONB-031 — " 3660 " with surrounding spaces is rejected as non-numeric',
     { tag: [Tag.REGRESSION] },
-    async ({ onboardingPage }) => {
-      // Best-effort arrange only; the assertion waits on manual verification.
+    async ({ onboardingPage, page }) => {
+      const requests = watchValidateRequests(page);
+      await expect(onboardingPage.whmcsIdInput).toBeVisible({ timeout: Timeouts.LONG });
+
       await onboardingPage.submitWhmcsId(` ${WHMCS_ID} `);
+
+      await expect(onboardingPage.numericError).toHaveText(ONBOARDING_ERRORS.NUMERIC);
+      await expect(onboardingPage.whmcsIdInput).toHaveAttribute('aria-invalid', 'true');
+      await page.waitForTimeout(1_000);
+      expect(requests, 'a padded value must not reach the network').toEqual([]);
     },
   );
 
@@ -295,16 +305,27 @@ test.describe('Bước 1 — Form `Validate` — Onboarding', () => {
    *  coi `0003660` ≡ `3660` (phải báo "already onboarded") hay coi là ID khác
    *  (rủi ro tạo trùng merchant).
    */
-  // TODO(manual/setup): Expected is marked [CẦN XÁC MINH]. Whether the backend
-  // normalises `0003660` to `3660` decides between the already-onboarded error
-  // and a live Integration Status panel, and the second branch is the duplicate-
-  // merchant risk the case is written to expose — needs a manual DEV check
-  // before it can assert anything.
-  test.fixme(
+  // Pinned on DEV 2026-10-21: `0003660` passes the regex and the lookup is
+  // normalised to `GET /merchant_settings/3660`, so the existing merchant is
+  // found and blocked with the already-onboarded error — no Integration Status
+  // panel, hence no duplicate-merchant path.
+  test(
     'TC-ONB-032 — leading zeros (`0003660`) clear the regex and reach the lookup',
     { tag: [Tag.REGRESSION] },
-    async ({ onboardingPage }) => {
+    async ({ onboardingPage, page }) => {
+      test.slow();
+      const requests = watchValidateRequests(page);
+      await expect(onboardingPage.whmcsIdInput).toBeVisible({ timeout: Timeouts.LONG });
+
       await onboardingPage.submitWhmcsId(`000${WHMCS_ID}`);
+
+      await expect(onboardingPage.alreadyOnboardedError).toBeVisible({ timeout: Timeouts.LONG });
+      await expect(onboardingPage.integrationStatusHeading).toHaveCount(0);
+      await expect(onboardingPage.numericError).toHaveCount(0);
+      expect(
+        requests.some((url) => new RegExp(`merchant_settings/0*${WHMCS_ID}$`).test(url)),
+        'the zero-padded id must reach the merchant_settings lookup',
+      ).toBe(true);
     },
   );
 
@@ -434,10 +455,13 @@ test.describe('Bước 1 — Form `Validate` — Onboarding', () => {
         .filter((call) => /merchant_settings/.test(call.url))
         .map((call) => call.status);
       expect(settingsStatuses, 'the lookup 404s for an id with no merchant').toContain(404);
-      expect(
-        calls.some((call) => /merchant_onboarding/.test(call.url)),
-        'the 404 must chain into the onboarding readiness call',
-      ).toBe(true);
+      // The panel heading paints before the readiness call has answered.
+      await expect
+        .poll(() => calls.some((call) => /merchant_onboarding/.test(call.url)), {
+          message: 'the 404 must chain into the onboarding readiness call',
+          timeout: Timeouts.LONG,
+        })
+        .toBe(true);
     },
   );
 
@@ -499,6 +523,11 @@ test.describe('Bước 1 — Form `Validate` — Onboarding', () => {
   // now-disabled button and must be swallowed, so only one lookup reaches the
   // network. Without the stall, Playwright would wait for the button to re-enable
   // between clicks and each would fire its own chain.
+  //
+  // 2026-10-21 (VP-4569): the pending button is only `aria-disabled="true"` +
+  // `aria-busy` — no native `disabled` — so the extra clicks still submit and a
+  // second `GET /merchant_settings/<id>` goes out. Left FAILING: product bug
+  // (double submit is not guarded while the lookup is in flight).
   test(
     'TC-ONB-038 — three rapid Validate clicks fire only one request chain',
     { tag: [Tag.REGRESSION] },

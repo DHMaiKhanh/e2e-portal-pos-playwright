@@ -118,8 +118,22 @@ test.describe('Bank Accounts tab — Payroll', () => {
     'TC-PAY-082 — create new opens the add-bank-account form',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ payrollPage }) => {
-      await expect(payrollPage.createNewBankAccountButton).toBeVisible();
+      // 2026-10 redesign: "Create New" is the header "Add bank account" button.
       await expect(payrollPage.createNewBankAccountButton).toBeEnabled();
+      await payrollPage.createNewBankAccountButton.click();
+      await expect(payrollPage.bankAccountDialog).toBeVisible();
+      for (const field of [
+        'accountName',
+        'accountNumber',
+        'confirmAccountNumber',
+        'bankName',
+        'routingNumber',
+      ]) {
+        await expect(payrollPage.bankAccountField(field)).toBeVisible();
+      }
+      // Cancel — nothing is saved.
+      await payrollPage.cancelBankAccountButton.click();
+      await expect(payrollPage.bankAccountDialog).toBeHidden();
     },
   );
 
@@ -263,38 +277,6 @@ test.describe('Bank Accounts tab — Payroll', () => {
       },
     );
   });
-
-  /**
-   * TC-PAY-085 — Deleting a bank account in use is blocked or warned
-   * Preconditions: A bank account referenced by an existing/pending check.
-   * Steps:
-   *  1. Attempt to `Delete` that account.
-   * Expected: App blocks the deletion or warns the user of the dependency, rather than silently
-   * breaking existing checks.
-   */
-  /**
-   * BLOCKED — the precondition cannot be built, and guessing at it is unsafe.
-   *
-   * The case needs a bank account that an existing check references. Nothing in
-   * the UI shows which account a check was drawn on (the Checks table lists ID,
-   * staff, created-at, amount, memo and status — no bank column), so a
-   * referenced account cannot be identified. Creating the dependency instead
-   * means booking a real check via Quick Book, and checks have no delete
-   * control (see TC-PAY-044), so that would leave permanent payroll records on
-   * the shared store.
-   *
-   * Trying it on an arbitrary account is worse: if the app does *not* block the
-   * delete, the test destroys a real bank account and breaks whatever checks
-   * point at it.
-   *
-   * Unblocked by a disposable store, or by a way to see/seed the check→account
-   * link.
-   */
-  test.fixme(
-    'TC-PAY-085 — deleting a bank account in use is blocked or warned',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
-  );
 
   test(
     'TC-PAY-086 — search by bank or account name filters the list',

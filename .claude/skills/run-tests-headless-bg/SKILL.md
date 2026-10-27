@@ -18,8 +18,12 @@ Default policy for this repo: every Playwright run triggered from a request like
 ## Command pattern
 
 ```bash
-cd <repo_root> && npx playwright test <path-or-grep> --reporter=list > <scratchpad>/<name>-run.log 2>&1
+cd <repo_root> && npx playwright test <path-or-grep> --reporter=list,./tools/results-app/results-reporter.cjs > <scratchpad>/<name>-run.log 2>&1
 ```
+
+- Keep `./tools/results-app/results-reporter.cjs` in `--reporter`: it feeds the desktop results app
+  (`npm run results`) and opens it when the run ends, so the user sees the result there. A bare
+  `--reporter=list` replaces every reporter from `playwright.config.ts` and the app would not update.
 
 - `<path-or-grep>`: a folder (`tests/e2e/staffs`), a single spec file, or `--grep "@tag"`.
 - Map a test-case doc to its spec folder: `docs/test-cases/<screen>.md` → `tests/e2e/<screen>/`.

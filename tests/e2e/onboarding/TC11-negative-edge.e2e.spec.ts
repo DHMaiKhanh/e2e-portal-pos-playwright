@@ -3,6 +3,7 @@ import { Tag } from '@/types/testTags';
 import { Urls } from '@constants/urls';
 import { Timeouts } from '@configs/constants/timeouts';
 import {
+  INTEGRATION_DESCRIPTIONS,
   LOGIN_REDIRECT_PATTERN,
   ONBOARDING_API,
   ONBOARDING_SAMPLE_IDS,
@@ -98,7 +99,7 @@ test.describe('Tiêu cực & biên (Negative / Edge) — Onboarding', () => {
    * Read-only: the Validate submit only fires GET lookups.
    */
   // PRODUCT GAP (2026-10-11): whmcsId=0 is treated as falsy — the id lands on the URL but the form stays up with no Integration Status panel and no error; expected either the panel with a "not found" result or a blocking message. Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-ONB-133 — whmcsId=0 either reaches the panel or is blocked with a message',
     { tag: [Tag.REGRESSION] },
     async ({ onboardingPage, page }) => {
@@ -155,7 +156,7 @@ test.describe('Tiêu cực & biên (Negative / Edge) — Onboarding', () => {
    * the negative id stays on the URL and the panel renders behind it.
    */
   // PRODUCT GAP (2026-10-11): a negative whmcsId (-5) survives on the URL and the panel renders behind it; the URL schema should reject it like the form's ^\d+$ guard and drop back to ?step=validate. Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-ONB-134 — a negative whmcsId on the URL is rejected the way the form rejects it',
     { tag: [Tag.REGRESSION] },
     async ({ onboardingPage }) => {
@@ -189,7 +190,7 @@ test.describe('Tiêu cực & biên (Negative / Edge) — Onboarding', () => {
    *  soát; không tràn số/`NaN` trên giao diện.
    */
   // PRODUCT GAP (2026-10-11): a 20-digit whmcsId is pushed through a JS number and rounded — the panel echoes "WHMCS ID: 100000000000000000000" instead of the exact value given. Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-ONB-135 — a 20-digit whmcsId renders a controlled result with no NaN or rounding',
     { tag: [Tag.REGRESSION] },
     async ({ onboardingPage }) => {
@@ -245,7 +246,7 @@ test.describe('Tiêu cực & biên (Negative / Edge) — Onboarding', () => {
    * usable again, no blank page, no stuck spinner) are asserted in full.
    */
   // PRODUCT GAP (2026-10-11): an offline/failed validate submit leaves the Validate spinner spinning and the button disabled indefinitely — the app never catches the network failure to re-enable the form. Re-enable once fixed.
-  test.fixme(
+  test(
     'TC-ONB-136 — a validate submit while offline fails visibly instead of hanging',
     { tag: [Tag.REGRESSION] },
     async ({ isolatedPage }) => {
@@ -287,20 +288,29 @@ test.describe('Tiêu cực & biên (Negative / Edge) — Onboarding', () => {
    *  Please contact support."`), nút `"Check Again"` vẫn dùng được; `"Create
    *  Merchant"` disabled.
    */
-  // TODO(manual/setup): the Expected's target was never observed live. `Failed
-  // Connect` and "Failed to connect. Please contact support." exist in the bundle,
-  // but no scan of DEV ever rendered them, so which branch a 500 actually paints —
-  // that badge, an empty panel, or the app's error boundary — is unknown, and the
-  // assertion cannot be written without guessing it. Its twin TC-ONB-057 is parked
-  // in TC4-step1-integration-status for the same reason. Pin the branch manually.
-  test.fixme(
+  // Observed on DEV 2026-10-21: with the readiness call answering 500 the panel
+  // renders NO system rows and only the generic "Merchant is not ready for
+  // onboarding" callout — no "Failed connect" badge and no "Failed to connect.
+  // Please contact support." message. The safe parts (no crash, Check again
+  // usable, Create merchant disabled) hold; the missing failure message makes
+  // this FAIL against the documented expectation (product gap).
+  test(
     'TC-ONB-137 — a 500 from merchant_onboarding shows Failed Connect with Create Merchant disabled',
     { tag: [Tag.REGRESSION] },
     async ({ onboardingPage }) => {
-      // Best-effort arrange only: install the fault and land on the panel route.
-      // Asserts nothing, clicks nothing.
       await onboardingPage.stubApi(ONBOARDING_API.MERCHANT_ONBOARDING, 500);
       await onboardingPage.gotoStep(OnboardingStep.VALIDATE, ONBOARDING_SAMPLE_IDS.NOT_ONBOARDED);
+
+      await expect(onboardingPage.integrationStatusHeading).toBeVisible({
+        timeout: Timeouts.LONG,
+      });
+      await expect(onboardingPage.errorBoundaryTitle).toHaveCount(0);
+      await expect(onboardingPage.createMerchantButton).toBeDisabled();
+      await expect(onboardingPage.checkAgainButton).toBeEnabled();
+      await expect(
+        onboardingPage.integrationDescription(INTEGRATION_DESCRIPTIONS.FAILED_CONNECT),
+        'a failed readiness call must say so, not just "not ready"',
+      ).toBeVisible();
     },
   );
 
@@ -448,17 +458,33 @@ test.describe('Tiêu cực & biên (Negative / Edge) — Onboarding', () => {
    *  `[CẦN XÁC MINH]` — kỳ vọng có giới hạn độ dài (maxlength hoặc validate) và
    *  thông báo rõ; layout không bị vỡ.
    */
-  // TODO(manual/setup): real write on DEV — needs a single-use WHMCS ID. The Steps
-  // end in `Save Changes & Continue`, which would overwrite merchant 3660's business
-  // name for real, and the Expected is marked [CẦN XÁC MINH]: nobody has confirmed a
-  // `maxlength` attribute or a validation message exists, so both the cap and its
-  // wording would be guesses. Needs a disposable merchant plus a PO ruling on the cap.
-  test.fixme(
+  // Rewritten 2026-10-21 to stop BEFORE the save: `Save changes & continue`
+  // would overwrite merchant 3660's business name on the shared DEV backend, so
+  // the case asserts the client-side limit only (a `maxlength` cap, or an inline
+  // error, while typing) plus the layout. Verified on DEV: the field has no
+  // `maxlength`, accepts all 1000 characters and shows no message → this FAILS
+  // on the missing length limit (product gap, to be confirmed by PO).
+  test(
     'TC-ONB-141 — a 1000-character Business Name is length-limited with a clear message',
     { tag: [Tag.REGRESSION] },
     async ({ onboardingPage }) => {
-      // Best-effort arrange only: reach step 2. Types nothing, saves nothing.
       await onboardingPage.gotoStep(OnboardingStep.MERCHANT_INFO, WHMCS_ID);
+      const input = onboardingPage.businessNameInput;
+      await expect(input).toBeVisible({ timeout: Timeouts.LONG });
+
+      await input.fill('x'.repeat(1000));
+
+      // Layout must not break either way.
+      expect(await onboardingPage.hasHorizontalOverflow()).toBe(false);
+
+      const kept = (await input.inputValue()).length;
+      const maxLength = await input.getAttribute('maxlength');
+      const inlineError = await input.getAttribute('aria-invalid');
+      expect(
+        kept < 1000 || maxLength !== null || inlineError === 'true',
+        `Business name accepted ${kept} characters with no maxlength and no inline error`,
+      ).toBe(true);
+      expect(onboardingPage.blockedWrites).toEqual([]);
     },
   );
 });

@@ -17,8 +17,8 @@ test.describe('Bộ lọc Quick Filter — Orders', () => {
       await ordersPage.quickFilterCombobox.click();
       await expect(page.getByRole('option', { name: 'Today', exact: true })).toBeVisible();
       await expect(page.getByRole('option', { name: 'Yesterday', exact: true })).toBeVisible();
-      await expect(page.getByRole('option', { name: 'Last 7 Days', exact: true })).toBeVisible();
-      await expect(page.getByRole('option', { name: 'Last 30 Days', exact: true })).toBeVisible();
+      await expect(page.getByRole('option', { name: 'Last 7 days', exact: true })).toBeVisible();
+      await expect(page.getByRole('option', { name: 'Last 30 days', exact: true })).toBeVisible();
       await expect(page.getByRole('option', { name: 'Custom', exact: true })).toHaveCount(0);
     },
   );

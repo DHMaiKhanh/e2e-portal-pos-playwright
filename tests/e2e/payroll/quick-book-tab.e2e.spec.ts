@@ -14,9 +14,11 @@ test.describe('Quick Book tab — Payroll', () => {
       await expect(payrollPage.selectBankAccountCombobox).toBeVisible();
       await expect(payrollPage.endingBalanceText).toBeVisible();
       await expect(payrollPage.selectStaffCombobox).toBeVisible();
-      await expect(page.locator('form').getByText(/pay to the order of/i)).toBeVisible();
+      // 2026-10 redesign labels: "Pay to" (was "PAY TO THE ORDER OF"),
+      // "Amount" (was "AMOUNT ($)"), "Memo".
+      await expect(page.locator('form').getByText(/^pay to$/i)).toBeVisible();
       await expect(payrollPage.amountInput).toBeVisible();
-      await expect(page.locator('form').getByText(/^amount \(\$\)$/i)).toBeVisible();
+      await expect(page.locator('form').getByText(/^amount$/i)).toBeVisible();
       await expect(payrollPage.memoTextarea).toBeVisible();
       await expect(page.locator('form').getByText(/^memo$/i)).toBeVisible();
       await expect(payrollPage.createCheckButton).toBeVisible();
@@ -26,13 +28,20 @@ test.describe('Quick Book tab — Payroll', () => {
   test(
     'TC-PAY-041 — Selecting a bank account updates the Ending Balance',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ payrollPage }) => {
+    async ({ payrollPage, page }) => {
       await expect(payrollPage.endingBalanceText).toBeVisible();
-      const before = await payrollPage.endingBalanceText.textContent();
+      await expect(payrollPage.selectBankAccountCombobox).toHaveText(/select bank account/i);
+
+      // Pick the first bank account the store offers (read-only: nothing is
+      // submitted). The balance must stay a currency-formatted amount.
       await payrollPage.selectBankAccountCombobox.click();
-      // Selection interaction depends on live option list; assert the balance text remains a currency-formatted string.
-      await expect(payrollPage.endingBalanceText).toHaveText(/\$[\d,]+\.\d{2}/);
-      expect(before).not.toBeNull();
+      const option = page.getByRole('option').first();
+      await expect(option).toBeVisible();
+      const bank = (await option.innerText()).trim();
+      await option.click();
+
+      await expect(payrollPage.selectBankAccountCombobox).toContainText(bank);
+      await expect(payrollPage.endingBalanceText).toHaveText(/ending balance\s*\$[\d,]+\.\d{2}/i);
     },
   );
 
@@ -46,54 +55,30 @@ test.describe('Quick Book tab — Payroll', () => {
   );
 
   /**
-   * The app does not disable the Create button while required fields are empty — it stays
-   * enabled and validates on submit, surfacing inline "X is required" messages instead. Verified
-   * live: clicking Create with an empty form shows "Bank account is required" / "Staff is
-   * required" / "Pay amount is required" next to the respective fields, and the button remains
-   * enabled throughout. Updated the assertion to match that submit-time validation behavior
-   * rather than the (incorrect) assumption of a disabled-until-valid button.
+   * 2026-10 redesign: the Create button is now disabled until the form is
+   * valid, with a hint naming what is still missing ("Choose a bank account,
+   * who to pay and an amount"). The old submit-time "X is required" behaviour
+   * is gone. Nothing is ever submitted here.
    */
   test(
-    'TC-PAY-043 — Create validates required fields on submit rather than disabling the button',
+    'TC-PAY-043 — Create stays disabled and names the missing fields until the form is valid',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ payrollPage, page }) => {
-      await expect(payrollPage.createCheckButton).toBeEnabled();
+      // The redesign dropped the <form> wrapper; the fields, hint and submit now
+      // sit directly in the Quick book tabpanel (the only mounted tabpanel).
+      const form = page.getByRole('tabpanel').first();
 
-      await payrollPage.submitQuickBook();
+      await expect(payrollPage.createCheckButton).toBeDisabled();
+      await expect(form).toContainText(/choose a bank account, who to pay and an amount/i);
 
-      await expect(page.getByText(/bank account is required/i)).toBeVisible();
-      await expect(page.getByText(/staff is required/i)).toBeVisible();
-      await expect(page.getByText(/pay amount is required/i)).toBeVisible();
+      await payrollPage.selectBankAccountCombobox.click();
+      await page.getByRole('option').first().click();
+
+      // Bank chosen — staff and amount still missing, so still blocked.
+      await expect(form).not.toContainText(/choose a bank account/i);
+      await expect(form).toContainText(/choose who to pay/i);
+      await expect(payrollPage.createCheckButton).toBeDisabled();
     },
-  );
-
-  /**
-   * Steps:
-   * 1. Select bank account, staff, enter amount `$50.00`, enter memo "Test bonus".
-   * 2. Click `Create`.
-   * Expected:
-   * A success confirmation appears; the new check appears in the Checks table below (and in Check History) with STATUS "Created", CHECK AMOUNT `$50.00`, and MEMO "Test bonus".
-   */
-  // TODO(manual/setup): requires backend state seeding (valid bank account with sufficient balance, valid staff) and mutation verification across tabs.
-  test.fixme(
-    'TC-PAY-044 — Submitting a valid quick check succeeds',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
-  );
-
-  /**
-   * Steps:
-   * 1. Select that bank account.
-   * 2. Enter an amount greater than the Ending Balance.
-   * 3. Click `Create`.
-   * Expected:
-   * Validation error or warning prevents submission (or clearly flags insufficient funds); no check is created.
-   */
-  // TODO(manual/setup): requires a bank account seeded with a known low balance (e.g. $0.00) to reliably trigger the insufficient-funds path.
-  test.fixme(
-    'TC-PAY-045 — Amount exceeding Ending Balance is rejected or warned',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async () => {},
   );
 
   /**

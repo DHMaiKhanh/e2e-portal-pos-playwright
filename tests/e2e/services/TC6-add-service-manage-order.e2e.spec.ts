@@ -21,10 +21,13 @@ test.describe('Thêm dịch vụ & Quản lý thứ tự (Add Service / Manage O
    * `#supplyFee`, `#description` and four visibility switches, with Cancel /
    * Create / Close.
    *
-   * This one creates a real service, prefixed `E2E-` so it is identifiable, and
-   * deactivates it afterwards. As with categories, the Portal offers no delete
-   * control on the service form (Cancel / Save Changes / Close only), so
-   * deactivation is the furthest the UI can undo it.
+   * Changed 2026-10-20: the case no longer SAVES a service. The Portal offers
+   * no delete control for services (Edit dialog = Cancel / Save changes /
+   * Close), so a created service can only be deactivated, never removed — it
+   * cannot be restored on the shared DEV store. The case now fills the whole
+   * form (name, category, price), checks the defaults (Active + the three
+   * "Shown on …" visibility flags on), then Cancels and verifies nothing was
+   * created.
    */
   test(
     'TC-SVC-050 — Click "Add Service" mở form thêm dịch vụ mới',
@@ -32,32 +35,46 @@ test.describe('Thêm dịch vụ & Quản lý thứ tự (Add Service / Manage O
     async ({ productsPage }) => {
       const name = `E2E-SVC-${Date.now()}`;
 
-      try {
-        await test.step('The form opens with its documented fields', async () => {
-          await productsPage.openAddService();
-          await expect(productsPage.serviceDialog).toContainText(/create service/i);
-          await expect(productsPage.serviceNameInput).toBeVisible();
-          await expect(productsPage.serviceCategoryCombobox).toBeVisible();
-          await expect(productsPage.servicePriceInput).toBeVisible();
-          await expect(productsPage.serviceSupplyFeeInput).toBeVisible();
-        });
+      await test.step('The form opens with its documented fields', async () => {
+        await productsPage.openAddService();
+        await expect(productsPage.serviceDialog).toContainText(/add service/i);
+        await expect(productsPage.serviceNameInput).toBeVisible();
+        await expect(productsPage.serviceCategoryCombobox).toBeVisible();
+        await expect(productsPage.servicePriceInput).toBeVisible();
+        await expect(productsPage.serviceSupplyFeeInput).toBeVisible();
+        await expect(productsPage.serviceDescriptionInput).toBeVisible();
+      });
 
-        await test.step('Filling it in and saving adds the service, Active by default', async () => {
-          await productsPage.serviceNameInput.fill(name);
-          await productsPage.selectServiceCategory();
-          await productsPage.servicePriceInput.fill('12.34');
-          await productsPage.submitServiceCreate();
+      await test.step('New services default to Active and visible everywhere', async () => {
+        for (const toggle of [
+          'status',
+          'showOnGoPos',
+          'showOnWebBooking',
+          'showOnGoCheckin',
+        ] as const) {
+          await expect(productsPage.serviceToggle(toggle)).toHaveAttribute('aria-checked', 'true');
+        }
+        await expect(productsPage.serviceToggle('flexiblePricing')).toHaveAttribute(
+          'aria-checked',
+          'false',
+        );
+      });
 
-          await productsPage.search(name);
-          const row = productsPage.table.rowContaining(name);
-          await expect(row.first()).toBeVisible();
-          const cells = (await row.first().innerText()).split('\t').map((cell) => cell.trim());
-          expect(cells[1]).toBe('$12.34');
-          expect(cells[4]).toBe('Active');
-        });
-      } finally {
-        await productsPage.deactivateServiceIfPresent(name);
-      }
+      await test.step('The form accepts valid input', async () => {
+        await productsPage.serviceNameInput.fill(name);
+        await productsPage.selectServiceCategory();
+        await productsPage.servicePriceInput.fill('12.34');
+        await expect(productsPage.serviceNameInput).toHaveValue(name);
+        await expect(productsPage.servicePriceInput).toHaveValue(/12\.34/);
+        await expect(productsPage.serviceDialogCreateButton).toBeEnabled();
+      });
+
+      await test.step('Cancel commits nothing', async () => {
+        await productsPage.serviceDialogCancelButton.click();
+        await expect(productsPage.serviceDialog).toBeHidden();
+        await productsPage.search(name);
+        await expect(productsPage.emptyState).toBeVisible();
+      });
     },
   );
 
@@ -151,10 +168,13 @@ test.describe('Thêm dịch vụ & Quản lý thứ tự (Add Service / Manage O
       // opened. It opens as a dialog headed "Manage Service Order", so BOTH sides
       // of the union match and the unqualified `.or()` trips strict mode —
       // `.first()` has to wrap the whole chain.
-      const dialog = page.getByRole('dialog');
-      await expect(
-        dialog.or(page.getByRole('heading', { name: /order|thứ tự/i })).first(),
-      ).toBeVisible();
+      // Since the 2026-10-13 refactor the button is "Reorder" and it opens
+      // `dialog "Reorder services"` (find box, scope picker, Done/Close).
+      const dialog = page.getByRole('dialog', { name: 'Reorder services' });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByRole('textbox', { name: 'Find a service' })).toBeVisible();
+      await dialog.getByRole('button', { name: 'Close' }).click();
+      await expect(dialog).toBeHidden();
     },
   );
 });

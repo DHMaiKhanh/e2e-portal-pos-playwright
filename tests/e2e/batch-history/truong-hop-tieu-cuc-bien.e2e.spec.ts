@@ -36,8 +36,9 @@ test.describe('Trường hợp tiêu cực & biên — Batch History', () => {
       await batchHistoryPage.waitForReady();
 
       await expect(batchHistoryPage.emptyState).toBeVisible();
-      await expect(batchHistoryPage.emptyState).toContainText(/No batches found\.?/i);
-      await expect(page.getByText(/Showing 0 to 0 of 0 results/i)).toBeVisible();
+      await expect(batchHistoryPage.table.rows).toHaveCount(0);
+      await expect(batchHistoryPage.countBadge).toHaveText(/^0\s*batches$/i);
+      await expect(batchHistoryPage.pagination).toBeHidden();
       expect(consoleErrors).toEqual([]);
     },
   );
@@ -59,26 +60,26 @@ test.describe('Trường hợp tiêu cực & biên — Batch History', () => {
       // App should not crash: heading/table/filter should still be present, no unhandled exception overlay.
       await expect(batchHistoryPage.heading).toBeVisible();
       await expect(batchHistoryPage.tableRoot).toBeVisible();
-      await expect(batchHistoryPage.statusCombobox.first()).toBeVisible();
+      await expect(batchHistoryPage.statusFilter.first()).toBeVisible();
     },
   );
 
-  // PRODUCT GAP (2026-10-11): an invalid `status` query param (e.g. status=bogus)
-  // hard-errors the whole merchant page — it renders "This merchant is not
-  // available." plus a Zod invalid_union dump on path ["status"] — instead of
-  // falling back to "All status". Confirmed from the failure ARIA snapshot.
-  // Re-enable once the app sanitises an out-of-enum status param.
-  test.fixme(
+  // PRODUCT BUG (still present 2026-10-20): an invalid `status` query param
+  // (status=bogus) replaces the whole screen with "We couldn't load this
+  // merchant" instead of falling back to all statuses. Kept failing on purpose.
+  test(
     'TC-BH-039 — invalid status query param falls back to "All status"',
     { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ batchHistoryPage }) => {
-      await batchHistoryPage.gotoWithParams({ status: 'bogus' });
-      await batchHistoryPage.waitForReady();
+    async ({ batchHistoryPage, page }) => {
+      await page.goto(`${Urls.BATCH_HISTORY}?status=bogus`, { waitUntil: 'domcontentloaded' });
 
-      await expect(batchHistoryPage.heading).toBeVisible();
-      await expect(batchHistoryPage.tableRoot).toBeVisible();
-      // Combobox should fall back to "All status" rather than showing the bogus value.
-      await expect(batchHistoryPage.statusCombobox).not.toContainText('bogus');
+      await expect(
+        batchHistoryPage.heading,
+        'status=bogus must not take the whole screen down ("We couldn’t load this merchant")',
+      ).toBeVisible({ timeout: 20_000 });
+      await batchHistoryPage.waitForReady();
+      // The chip falls back to unset (= all statuses) rather than the bogus value.
+      await expect(batchHistoryPage.statusFilter).toHaveAccessibleName(/^status$/i);
     },
   );
 
@@ -112,24 +113,6 @@ test.describe('Trường hợp tiêu cực & biên — Batch History', () => {
         await expect(batchHistoryPage.tableRoot).toBeVisible();
       });
     },
-  );
-
-  /**
-   * Steps:
-   * 1. Intercept request danh sách batch và để nó treo vô thời hạn.
-   * Expected:
-   * Sau một khoảng timeout hợp lý, hiển thị trạng thái lỗi/retry thay vì spinner chạy vô hạn.
-   */
-  // Product gap, measured on 2026-08-12 by holding the batch list response open for
-  // 60s: the skeleton stays up at 3s, 10s, 20s and 35s with no error text, no retry
-  // control and no client-side timeout — exactly the "spinner chạy vô hạn" the case
-  // is written to rule out. A failed request *is* handled (see TC-BH-005, which
-  // asserts the 500 error state); a request that never answers is not.
-  // Re-enable once the batch list fetch has a timeout.
-  test.fixme(
-    'TC-BH-041 — request timeout/no response shows error with retry button',
-    { tag: [Tag.REGRESSION] },
-    async () => {},
   );
 
   /**
@@ -177,8 +160,8 @@ test.describe('Trường hợp tiêu cực & biên — Batch History', () => {
         status: 'all',
       });
 
-      const summary = await batchHistoryPage.paginationSummaryText();
-      const total = Number(summary.match(/of\s+([\d,]+)\s+results/i)?.[1].replace(/,/g, '') ?? '0');
+      const total = await batchHistoryPage.totalResults();
+      expect(total).toBeGreaterThan(0);
       const totalPages = Number(
         (await batchHistoryPage.pageIndicatorText()).split('/')[1]?.trim() ?? '1',
       );
@@ -205,7 +188,7 @@ test.describe('Trường hợp tiêu cực & biên — Batch History', () => {
 
         const rows = (await batchHistoryPage.tableRoot.locator('tbody tr').allInnerTexts())
           .map((t) => t.replace(/\s+/g, ' ').trim())
-          .filter((t) => t && !/no batches found/i.test(t));
+          .filter((t) => t && !/no matching results/i.test(t));
 
         for (const row of rows) {
           // No row may repeat across pages.

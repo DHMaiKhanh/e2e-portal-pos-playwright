@@ -7,27 +7,10 @@ import {
   INCOME_SIDEBAR_INTERNAL,
   INCOME_SIDEBAR_MANAGEMENT,
   INCOME_SIDEBAR_OPERATIONS,
-  INCOME_URL_PATTERN,
   IncomeTab,
   incomeTabLabel,
   incomeTabUrlPattern,
 } from '@pages/income/IncomePage';
-
-/**
- * Whether the nav marks a link as the current page.
- *
- * Read from the attributes the app actually sets (`aria-current` /
- * `data-active`) and never from the class string: every sidebar link shares a
- * Tailwind class list containing `active:text-sidebar-accent-foreground`, so a
- * substring test for /active/ is true for all of them.
- */
-async function isNavActive(link: Locator): Promise<boolean> {
-  const [ariaCurrent, dataActive] = await Promise.all([
-    link.getAttribute('aria-current'),
-    link.getAttribute('data-active'),
-  ]);
-  return ariaCurrent === 'page' || ariaCurrent === 'true' || dataActive === 'true';
-}
 
 /** `aria-expanded` on a disclosure trigger, normalised to a boolean. */
 async function isExpanded(trigger: Locator): Promise<boolean> {
@@ -51,98 +34,6 @@ test.describe('Sidebar & điều hướng — Income Reports', () => {
   test.beforeEach(async ({ incomePage }) => {
     await incomePage.goto();
   });
-
-  test(
-    'TC-INC-009 — sidebar link lands on /pos/<id>/income and marks itself active',
-    { tag: [Tag.REGRESSION, Tag.UI, Tag.SMOKE] },
-    async ({ incomePage, dashboardPage, page }) => {
-      // Step 1: start from Overview so the click is a real navigation.
-      await dashboardPage.goto();
-      await expect(page).toHaveURL(/\/pos\/nail\/\d+\/overview/);
-
-      // Address the link by href: the label "Income Reports" also appears as
-      // the on-page screen label.
-      await incomePage.sidebar.navigateToHref(/\/pos\/nail\/\d+\/income$/);
-      await page.waitForURL(INCOME_URL_PATTERN, { timeout: Timeouts.NAVIGATION });
-      await incomePage.waitForReady();
-
-      // The bare route self-normalises to the default tab.
-      await expect(page).toHaveURL(incomeTabUrlPattern(IncomeTab.DAILY));
-
-      const incomeLink = incomePage.navLinkByHref(Urls.INCOME).first();
-      await expect(incomeLink).toBeVisible();
-      expect(
-        await isNavActive(incomeLink),
-        'the Income Reports sidebar link should carry aria-current/data-active',
-      ).toBeTruthy();
-
-      // ...and only that one: Overview must have dropped its active marker.
-      const overviewLink = incomePage.navLinkByHref(Urls.DASHBOARD).first();
-      expect(
-        await isNavActive(overviewLink),
-        'Overview should be inactive while Income Reports is open',
-      ).toBeFalsy();
-    },
-  );
-
-  test(
-    'TC-INC-010 — active state survives a reload',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ incomePage, page }) => {
-      await expect(page).toHaveURL(INCOME_URL_PATTERN);
-
-      // Step 2: reload.
-      await page.reload({ waitUntil: 'domcontentloaded' });
-      await incomePage.recoverIfUnavailable();
-      await incomePage.waitForReady();
-
-      await expect(page).toHaveURL(INCOME_URL_PATTERN);
-
-      const incomeLink = incomePage.navLinkByHref(Urls.INCOME).first();
-      await expect(incomeLink).toBeVisible();
-      await expect
-        .poll(() => isNavActive(incomeLink), {
-          message: 'Income Reports should still be marked active after a reload',
-          timeout: Timeouts.MEDIUM,
-        })
-        .toBe(true);
-
-      // The nav should mark exactly one link as current.
-      await expect(incomePage.activeNavLinks).toHaveCount(1);
-    },
-  );
-
-  test(
-    'TC-INC-011 — navigating out to Orders and back restores the default ?tab=daily',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ incomePage, page }) => {
-      // Step 1: leave for Orders. `/pos/nail/admin/orders` (Internal → All Orders)
-      // cannot match this pattern because of the \d+ store segment.
-      await incomePage.sidebar.navigateToHref(/\/pos\/nail\/\d+\/orders$/);
-      await page.waitForURL(/\/pos\/nail\/\d+\/orders/, { timeout: Timeouts.NAVIGATION });
-      expect(
-        await isNavActive(incomePage.navLinkByHref(Urls.ORDERS).first()),
-        'Orders should be the active nav item once its route is open',
-      ).toBeTruthy();
-
-      // Step 2: come back through the sidebar.
-      await incomePage.sidebar.navigateToHref(/\/pos\/nail\/\d+\/income$/);
-      await page.waitForURL(INCOME_URL_PATTERN, { timeout: Timeouts.NAVIGATION });
-      await incomePage.waitForReady();
-
-      // Back on the default tab, not whatever was open before we left.
-      await expect(page).toHaveURL(incomeTabUrlPattern(IncomeTab.DAILY));
-      expect(incomePage.currentTab()).toBe(IncomeTab.DAILY);
-      await expect(incomePage.selectedTab).toHaveText(incomeTabLabel(IncomeTab.DAILY));
-
-      // ...and the data actually re-loaded rather than staying on skeletons.
-      await incomePage.waitForDataSettled();
-      expect(
-        await isNavActive(incomePage.navLinkByHref(Urls.INCOME).first()),
-        'Income Reports should be active again after the round trip',
-      ).toBeTruthy();
-    },
-  );
 
   test(
     'TC-INC-012 — every sidebar link points at the inventoried href',
@@ -170,12 +61,13 @@ test.describe('Sidebar & điều hướng — Income Reports', () => {
         await expect(incomePage.navLinkByHref(href).first()).toContainText(label);
       }
 
-      // `Store Settings` is the one store-scoped Settings nav link. The former
-      // admin `Settings` link is gone — the Internal group now surfaces that area
-      // through `System` / `Users & Roles` buttons — so Settings is no longer two
-      // distinct nav anchors, and there must be exactly one Settings link.
+      // Since the 2026-10-13 refactor the legacy Income screen is no longer in
+      // the sidebar (reports live under `Reports` / `Reports V4`), and the admin
+      // `Settings` is a link again, nested under `Internal → System`. The two
+      // Settings anchors are still told apart by href.
+      expect(hrefs, 'legacy Income is reachable by URL only').not.toContain(Urls.INCOME);
       expect(hrefs).toContain(Urls.SETTINGS);
-      expect(hrefs, 'admin Settings is no longer a nav link').not.toContain(
+      expect(hrefs, 'admin Settings sits under Internal → System').toContain(
         `${posAdminBase}/setting`,
       );
       await expect(incomePage.navLinkByHref(Urls.SETTINGS)).toHaveCount(1);
@@ -250,7 +142,7 @@ test.describe('Sidebar & điều hướng — Income Reports', () => {
   // than push, so Back/Forward does not walk the ?tab= history the way this case
   // assumes). Re-enable once Income tab navigation pushes real history entries and
   // the restored view re-paints its tab strip. See docs/product-gaps-2026-10-11.md.
-  test.fixme(
+  test(
     'TC-INC-015 — browser Back/Forward walks the ?tab= history',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ incomePage, page }) => {
@@ -259,8 +151,17 @@ test.describe('Sidebar & điều hướng — Income Reports', () => {
       await expect(page).toHaveURL(incomeTabUrlPattern(IncomeTab.DAILY));
 
       // Steps 2-3: two more history entries.
+      const historyBefore = await page.evaluate(() => history.length);
       await incomePage.openTab(IncomeTab.SUMMARY);
       await expect(page).toHaveURL(incomeTabUrlPattern(IncomeTab.SUMMARY));
+      // Back/Forward can only walk the tabs if a tab click PUSHES a history
+      // entry. Verified 2026-10-20: it replaces the current one instead
+      // (history.length stays put and Back leaves the screen), so this fails
+      // here with a clear message rather than on a 30s chrome timeout.
+      expect(
+        await page.evaluate(() => history.length),
+        'switching tab should push a history entry (it currently replaces it)',
+      ).toBeGreaterThan(historyBefore);
 
       await incomePage.openTab(IncomeTab.STAFF);
       await expect(page).toHaveURL(incomeTabUrlPattern(IncomeTab.STAFF));

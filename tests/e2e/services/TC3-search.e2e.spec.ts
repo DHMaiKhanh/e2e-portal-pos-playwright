@@ -10,13 +10,23 @@ test.describe('Tìm kiếm (Search) — Services', () => {
     'TC-SVC-020 — search by real service name returns matching results',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ productsPage }) => {
-      await productsPage.search('Diamond Pedicure');
-      const footerText = await productsPage.paginationFooterText();
-      expect(footerText).toMatch(/Showing \d+ to \d+ of \d+ results/);
-      const hasMatch = await productsPage.hasProduct('Diamond Pedicure');
-      if (hasMatch) {
-        await expect(productsPage.serviceRow('Diamond Pedicure')).toBeVisible();
-      }
+      // "Diamond Pedicure" no longer exists in store 100004; pinned to
+      // "Gel Polish", which does (verified 2026-10-20).
+      const term = 'Gel Polish';
+      await productsPage.search(term);
+      await expect(productsPage.page).toHaveURL(/[?&]name=Gel(%20|\+)Polish/);
+      await expect(productsPage.serviceRow(term)).toBeVisible();
+      const { total } = await productsPage.footerRange();
+      expect(total).toBeGreaterThan(0);
+      // Poll: the filtered page replaces the unfiltered one only once its own
+      // fetch lands, which can lag the URL update on a loaded DEV.
+      await expect
+        .poll(async () =>
+          (await productsPage.table.rows.allInnerTexts()).every((rowText) =>
+            rowText.toLowerCase().includes('gel'),
+          ),
+        )
+        .toBe(true);
     },
   );
 
@@ -30,8 +40,11 @@ test.describe('Tìm kiếm (Search) — Services', () => {
       });
 
       await productsPage.search('zzz_no_such_service_zzz');
-      const footerText = await productsPage.paginationFooterText();
-      expect(footerText).toContain('Showing 0 to 0 of 0 results');
+      // Since the 2026-10-13 refactor an empty result shows the empty state and
+      // removes the pager (there is no "0 to 0 of 0" footer any more).
+      await expect(productsPage.emptyState).toBeVisible();
+      await expect(productsPage.table.rows).toHaveCount(0);
+      await expect(productsPage.paginationFooter).toHaveCount(0);
       expect(consoleErrors).toEqual([]);
     },
   );
@@ -45,17 +58,13 @@ test.describe('Tìm kiếm (Search) — Services', () => {
       // TC-SVC-050 does, briefly — used to break this one from another file.
       const unfilteredFooter = await productsPage.paginationFooterText();
       const unfilteredPager = await productsPage.pageIndicatorText();
-      const total = Number(unfilteredFooter.match(/of (\d+) results/i)?.[1]);
+      const { total } = await productsPage.footerRange();
       expect(total).toBeGreaterThan(0);
 
       // search() gives up waiting for the refetch after 5s, and under a loaded
       // run the footer can still show the unfiltered count — poll instead.
-      await productsPage.search('Diamond Pedicure');
-      await expect
-        .poll(async () =>
-          Number((await productsPage.paginationFooterText()).match(/of (\d+) results/i)?.[1]),
-        )
-        .toBeLessThan(total);
+      await productsPage.search('Gel Polish');
+      await expect.poll(async () => (await productsPage.footerRange()).total).toBeLessThan(total);
 
       await productsPage.search('');
       await expect.poll(() => productsPage.paginationFooterText()).toBe(unfilteredFooter);
@@ -76,8 +85,10 @@ test.describe('Tìm kiếm (Search) — Services', () => {
 
       for (const term of ['&', '/', '%', '😀']) {
         await productsPage.search(term);
-        const footerText = await productsPage.paginationFooterText();
-        expect(footerText).toMatch(/Showing \d+ to \d+ of \d+ results/);
+        // Either matching rows with a pager, or the controlled empty state.
+        await expect(
+          productsPage.paginationFooter.or(productsPage.emptyState).first(),
+        ).toBeVisible();
       }
 
       expect(consoleErrors).toEqual([]);

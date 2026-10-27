@@ -88,9 +88,7 @@ test.describe('Khả năng tiếp cận (Accessibility) — Merchants', () => {
     'TC-MCH-111 — the search box has an accessible name (from its placeholder)',
     { tag: [Tag.REGRESSION, Tag.UI] },
     async ({ merchantsPage }) => {
-      await expect(merchantsPage.searchInput).toHaveAccessibleName(
-        'Search merchants by name or WHMCS ID...',
-      );
+      await expect(merchantsPage.searchInput).toHaveAccessibleName('Search merchants...');
 
       const semantics = await merchantsPage.searchInput.evaluate((input) => ({
         type: input.getAttribute('type'),

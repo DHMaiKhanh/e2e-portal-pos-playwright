@@ -53,7 +53,7 @@ test.describe('Xuất dữ liệu (Export) — Staffs', () => {
       const download = await downloadPromise;
 
       expect(download.suggestedFilename()).toMatch(/\.xlsx$/i);
-      await expect(page.getByRole('dialog', { name: /export employee/i })).toBeHidden();
+      await expect(page.getByRole('dialog', { name: /^export (staff|employee)$/i })).toBeHidden();
     },
   );
 
@@ -118,7 +118,9 @@ test.describe('Xuất dữ liệu (Export) — Staffs', () => {
 
       if (!download) {
         // Refused at submit time with the dialog left open — also acceptable.
-        await expect(page.getByRole('dialog', { name: /export employee/i })).toBeVisible();
+        await expect(
+          page.getByRole('dialog', { name: /^export (staff|employee)$/i }),
+        ).toBeVisible();
         return;
       }
 
@@ -155,19 +157,21 @@ test.describe('Xuất dữ liệu (Export) — Staffs', () => {
       await test.step('Narrow the export to Inactive staff only', async () => {
         await dialog.statusFilterSelect.click();
 
-        // The status filter is a menu of `role="menuitemcheckbox"` entries —
-        // not a Select, so there is no `role="option"` to pick. Both Active and
-        // Inactive start checked, so narrowing means *unchecking* Active rather
-        // than selecting Inactive.
-        const activeEntry = page.getByRole('menuitemcheckbox', { name: /^active$/i });
-        const inactiveEntry = page.getByRole('menuitemcheckbox', { name: /^inactive$/i });
-        await expect(activeEntry).toBeVisible();
-        await expect(inactiveEntry).toHaveAttribute('aria-checked', 'true');
+        // Since the 2026-10-13 refactor the status filter is a multi-select
+        // combobox popover of `role="option"` entries whose selection state is
+        // `aria-checked`. It starts on "All statuses" (nothing checked), so
+        // narrowing means checking Inactive only.
+        const activeEntry = page.getByRole('option', { name: 'Active', exact: true });
+        const inactiveEntry = page.getByRole('option', { name: 'Inactive', exact: true });
+        await expect(activeEntry).toHaveAttribute('aria-checked', 'false');
+        await expect(inactiveEntry).toHaveAttribute('aria-checked', 'false');
 
-        await activeEntry.click();
+        await inactiveEntry.click();
+        await expect(inactiveEntry).toHaveAttribute('aria-checked', 'true');
         await expect(activeEntry).toHaveAttribute('aria-checked', 'false');
 
         await page.keyboard.press('Escape');
+        await expect(dialog.statusFilterSelect).toHaveText(/^inactive$/i);
       });
 
       const downloadPromise = page.waitForEvent('download');
@@ -206,7 +210,7 @@ test.describe('Xuất dữ liệu (Export) — Staffs', () => {
       });
 
       await dialog.cancelDialogButton.click();
-      await expect(page.getByRole('dialog', { name: /export employee/i })).toBeHidden();
+      await expect(page.getByRole('dialog', { name: /^export (staff|employee)$/i })).toBeHidden();
       expect(downloadFired).toBe(false);
     },
   );

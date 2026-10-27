@@ -16,33 +16,32 @@ export class Sidebar extends BaseComponent {
   }
 
   /**
-   * The collapse/expand control.
-   *
-   * Present in the DOM at every width but only *visible* below the tablet
-   * breakpoint. Verified across 1920 / 1280 / 1024 / 900 / 768 / 375 on
-   * 2026-08-12: from 768px up the nav is a permanent 218px column with no
-   * user-facing collapse affordance, and at 375px the column is gone and this
-   * trigger opens the nav as an overlay drawer instead. Tests that expect a
-   * desktop collapse button are testing something the Portal does not have.
+   * The visible collapse/open control. Since the 2026-10-13 design-system
+   * refactor (verified 2026-10-20): desktop shows "Collapse sidebar" in the nav
+   * column; at mobile widths the column is gone and "Open navigation" opens the
+   * nav as an overlay drawer. Once collapsed, the desktop button is renamed
+   * "Expand sidebar". All exist in the DOM; only one is visible at a time.
    */
   get toggle(): Locator {
-    return this.page.locator('[data-slot="sidebar-trigger"]').first();
+    return this.page
+      .locator(
+        [
+          'button[aria-label="Collapse sidebar"]:visible',
+          'button[aria-label="Expand sidebar"]:visible',
+          'button[aria-label="Open navigation"]:visible',
+        ].join(', '),
+      )
+      .first();
   }
 
-  /** The persistent nav column. Absent (count 0) at mobile widths. */
+  /** The persistent nav column (`aside "Sidebar"`). Absent (count 0) at mobile widths. */
   get panel(): Locator {
-    return this.page.locator('[data-slot="sidebar"]').first();
+    return this.page.locator('aside[aria-label="Sidebar"]');
   }
 
-  /**
-   * The overlay drawer the mobile toggle opens.
-   *
-   * The sheet *is* the sidebar element (`<div data-slot="sidebar" role="dialog">`)
-   * rather than a wrapper around one, so this matches the element itself — a
-   * `filter({ has: … })` looking for a nested sidebar finds nothing.
-   */
+  /** The overlay drawer "Open navigation" opens at mobile widths (`dialog "Navigation"`). */
   get mobileDrawer(): Locator {
-    return this.page.locator('[data-slot="sidebar"][role="dialog"]');
+    return this.page.getByRole('dialog', { name: 'Navigation' });
   }
 
   /** Click a top-level nav item by its visible label. */

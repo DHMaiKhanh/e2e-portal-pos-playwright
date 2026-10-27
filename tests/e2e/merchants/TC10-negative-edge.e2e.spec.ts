@@ -221,14 +221,15 @@ test.describe('Trường hợp tiêu cực & biên (Negative / Edge) — Merchan
       expect(serverErrors).toEqual([]);
       expect(pageErrors).toEqual([]);
 
-      // Wait past the "0 to 0 of 0" first paint — see TC-MCH-054.
-      await expect(merchantsPage.resultsFooter.first()).not.toHaveText(
-        /showing 0 to 0 of 0 results/i,
-      );
-      const footerText = (await merchantsPage.resultsFooter.first().textContent()) ?? '';
-      const from = Number(footerText.match(/showing (\d+)/i)?.[1] ?? 0);
-      const total = await merchantsPage.totalResults();
-      if (from > total) {
+      // VP-4569: the range label reads "X–Y of Z". On 2026-10-20 page=9999
+      // renders the empty state while the label still says "1–16 of 16".
+      const footerText =
+        (await merchantsPage.resultsFooter.count()) > 0
+          ? ((await merchantsPage.resultsFooter.first().textContent()) ?? '')
+          : '';
+      const rowCount = await merchantsPage.table.rows.count();
+      const total = footerText ? await merchantsPage.totalResults() : 0;
+      if (rowCount === 0 && total > 0) {
         test.info().annotations.push({
           type: 'defect',
           description: `page=9999 is not clamped: footer reads "${footerText.trim()}" and no empty-state message is shown.`,
@@ -298,7 +299,7 @@ test.describe('Trường hợp tiêu cực & biên (Negative / Edge) — Merchan
 
       // Final control state: no keyword, status Active.
       await expect(merchantsPage.searchInput).toHaveValue('');
-      await expect(merchantsPage.statusFilter).toHaveText(/^Active$/);
+      await expect(merchantsPage.statusFilter).toHaveAccessibleName('Filter by status: Active');
       await expect(page).toHaveURL(/status=active/);
 
       const statuses = await merchantsPage.columnValues(MerchantColumn.STATUS);
