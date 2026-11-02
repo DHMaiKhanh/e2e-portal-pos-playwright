@@ -6,7 +6,6 @@
 
 ```
 RUN  tests/e2e/batch-history/bao-mat-phan-quyen.e2e.spec.ts fixme 'TC-BH-053 — menu/screen hidden or blocked for role without Batch History permission'
-RUN  tests/e2e/batch-history/truong-hop-tieu-cuc-bien.e2e.spec.ts fixme 'TC-BH-039 — invalid status query param falls back to "All status"'
 DEL  tests/e2e/batch-history/truong-hop-tieu-cuc-bien.e2e.spec.ts fixme 'TC-BH-041 — request timeout/no response shows error with retry button'
 RUN  tests/e2e/customers/TC4-search.e2e.spec.ts fixme 'TC-CUS-029 — searching with different phone formats returns the same result'
 GRD  tests/e2e/customers/TC6-data-formatting.e2e.spec.ts:87

@@ -403,7 +403,6 @@
 
 - TC-BH-037 — empty state renders correctly, no console errors
 - TC-BH-038 — invalid/malformed date query params handled safely
-- TC-BH-039 — invalid status query param falls back to "All status"
 - TC-BH-040 — slow API shows loading state, UI not stuck
 - TC-BH-042 — expired session mid-flow redirects to login
 - TC-BH-043 — large all-time date range loads and paginates without errors

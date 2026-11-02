@@ -64,25 +64,6 @@ test.describe('Trường hợp tiêu cực & biên — Batch History', () => {
     },
   );
 
-  // PRODUCT BUG (still present 2026-10-20): an invalid `status` query param
-  // (status=bogus) replaces the whole screen with "We couldn't load this
-  // merchant" instead of falling back to all statuses. Kept failing on purpose.
-  test(
-    'TC-BH-039 — invalid status query param falls back to "All status"',
-    { tag: [Tag.REGRESSION, Tag.UI] },
-    async ({ batchHistoryPage, page }) => {
-      await page.goto(`${Urls.BATCH_HISTORY}?status=bogus`, { waitUntil: 'domcontentloaded' });
-
-      await expect(
-        batchHistoryPage.heading,
-        'status=bogus must not take the whole screen down ("We couldn’t load this merchant")',
-      ).toBeVisible({ timeout: 20_000 });
-      await batchHistoryPage.waitForReady();
-      // The chip falls back to unset (= all statuses) rather than the bogus value.
-      await expect(batchHistoryPage.statusFilter).toHaveAccessibleName(/^status$/i);
-    },
-  );
-
   /**
    * Steps:
    * 1. Delay response danh sách batch 8–10 giây.

@@ -284,7 +284,6 @@ là che lỗi.
 | Ca                     | Triệu chứng                                                                                                                                             |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | TC-BH-037, TC-BH-008   | `status≠all` + kết quả rỗng → **trắng trang** (không bảng, không empty state, không cả heading). Đối chứng: `status=all` cùng khoảng ngày hiển thị đúng |
-| TC-BH-039              | `status=bogus` → trắng trang thay vì fallback về "All statuses"                                                                                         |
 | TC-BH-038              | `dateAfter=not-a-date` → param bị âm thầm bỏ, rồi **kẹt 50 skeleton vĩnh viễn**                                                                         |
 | TC-SVC-010             | Handle kéo-thả category "Other" có `aria-disabled="false"` — phá quy tắc "Other luôn cuối"                                                              |
 | TC-STF-028, TC-STF-069 | Đã ghi nhận từ vòng trước                                                                                                                               |

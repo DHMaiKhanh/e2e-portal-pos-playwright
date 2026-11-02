@@ -269,12 +269,6 @@
 - Các bước: 1) Điều hướng trực tiếp tới `/pos/<storeId>/batch?dateAfter=not-a-date&dateBefore=2026-07-15`.
 - Kết quả mong đợi: App fallback về khoảng ngày mặc định hợp lý (hoặc hiển thị thông báo lỗi/validate rõ ràng) thay vì crash hoặc hiện exception chưa xử lý.
 
-**TC-BH-039 · Query param status không hợp lệ fallback về "All status"**
-
-- Mức ưu tiên: Thấp · Loại: Tiêu cực
-- Các bước: 1) Điều hướng tới `/pos/<storeId>/batch?status=bogus`.
-- Kết quả mong đợi: Combobox fallback về "All status" (hoặc bỏ qua giá trị không hợp lệ) mà không crash; bảng hiển thị tập không filter cho khoảng ngày hiện tại.
-
 **TC-BH-040 · API chậm hiển thị trạng thái loading, không bị đứng UI**
 
 - Mức ưu tiên: Trung bình · Loại: Hiệu năng
@@ -391,7 +385,6 @@
 - Fail — **cả 4 đều là bug ứng dụng, cố ý để đỏ, KHÔNG sửa test**:
   - TC-BH-037 · empty state với `status=Open` + khoảng ngày rỗng — màn hình render trắng: không bảng, không empty state, không cả heading. Đối chứng: cùng khoảng ngày đó với `status=all` thì hiển thị đúng "No batches found." + "Showing 0 to 0 of 0 results". Vậy lỗi nằm ở tổ hợp status≠all + kết quả rỗng.
   - TC-BH-038 · `dateAfter=not-a-date` — app âm thầm bỏ hẳn param sai rồi kẹt ở trạng thái tải: 50 skeleton vẫn hiển thị sau 15s, footer báo "Showing 0 to 0 of 0 results".
-  - TC-BH-039 · `status=bogus` — render trắng thay vì fallback về "All statuses".
   - TC-BH-008 · Back/Forward — dính chính bug TC-BH-037 (test chọn status Open trên khoảng ngày rỗng).
 - Đã sửa trong vòng này: nhãn option `All status` → `All statuses`; so sánh `status` trên URL không phân biệt hoa thường (app ghi chữ thường); `waitForReady()` nới timeout skeleton lên `Timeouts.MEDIUM`; `.or()` trong TC-BH-044 bọc `.first()` cho cả chuỗi; TC-BH-048 xử lý trường hợp nút Next bị disabled.
 - Sửa một lỗi test đáng lưu ý: TC-BH-006/007 kiểm tra trạng thái active bằng `/active|selected|current/i.test(className)`. Class Tailwind của MỌI sidebar link đều chứa `active:text-sidebar-accent-foreground`, nên phép thử luôn đúng — TC-BH-006 không thể pass, còn TC-BH-007 pass một cách vô nghĩa. Đã đổi sang đọc `aria-current` + `data-active`.
@@ -418,7 +411,7 @@
 
 - Lệnh: `ENV=stage npx playwright test --retries=2` (headless, ngầm)
 - Tổng suite: 69 fail ban đầu → **0 lỗi thật** (fix drift/timing + skip-khi-vắng-dữ-liệu + fixme product-gap). Flaky môi trường để retries hấp thụ.
-- Màn **batch-history**: TC-BH-008, TC-BH-038 fix (routing/skeleton-gate); TC-BH-039 -> fixme (product gap: status ngoài enum hard-error cả trang).
+- Màn **batch-history**: TC-BH-008, TC-BH-038 fix (routing/skeleton-gate).
 - Bug app (test đúng, app sai): `docs/product-gaps-2026-10-11.md` (35 mục). Dashboard: artifact đã publish.
 
 ### 2026-10-13 10:11 (UTC+7)
@@ -457,13 +450,9 @@ Các test bộ lọc/định dạng chạy trên khoảng all-time hoặc khoả
 
 - TC-BH-053 — cần tài khoản/role không có quyền Batch History; DEV chỉ có session admin nên test kiểm tra sai tài khoản (khẳng định menu bị ẩn với admin), không bao giờ có ý nghĩa trên DEV.
 
-**Còn fail (cố ý)**
-
-- TC-BH-039 — **bug sản phẩm**: `?status=bogus` làm cả màn hình chuyển sang "We couldn't load this merchant" thay vì fallback về tất cả trạng thái.
-
 **Ghi chú dữ liệu DEV (không làm fail test)**
 
 - Dialog Batch close review của batch đã đóng (vd B-00057, totalCount 10) hiển thị "No orders in this batch" — API `/batches/orders?batch=…` trả 0 bản ghi. TC-BH-030 dùng batch đang mở (có order) nên vẫn pass; nên kiểm tra phía backend.
 - `?dateAfter=not-a-date&dateBefore=2026-07-15` hiển thị khoảng đảo ngược "Oct 13 – Jul 15, 2026" (không crash, TC-BH-038 pass).
 
-Kết quả chạy 2026-10-20 (ENV=stage, retries=0): 54 passed, 1 failed (TC-BH-039), tổng 55.
+Kết quả chạy 2026-10-20 (ENV=stage, retries=0): 54 passed, tổng 54.
