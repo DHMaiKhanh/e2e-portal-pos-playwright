@@ -86,6 +86,8 @@ export interface PointMethodValue {
 export type PointPaymentConfigValue = Record<PointMethodKey, PointMethodValue> & {
   selected_type: CheckoutTypeValue;
   point_bonus: number;
+  /** VP-4812: whether the tip counts toward the amount that earns points. */
+  earn_on_tip?: boolean;
 };
 
 export interface CapturedSettingWrite {
@@ -134,6 +136,10 @@ export class CheckoutSettingPage extends BasePage {
   readonly discardButton: Locator;
   readonly unsavedDialog: Locator;
   readonly productTaxRateInput: Locator;
+  /** VP-4812 — step "Tip" of the Checkout setting card. */
+  readonly tipStepTitle: Locator;
+  readonly earnOnTipSwitch: Locator;
+  readonly earnOnTipDescription: Locator;
 
   /** Every non-GET request answered by `mockSettingWrites()`. */
   readonly writes: CapturedSettingWrite[] = [];
@@ -161,6 +167,11 @@ export class CheckoutSettingPage extends BasePage {
       name: CheckoutMessages.UNSAVED_DIALOG_TITLE,
     });
     this.productTaxRateInput = page.getByLabel(/Product tax rate/i);
+    this.tipStepTitle = this.form.locator('[data-slot="settings-card-step-title"]', {
+      hasText: /^Tip$/,
+    });
+    this.earnOnTipSwitch = this.form.getByRole('switch', { name: 'Earn points on tip' });
+    this.earnOnTipDescription = this.form.locator('#earnOnTip-description');
   }
 
   async waitForReady(): Promise<void> {

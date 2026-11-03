@@ -433,6 +433,45 @@ export class ProductsPage extends BasePage {
   }
 
   /**
+   * The colour picker (VP-5338): `radiogroup` labelled "Color" holding one `radio` per swatch,
+   * named by colour ("Peach", "Mint", …) with the hex in the `--pos-swatch` style variable.
+   * A stored colour outside the palette is added as an extra swatch in front of the 15.
+   */
+  get categoryColorSwatches(): Locator {
+    return this.categoryDialog
+      .locator('[data-slot="pos-color-swatches"]')
+      .locator('[data-slot="pos-color-swatch"]');
+  }
+
+  categoryColorSwatch(name: string): Locator {
+    return this.categoryDialog.getByRole('radio', { name, exact: true });
+  }
+
+  get checkedCategoryColorSwatch(): Locator {
+    return this.categoryColorSwatches.and(this.page.locator('[aria-checked="true"]'));
+  }
+
+  /** `{ name, hex }` of every swatch in the open dialog, in display order. */
+  async categoryPaletteInDialog(): Promise<PaletteColor[]> {
+    // The Edit dialog renders the picker only once the category detail has loaded.
+    await expect(this.categoryColorSwatches.first()).toBeVisible({ timeout: Timeouts.MEDIUM });
+    return readSwatches(this.categoryColorSwatches);
+  }
+
+  /**
+   * The colour dot of a category row, as `#RRGGBB`. Read before opening a dialog: Radix hides
+   * the rest of the page from the accessibility tree while one is open.
+   */
+  async categoryDotHex(name: string): Promise<string> {
+    const style =
+      (await this.categoryRow(name)
+        .locator('span[style*="background-color"]')
+        .first()
+        .getAttribute('style')) ?? '';
+    return rgbToHex(style);
+  }
+
+  /**
    * Submit a category dialog and wait for the server to accept it.
    *
    * Retries the click once. The Portal refreshes its access token lazily: if
@@ -676,4 +715,53 @@ export class ProductsPage extends BasePage {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export interface PaletteColor {
+  name: string;
+  hex: string;
+}
+
+/**
+ * The 15 Staff colours, in picker order. Since VP-5338 the Category picker uses the same list
+ * (read off the Staff and Category dialogs on DEV, 2026-11-02).
+ */
+export const STAFF_COLOR_PALETTE: readonly PaletteColor[] = [
+  { name: 'Peach', hex: '#E3AA8A' },
+  { name: 'Pink', hex: '#F5A3B5' },
+  { name: 'Lavender', hex: '#B5ADEF' },
+  { name: 'Coral', hex: '#F4B6A0' },
+  { name: 'Aqua', hex: '#9DF5EC' },
+  { name: 'Sky blue', hex: '#9DDDF9' },
+  { name: 'Blue', hex: '#96BDF5' },
+  { name: 'Violet', hex: '#E299F1' },
+  { name: 'Salmon', hex: '#F59992' },
+  { name: 'Mint', hex: '#83F0CC' },
+  { name: 'Yellow', hex: '#F8D885' },
+  { name: 'Sage', hex: '#B7D5A1' },
+  { name: 'Green', hex: '#78D4A2' },
+  { name: 'Apricot', hex: '#F5A98A' },
+  { name: 'Periwinkle', hex: '#A0AFF0' },
+];
+
+/** `{ name, hex }` of every `pos-color-swatch` the locator matches (Category or Staff dialog). */
+export async function readSwatches(swatches: Locator): Promise<PaletteColor[]> {
+  return swatches.evaluateAll((els) =>
+    els.map((el) => ({
+      name: el.getAttribute('aria-label') ?? '',
+      hex: (/--pos-swatch:\s*([^;]+)/.exec(el.getAttribute('style') ?? '')?.[1] ?? '')
+        .trim()
+        .toUpperCase(),
+    })),
+  );
+}
+
+/** `background-color: rgb(248, 216, 133)` → `#F8D885`. */
+export function rgbToHex(css: string): string {
+  const m = /rgb\(\s*(\d+),\s*(\d+),\s*(\d+)/.exec(css);
+  if (!m) return '';
+  return `#${m
+    .slice(1, 4)
+    .map((n) => Number(n).toString(16).padStart(2, '0'))
+    .join('')}`.toUpperCase();
 }

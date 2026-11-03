@@ -137,6 +137,46 @@ export async function openStaffDetail(page: Page, id: string): Promise<StaffReco
   return loaded;
 }
 
+// ---------------------------------------------------------------- write mock
+
+export interface MockedWrite {
+  method: string;
+  url: string;
+  body: unknown;
+}
+
+/**
+ * Answers every non-GET request to the Portal data host (`volt-pos.*`) with a fake 200 that
+ * echoes the body, and records it. Auth refreshes still reach the server (a faked refresh logs
+ * the app out). Call before the first navigation; the returned array fills as the page writes.
+ * Use it for specs that must not touch DEV data, e.g. the read-only Linear re-tests.
+ */
+export async function mockDataWrites(page: Page): Promise<MockedWrite[]> {
+  const writes: MockedWrite[] = [];
+  await page.route(/\/\/volt-pos\./, async (route) => {
+    const req = route.request();
+    const method = req.method().toUpperCase();
+    if (['GET', 'HEAD', 'OPTIONS'].includes(method) || /\/refresh_token(\?|$)/.test(req.url())) {
+      await route.fallback();
+      return;
+    }
+    let body: unknown = req.postData();
+    try {
+      body = req.postDataJSON();
+    } catch {
+      // not JSON — keep the raw text
+    }
+    writes.push({ method, url: req.url(), body });
+    const id = /\/([0-9a-f-]{20,})(\?|$)/i.exec(req.url())?.[1] ?? 'e2e-mocked-id';
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/ld+json',
+      body: JSON.stringify({ id, ...(body && typeof body === 'object' ? body : {}) }),
+    });
+  });
+  return writes;
+}
+
 // ---------------------------------------------------------------- import CSV
 
 /** Header row of "Download template" (`staffs-import-template.csv`), byte for byte. */

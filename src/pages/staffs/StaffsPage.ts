@@ -232,6 +232,11 @@ export class CreateStaffDialog extends BaseModal {
     return this.root.locator('#firstName');
   }
 
+  /** The staff colour picker; the Category picker reuses the same palette (VP-5338). */
+  get colorSwatches(): Locator {
+    return this.root.locator('[data-slot="pos-color-swatch"]');
+  }
+
   get lastNameInput(): Locator {
     return this.root.locator('#lastName');
   }
