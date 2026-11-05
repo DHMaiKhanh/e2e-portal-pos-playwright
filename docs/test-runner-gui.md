@@ -49,6 +49,29 @@ Tab **🔔 Thông báo**. Kết quả tự gửi khi chạy xong (mặc định 
 
 Ví dụ (PowerShell): `$env:GUI_PORT=5000; npm run gui`
 
+## Sự cố khi mở app desktop
+
+**`'electron' is not recognized as an internal or external command`**
+
+Gói `electron` đã cài nhưng bước postinstall tải file chạy Electron không chạy (mạng chặn, `npm install` bị ngắt…), nên thiếu `node_modules/electron/dist` và `node_modules/.bin/electron`. Tải lại bằng tay rồi mở:
+
+```powershell
+node node_modules/electron/install.js
+npm run app
+```
+
+Không có thư mục `node_modules/electron` → chạy `npm install` trước.
+
+**`TypeError: Cannot read properties of undefined (reading 'setName')`**
+
+Biến môi trường `ELECTRON_RUN_AS_NODE=1` đang bật, nên Electron chạy như Node thường và không có `app`. Hay gặp khi mở từ terminal/tiện ích bên trong VS Code (ví dụ Claude Code). Xoá biến rồi mở lại:
+
+```powershell
+Remove-Item Env:ELECTRON_RUN_AS_NODE; npm run app
+```
+
+(Bash: `env -u ELECTRON_RUN_AS_NODE npm run app`)
+
 ## Ghi chú
 
 - Nếu server GUI đã chạy sẵn (port bị chiếm), lệnh mới chỉ mở cửa sổ tới server đang chạy.
