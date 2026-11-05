@@ -429,7 +429,7 @@ test.describe('PROD #20258 — VP-4566 family evidence', () => {
     const rows = customers.table.rows;
     const range = (await customers.resultsFooter.textContent().catch(() => ''))?.trim();
     console.log(`TC15 rows=${rows} members=${qa.totalMember} range=${range} req=${res?.url()}`);
-    await expect(rows).toHaveCount(qa.totalMember);
+    await expect(rows).toHaveCount(qa.totalMember ?? 0);
     await shot(
       page,
       'VP-5216_TC15_filter_customers_by_group.png',
