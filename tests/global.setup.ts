@@ -43,6 +43,9 @@ setup('reuse captured session', async ({ browser }) => {
     page.getByRole('link', { name: 'Overview' }).first().waitFor({ timeout: 20_000 }),
   ]).catch(() => {});
   const bouncedToLogin = new URL(page.url()).pathname.startsWith('/login');
+  // The refresh token rotates: if this check refreshed the session, the old token in the file is
+  // now dead, so write the refreshed session back for the test contexts that follow.
+  if (!bouncedToLogin) await context.storageState({ path: statePath });
   await context.close();
 
   if (bouncedToLogin) {
